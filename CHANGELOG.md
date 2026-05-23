@@ -17,12 +17,6 @@ Once the API has stabilized this project will adopt semantic versioning, the fir
 
 ### Changed
 
-- Updated to vqm 0.1.5
-- Updated to signal-filters 0.1.4
-- Updated to pidsk-controller 0.1.4
-- Made constructors `const` where possible.
-- Improved documentation.
-
 ### Removed
 
 ### Deprecated
@@ -30,6 +24,17 @@ Once the API has stabilized this project will adopt semantic versioning, the fir
 ### Fixed
 
 ### Security
+
+## [0.1.4] - 2026-05-23
+
+### Changed
+
+- Updated to vqm 0.1.8.
+- Updated to signal-filters 0.1.6.
+- Updated to pidsk-controller 0.1.5.
+- made `serde` an optional feature.
+- Made constructors `const` where possible.
+- Improved documentation.
 
 ## [0.1.3] - 2026-05-10
 

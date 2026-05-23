@@ -1,7 +1,9 @@
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 // parameters to mix function
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MotorMixerParameters {
     /// minimum motor output, typically set to 5.5% to avoid ESC desynchronization,
     /// may be set to zero if using dynamic idle control or brushed motors.
@@ -67,16 +69,17 @@ pub enum MixerType {
     OctoXp = 27,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MixerConfig {
     /// constants compatible with Betaflight `mixerMode_e` enums.
     pub mixer_type: u8,
-    pub yaw_motors_reversed: bool,
+    pub yaw_motors_reversed: u8,
 }
 
 impl MixerConfig {
     pub const fn new() -> Self {
-        Self { mixer_type: MixerType::QuadX as u8, yaw_motors_reversed: true }
+        Self { mixer_type: MixerType::QuadX as u8, yaw_motors_reversed: 1 }
     }
 }
 
@@ -111,17 +114,18 @@ pub enum MotorProtocol {
 }
 
 #[allow(clippy::struct_excessive_bools)]
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MotorDeviceConfig {
     /// The update rate of motor outputs (50-498Hz).
     pub motor_pwm_rate: u16,
     pub motor_protocol: u8,
     /// Active-High vs Active-Low. Useful for brushed FCs converted for brushless operation.
-    pub motor_inversion: bool,
-    pub use_continuous_update: bool,
-    pub use_burst_dshot: bool,
-    pub use_dshot_telemetry: bool,
-    pub use_dshot_edt: bool,
+    pub motor_inversion: u8,
+    pub use_continuous_update: u8,
+    pub use_burst_dshot: u8,
+    pub use_dshot_telemetry: u8,
+    pub use_dshot_edt: u8,
 }
 
 impl MotorDeviceConfig {
@@ -129,11 +133,11 @@ impl MotorDeviceConfig {
         Self {
             motor_pwm_rate: 480, // 16000 for brushed
             motor_protocol: MotorProtocol::Dshot300 as u8,
-            motor_inversion: false,
-            use_continuous_update: true,
-            use_burst_dshot: false,
-            use_dshot_telemetry: false,
-            use_dshot_edt: false,
+            motor_inversion: 0,
+            use_continuous_update: 1,
+            use_burst_dshot: 0,
+            use_dshot_telemetry: 0,
+            use_dshot_edt: 0,
         }
     }
 }
@@ -144,7 +148,8 @@ impl Default for MotorDeviceConfig {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MotorConfig {
     pub device: MotorDeviceConfig,
     /// percentage of the motor range added to the disarmed value to give the idle value.
@@ -178,7 +183,8 @@ impl Default for MotorConfig {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ServoDeviceConfig {
     /// PWM values, in milliseconds, common range is 1000-2000 (1ms to 2ms).
     /// This is the value for servos when they should be in the middle. e.g. 1500.
@@ -199,13 +205,14 @@ impl Default for ServoDeviceConfig {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ServoConfig {
     pub device: ServoDeviceConfig,
     /// lowpass servo filter frequency selection; 1/1000ths of loop freq.
     pub servo_lowpass_freq: u16,
     // send tail servo correction pulses even when unarmed.
-    pub tri_unarmed_servo: bool,
+    pub tri_unarmed_servo: u8,
     pub channel_forwarding_start_channel: u8,
 }
 
@@ -214,7 +221,7 @@ impl ServoConfig {
         Self {
             device: ServoDeviceConfig::new(),
             servo_lowpass_freq: 0,
-            tri_unarmed_servo: false,
+            tri_unarmed_servo: 0,
             channel_forwarding_start_channel: 0,
         }
     }
@@ -230,9 +237,9 @@ impl Default for ServoConfig {
 mod tests {
     use super::*;
 
-    #[allow(unused)]
-    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+    #[cfg(feature = "serde")]
     fn is_config<
         T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq + Serialize + for<'a> Deserialize<'a>,
     >() {
@@ -241,6 +248,16 @@ mod tests {
     #[test]
     fn normal_types() {
         is_full::<MotorMixerParameters>();
+        is_full::<MixerConfig>();
+        is_full::<MotorDeviceConfig>();
+        is_full::<MotorConfig>();
+        is_full::<ServoDeviceConfig>();
+        is_full::<ServoConfig>();
+    }
+    #[cfg(feature = "serde")]
+    #[test]
+    fn config_types() {
+        is_config::<MotorMixerParameters>();
         is_config::<MixerConfig>();
         is_config::<MotorDeviceConfig>();
         is_config::<MotorConfig>();

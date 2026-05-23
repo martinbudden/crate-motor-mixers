@@ -1,6 +1,7 @@
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-pub use pidsk_controller::{PidController, PidGainsf32, Pidf32};
+pub use pidsk_controller::{PidControllerf32, PidGainsf32};
 pub use signal_filters::{Pt1Filterf32, SignalFilter};
 
 /// Conversion between RPM and Hz.
@@ -18,7 +19,8 @@ impl RpmHz for f32 {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct DynamicIdleControllerConfig {
     pub dyn_idle_min_rpm_d100: u8, // multiply this by 100 to get the actual min RPM
     pub dyn_idle_p_gain_x100: u8,  // divide this by 100 to get the actual kp
@@ -62,7 +64,7 @@ pub struct DynamicIdleController {
     minimum_allowed_motor_hz: f32, // minimum motor Hz, dynamically controlled
     max_increase: f32,
     // dynamic_idle_max_increase_delay_k :f32,
-    pid: Pidf32, // PID to dynamic idle, ie to ensure slowest motor does not go below min RPS
+    pid: PidControllerf32, // PID to dynamic idle, ie to ensure slowest motor does not go below min RPS
     dterm_filter: Pt1Filterf32,
     config: DynamicIdleControllerConfig,
 }
@@ -80,7 +82,7 @@ impl DynamicIdleController {
             minimum_allowed_motor_hz: 0.0, // minimum motor Hz, dynamically controlled
             max_increase: 0.0,
             // dynamic_idle_max_increase_delay_k :f32,
-            pid: Pidf32::default(), // PID to dynamic idle, ie to ensure slowest motor does not go below min RPS
+            pid: PidControllerf32::default(), // PID to dynamic idle, ie to ensure slowest motor does not go below min RPS
             dterm_filter: Pt1Filterf32::new(),
             config: DynamicIdleControllerConfig::new(),
         }
@@ -161,6 +163,7 @@ mod tests {
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+    #[cfg(feature = "serde")]
     fn is_config<
         T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq + Serialize + for<'a> Deserialize<'a>,
     >() {
@@ -168,6 +171,8 @@ mod tests {
 
     #[test]
     fn normal_types() {
+        is_full::<DynamicIdleControllerConfig>();
+        #[cfg(feature = "serde")]
         is_config::<DynamicIdleControllerConfig>();
         is_full::<DynamicIdleController>();
     }
@@ -221,6 +226,7 @@ mod tests {
         assert_near!(0.0375, dynamic_idle_controller.calculate_speed_increase(900.0.to_hz(), delta_t));
         assert_near!(0.0375, dynamic_idle_controller.calculate_speed_increase(900.0.to_hz(), delta_t));
     }
+    #[cfg(feature = "serde")]
     #[test]
     //#[allow(clippy::field_reassign_with_default)]
     fn config() {

@@ -8,6 +8,7 @@ use crate::{
         FUNDAMENTAL, RpmFilterMotorState, RpmFilterMotorStates, SECOND_HARMONIC, State, THIRD_HARMONIC,
     },
 };
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 use signal_filters::{BiquadFilterVector3df32, Pt1Filterf32};
 
@@ -44,7 +45,8 @@ impl DerefMut for MotorFrequencies {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct RpmNotchFilterBankConfig {
     /// range in which notch filters fade down to `min_hz`.
     pub rpm_filter_fade_range_hz: u16,
@@ -298,9 +300,9 @@ impl RpmNotchFilters for RpmNotchFilterBank {
 mod tests {
     use super::*;
 
-    #[allow(unused)]
-    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
+    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+    #[cfg(feature = "serde")]
     fn is_config<
         T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq + Serialize + for<'a> Deserialize<'a>,
     >() {
@@ -308,6 +310,8 @@ mod tests {
 
     #[test]
     fn normal_types() {
+        is_full::<RpmNotchFilterBankConfig>();
+        #[cfg(feature = "serde")]
         is_config::<RpmNotchFilterBankConfig>();
         is_full::<RpmNotchFilterFrequencies>();
         is_full::<RpmNotchFilterBankContext>();
