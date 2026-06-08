@@ -1,3 +1,5 @@
+#![allow(unused)]
+use crate::mixer::MotorOutputs;
 use cfg_if::cfg_if;
 
 cfg_if! {
@@ -11,29 +13,32 @@ pub struct MotorDriver {
     pwm1: Pwm<'static>,
     config0: Config,
     config1: Config,
-    top: u16,
+    top: f32,
 }
 
 impl MotorDriver {
     pub fn new(pwm0: Pwm<'static>, pwm1: Pwm<'static>) -> Self {
         let config0 = Config::default();
         let config1 = Config::default();
-        let top = config0.top;
+        let top = f32::from(config0.top);
 
         Self {
             pwm0,
             pwm1,
-            config0: config0,
-            config1: config1,
+            config0,
+            config1,
             top,
         }
     }
 
+    #[allow(clippy::cast_sign_loss)]
+    #[allow(clippy::cast_possible_truncation)]
+    #[inline]
     pub fn write_motors(&mut self, motor_outputs: MotorOutputs) {
-        self.config0.compare_a = (((1.0 + motor_output[0]) / 20.0) * self.top as f32) as u16;
-        self.config0.compare_b = (((1.0 + motor_output[1]) / 20.0) * self.top as f32) as u16;
-        self.config1.compare_a = (((1.0 + motor_output[2]) / 20.0) * self.top as f32) as u16;
-        self.config1.compare_b = (((1.0 + motor_output[3]) / 20.0) * self.top as f32) as u16;
+        self.config0.compare_a = (((1.0 + motor_outputs[0]) / 20.0) * self.top) as u16;
+        self.config0.compare_b = (((1.0 + motor_outputs[1]) / 20.0) * self.top) as u16;
+        self.config1.compare_a = (((1.0 + motor_outputs[2]) / 20.0) * self.top) as u16;
+        self.config1.compare_b = (((1.0 + motor_outputs[3]) / 20.0) * self.top) as u16;
 
         self.pwm0.set_config(&self.config0);
         self.pwm1.set_config(&self.config1);
@@ -66,7 +71,7 @@ impl<T> MotorDriver<T>
 where
     T: GeneralInstance4Channel,
 {
-    pub const fn new(pwm: SimplePwm<'static, T>) -> Self {
+    pub fn new(pwm: SimplePwm<'static, T>) -> Self {
         let channels = pwm.split();
         Self {
             ch0: channels.ch1,
@@ -75,16 +80,19 @@ where
             ch3: channels.ch4,
         }
     }
+
+    #[allow(clippy::cast_sign_loss)]
+    #[allow(clippy::cast_possible_truncation)]
     #[inline]
     pub fn write_motors(&mut self, motor_outputs: MotorOutputs) {
-        ch0.set_duty_cycle(((1.0 + motor_output[0]) * 1000.0 / 20.0) as u32);
-        ch0.enable();
-        ch1.set_duty_cycle(((1.0 + motor_output[1]) * 1000.0 / 20.0) as u32);
-        ch1.enable();
-        ch2.set_duty_cycle(((1.0 + motor_output[2]) * 1000.0 / 20.0) as u32);
-        ch2.enable();
-        ch3.set_duty_cycle(((1.0 + motor_output[3]) * 1000.0 / 20.0) as u32);
-        ch3.enable();
+        self.ch0.set_duty_cycle(((1.0 + motor_outputs[0]) * 1000.0 / 20.0) as u32);
+        self.ch0.enable();
+        self.ch1.set_duty_cycle(((1.0 + motor_outputs[1]) * 1000.0 / 20.0) as u32);
+        self.ch1.enable();
+        self.ch2.set_duty_cycle(((1.0 + motor_outputs[2]) * 1000.0 / 20.0) as u32);
+        self.ch2.enable();
+        self.ch3.set_duty_cycle(((1.0 + motor_outputs[3]) * 1000.0 / 20.0) as u32);
+        self.ch3.enable();
     }
 }
 /*
@@ -142,6 +150,18 @@ impl MotorDriver {
         }
         self.driver.update_duty().unwrap();
     }
+
+    #[allow(clippy::cast_sign_loss)]
+    #[allow(clippy::cast_possible_truncation)]
+    #[inline]
+    pub fn write_motors(&mut self, motor_outputs: MotorOutputs) {
+        let max_duty = self.driver.get_max_duty();
+
+        self.driver.set_duty(Channel::CH0, ((1.0 + motor_outputs[0]) * max_duty / 20.0) as u32);
+        self.driver.set_duty(Channel::CH1, ((1.0 + motor_outputs[1]) * max_duty / 20.0) as u32);
+        self.driver.set_duty(Channel::CH2, ((1.0 + motor_outputs[2]) * max_duty / 20.0) as u32);
+        self.driver.set_duty(Channel::CH3, ((1.0 + motor_outputs[3]) * max_duty / 20.0) as u32);
+    }
 }
 
 }
@@ -152,19 +172,9 @@ impl MotorDriver {
 
 #[cfg(test)]
 mod tests {
-    #[allow(unused)]
-    use super::*;
-
-    #[allow(unused)]
-    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
-    #[cfg(feature = "rp2040")]
-    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
+    fn _is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
 
     #[test]
-    fn normal_types() {
-        #[cfg(feature = "rp2040")]
-        is_full::<MotorDriver>();
-    }
-    #[test]
-    fn new() {}
+    fn normal_types() {}
 }

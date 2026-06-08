@@ -563,48 +563,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f578e8e2c440e7297e008bb5486a3a8a194775224bbc23729b0dbdfaeebf162e"
 
 [[package]]
-name = "defmt"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6e524506490a1953d237cb87b1cfc1e46f88c18f10a22dfe0f507dc6bfc7f7f"
-dependencies = [
- "bitflags 1.3.2",
- "defmt-macros",
-]
-
-[[package]]
-name = "defmt-macros"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0a27770e9c8f719a79d8b638281f4d828f77d8fd61e0bd94451b9b85e576a0b"
-dependencies = [
- "defmt-parser",
- "proc-macro-error2",
- "proc-macro2",
- "quote",
- "syn 2.0.117",
-]
-
-[[package]]
-name = "defmt-parser"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10d60334b3b2e7c9d91ef8150abfb6fa4c1c39ebbcf4a81c2e346aad939fee3e"
-dependencies = [
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "defmt-rtt"
-version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0f73a4a4a91609e977ae3b7bd831ffa292edfd42ad140a3244a61d805b0e05e"
-dependencies = [
- "critical-section",
- "defmt",
-]
-
-[[package]]
 name = "derive_more"
 version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1023,7 +981,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shlex 1.3.0",
- "strum 0.24.1",
+ "strum",
  "tempfile",
  "thiserror 1.0.69",
  "which",
@@ -1123,7 +1081,7 @@ dependencies = [
  "libc",
  "regex",
  "serde",
- "strum 0.24.1",
+ "strum",
  "which",
 ]
 
@@ -1653,8 +1611,6 @@ version = "0.1.4"
 dependencies = [
  "approx",
  "cfg-if",
- "defmt",
- "defmt-rtt",
  "embassy-executor",
  "embassy-futures",
  "embassy-rp",
@@ -1663,17 +1619,12 @@ dependencies = [
  "embassy-time",
  "esp-idf-hal",
  "libm",
- "log",
- "num_enum",
- "panic-probe",
  "pidsk-controller",
  "postcard",
  "rustc_version 0.4.1",
  "sequential-storage",
  "serde",
  "signal-filters",
- "strum 0.28.0",
- "strum_macros 0.28.0",
  "vqm",
 ]
 
@@ -1774,16 +1725,6 @@ name = "once_cell"
 version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
-
-[[package]]
-name = "panic-probe"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd402d00b0fb94c5aee000029204a46884b1262e0c443f166d86d2c0747e1a1a"
-dependencies = [
- "cortex-m",
- "defmt",
-]
 
 [[package]]
 name = "parking_lot"
@@ -2060,7 +2001,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8af65855c40b2c35079514c5489abffc0429347fef25d8467ff98ad84b4322d3"
 dependencies = [
  "cortex-m",
- "cortex-m-rt",
 ]
 
 [[package]]
@@ -2356,7 +2296,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e74b78632cea498cfb28386a29f8bfae7476d6570a78733eb5fecbee66c2f4ce"
 dependencies = [
  "cortex-m",
- "cortex-m-rt",
 ]
 
 [[package]]
@@ -2383,16 +2322,7 @@ version = "0.24.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "063e6045c0e62079840579a7e47a355ae92f60eb74daaf156fb1e84ba164e63f"
 dependencies = [
- "strum_macros 0.24.3",
-]
-
-[[package]]
-name = "strum"
-version = "0.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9628de9b8791db39ceda2b119bbe13134770b56c138ec1d3af810d045c04f9bd"
-dependencies = [
- "strum_macros 0.28.0",
+ "strum_macros",
 ]
 
 [[package]]
@@ -2406,18 +2336,6 @@ dependencies = [
  "quote",
  "rustversion",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "strum_macros"
-version = "0.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab85eea0270ee17587ed4156089e10b9e6880ee688791d45a905f5b1ca36f664"
-dependencies = [
- "heck 0.5.0",
- "proc-macro2",
- "quote",
- "syn 2.0.117",
 ]
 
 [[package]]
@@ -2659,9 +2577,9 @@ dependencies = [
 
 [[package]]
 name = "vqm"
-version = "0.1.11"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6904a16e786a5d0f069d998bd74d5023b4aae4e31b95fde4268253050a584c8"
+checksum = "ff65c21ba8cca07675fba37b41343b4ade20dace2730b8334e3c1d1cf366a9f8"
 dependencies = [
  "cfg-if",
  "derive_more",

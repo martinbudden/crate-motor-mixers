@@ -26,9 +26,9 @@ rustc_version = "0.4.1"
 default = ["libm"]
 #default = ["libm", "serde"]
 # cargo build --features rp2040 
-#default = ["rp2040"]
-#default = ["stm32"]
-#default = ["esp32"]
+#default = ["libm", "rp2040"]
+#default = ["libm", "stm32"]
+#default = ["libm", "esp32"]
 
 # Core backend features declared explicitly
 libm = ["dep:libm", "vqm/libm", "signal-filters/libm"]
@@ -40,31 +40,34 @@ simd = ["vqm/simd", "signal-filters/simd"]
 std = ["embassy-time/std", "embassy-executor/platform-std", "vqm/std", "signal-filters/std"]
 rp2040 = ["dep:embassy-rp", "embassy-rp/rp2040"]
 rp2350 = ["dep:embassy-rp", "embassy-rp/rp235xa"]
-stm32 = ["embassy-stm32"]
-esp32 = ["esp-idf-hal"]
+stm32 = ["dep:embassy-stm32"]
+esp32 = ["dep:esp-idf-hal"]
 #esp32 = ["esp-idf-hal", "esp-hal-embassy", "esp-backtrace", "esp-println"]
 
 [dependencies]
+cfg-if = "1.0.4"
+
 # Core Embassy executor and concurrency primitives
-embassy-executor = { version = "0.10.0", features = ["executor-thread"] }
-embassy-futures = { version = "0.1.2" }
-embassy-sync = "0.8.0"
+embassy-executor = { version = "0.10.0", default-features = false, features = ["executor-thread"] }
+embassy-futures = { version = "0.1.2", default-features = false }
+embassy-sync = { version = "0.8.0", default-features = false }
 embassy-time = { version = "0.5.1", default-features = false }
 
-# Hardware-specific Embassy HAL (example for Raspberry Pi RP2040)
+# Hardware-specific Embassy HAL
 #embassy-rp = { version = "0.10.0", features = ["rp2040", "time-driver", "rt"], optional = true }
-embassy-rp = { version = "0.10.0", features = ["time-driver", "critical-section-impl"], optional = true }
-embassy-stm32 = { version = "0.6.0", features = ["stm32f407vg", "time-driver-any"], optional = true }
-# embassy-stm32 = { version = "0.8", features = ["stm32f407vg", "time-driver"], optional = true }
-# embassy-stm32 = { version = "0.5.0", optional = true }
-# embassy-esp32 = { version = "0.8", optional = true }
-esp-idf-hal = { version = "0.46.2", optional = true }
+embassy-rp = { version = "0.10.0", default-features = false, features = ["time-driver", "critical-section-impl"], optional = true }
+embassy-stm32 = { version = "0.6.0", default-features = false, features = ["stm32f407vg", "time-driver-any"], optional = true }
+# embassy-stm32 = { version = "0.8", default-features = false, features = ["stm32f407vg", "time-driver"], optional = true }
+# embassy-stm32 = { version = "0.5.0", default-features = false, optional = true }
+# embassy-esp32 = { version = "0.8", default-features = false, optional = true }
+esp-idf-hal = { version = "0.46.2", default-features = false, optional = true }
 
 libm = { version = "0.2.16", optional = true }
 serde = { version = "1.0.228", default-features = false, features = ["derive"], optional = true }
 postcard = { version = "1.1.3", default-features = false, features = ["embedded-io"], optional = true }
 sequential-storage = { version = "7.2.0", features = ["postcard"], optional = true }
-vqm = { version = "0.1.11" }
+
+vqm = { version = "0.1.12" }
 #vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix" }
 #vqm = { path = "../vqm"  }
 signal-filters = "0.1.8"
@@ -83,22 +86,20 @@ pidsk-controller = "0.1.6"
 # imu-calib = "0.1.0"   
 
 # For logging and panic handling
-panic-probe = { version = "1.0.0", features = ["print-defmt"] }
+#panic-probe = { version = "1.0.0", features = ["print-defmt"] }
 # STM32/RP2040 logging
-defmt = "1.1.0"
-defmt-rtt = "1.2.0"
+#defmt = "1.1.0"
+#defmt-rtt = "1.2.0"
 # ESP32 logging
 # esp-println = { version = "0.16.1", features = ["log"], optional = true }
-log = { version = "0.4.32", default-features = false }
+#log = { version = "0.4.32", default-features = false }
 
-cfg-if = "1.0.4"   
-
-strum = { version = "0.28.0", default-features = false, features = ["derive"] }
-strum_macros = { version = "0.28.0", default-features = false }
+#strum = { version = "0.28.0", default-features = false, features = ["derive"] }
+#strum_macros = { version = "0.28.0", default-features = false }
 
 # For easy flash access on the RP2040
 #embedded-storage = "0.3.1"
-num_enum = { version = "0.7.6", default-features = false }
+#num_enum = { version = "0.7.6", default-features = false }
 
 
 [dev-dependencies]
