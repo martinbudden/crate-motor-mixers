@@ -25,6 +25,18 @@ Once the API has stabilized this project will adopt semantic versioning, the fir
 
 ### Security
 
+## [0.1.5] - 2026-06-xx
+
+### Changed
+
+- Updated to vqm 0.1.11.
+- Updated to signal-filters 0.1.8.
+- Updated to pidsk-controller 0.1.6.
+
+### Removed
+
+- `katex-header.html`.
+
 ## [0.1.4] - 2026-05-23
 
 ### Changed
