@@ -21,6 +21,7 @@ pub const RPM_FILTER_HARMONICS_COUNT: usize = 3;
 pub struct MotorFrequencies(pub [f32; MAX_MOTOR_COUNT]);
 
 impl MotorFrequencies {
+    #[must_use]
     pub const fn new() -> Self {
         Self([0.0; MAX_MOTOR_COUNT])
     }
@@ -64,6 +65,7 @@ pub struct RpmNotchFilterBankConfig {
 }
 
 impl RpmNotchFilterBankConfig {
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             rpm_filter_fade_range_hz: 50,
@@ -96,6 +98,7 @@ pub struct RpmNotchFilterFrequencies {
 impl RpmNotchFilterFrequencies {
     const DEFAULT_FADE_RANGE: f32 = 50.0;
 
+    #[must_use]
     pub const fn with_fade_range_hz(fade_range_hz: f32) -> Self {
         Self {
             motor_frequencies_hz: MotorFrequencies::new(),
@@ -107,6 +110,7 @@ impl RpmNotchFilterFrequencies {
         }
     }
 
+    #[must_use]
     pub const fn new() -> Self {
         Self::with_fade_range_hz(Self::DEFAULT_FADE_RANGE)
     }
@@ -180,6 +184,7 @@ pub struct RpmNotchFilterBank {
 impl RpmNotchFilterBank {
     pub const DEFAULT_LOOPTIME_SECONDS: f32 = 0.001;
 
+    #[must_use]
     pub const fn with_looptime_seconds(looptime_seconds: f32) -> Self {
         Self {
             config: RpmNotchFilterBankConfig::new(),
@@ -191,6 +196,7 @@ impl RpmNotchFilterBank {
         }
     }
 
+    #[must_use]
     pub const fn new() -> Self {
         Self::with_looptime_seconds(Self::DEFAULT_LOOPTIME_SECONDS)
     }

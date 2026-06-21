@@ -6,7 +6,9 @@ pub use signal_filters::{Pt1Filterf32, SignalFilter};
 
 /// Conversion between RPM and Hz.
 pub trait RpmHz: Sized {
+    #[must_use]
     fn to_hz(self) -> Self;
+    #[must_use]
     fn to_rpm(self) -> Self;
 }
 
@@ -30,6 +32,7 @@ pub struct DynamicIdleControllerConfig {
 }
 
 impl DynamicIdleControllerConfig {
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             dyn_idle_min_rpm_d100: 0,
@@ -88,6 +91,8 @@ impl DynamicIdleController {
         }
     }
 
+    #[inline]
+    #[must_use]
     pub fn config(&self) -> DynamicIdleControllerConfig {
         self.config
     }
@@ -119,10 +124,13 @@ impl DynamicIdleController {
         self.dterm_filter.set_k(800.0 * delta_t / 20.0); //approx 20ms D delay, arbitrarily suits many motors
     }
 
+    #[inline]
+    #[must_use]
     pub fn minimum_allowed_motor_hz(&self) -> f32 {
         self.minimum_allowed_motor_hz
     }
 
+    #[inline]
     pub fn set_minimum_allowed_motor_hz(&mut self, minimum_allowed_motor_hz: f32) {
         self.minimum_allowed_motor_hz = minimum_allowed_motor_hz;
         self.pid.set_setpoint(self.minimum_allowed_motor_hz);

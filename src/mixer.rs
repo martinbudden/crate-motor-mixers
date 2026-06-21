@@ -83,6 +83,7 @@ pub struct MotorMixerCommon {
 }
 
 impl MotorMixerCommon {
+    #[must_use]
     pub const fn with_config(mixer_config: MixerConfig, motor_config: MotorConfig) -> Self {
         Self {
             outputs: MotorOutputs::new(),
@@ -99,6 +100,8 @@ impl MotorMixerCommon {
             motors_is_reversed: false, //reversed motors typically used to flip multi-rotor after a crash
         }
     }
+
+    #[must_use]
     pub const fn new() -> Self {
         Self::with_config(MixerConfig::new(), MotorConfig::new())
     }

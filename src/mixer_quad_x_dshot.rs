@@ -32,6 +32,7 @@ impl Default for MotorMixerQuadXDshot {
 impl MotorMixerQuadXDshot {
     pub const MOTOR_COUNT: usize = 4;
 
+    #[must_use]
     pub const fn new() -> Self {
         Self {
             common: MotorMixerCommon::new(),

@@ -41,12 +41,14 @@ impl DshotCodec {
 
     /// Convert PWM (1000-2000) to Dshot value.
     #[inline]
+    #[must_use]
     pub fn pwm_to_dshot(value: u16) -> u16 {
         ((value - 1000) * 2) + 47
     }
 
     /// Convert PWM to Dshot with clipping.
     #[inline]
+    #[must_use]
     pub fn pwm_to_dshot_clamped(value: u16) -> u16 {
         if value > 2000 {
             Self::pwm_to_dshot(2000)
@@ -59,30 +61,35 @@ impl DshotCodec {
 
     /// Unidirectional (non-inverted) checksum.
     #[inline]
+    #[must_use]
     pub fn checksum_unidirectional(value: u16) -> u16 {
         (value ^ (value >> 4) ^ (value >> 8)) & 0x0F
     }
 
     /// Check if unidirectional checksum is valid.
     #[inline]
+    #[must_use]
     pub fn checksum_unidirectional_is_ok(value: u16) -> bool {
         Self::checksum_unidirectional(value >> 4) == (value & 0x0F)
     }
 
     /// Bidirectional (inverted) checksum.
     #[inline]
+    #[must_use]
     pub fn checksum_bidirectional(value: u16) -> u16 {
         (!(value ^ (value >> 4) ^ (value >> 8))) & 0x0F
     }
 
     /// Check if bidirectional checksum is valid.
     #[inline]
+    #[must_use]
     pub fn checksum_bidirectional_is_ok(value: u16) -> bool {
         Self::checksum_bidirectional(value >> 4) == (value & 0x0F)
     }
 
     /// Create unidirectional Dshot frame.
     #[inline]
+    #[must_use]
     pub fn frame_unidirectional(value: u16) -> u16 {
         let value = value << 1;
         (value << 4) | Self::checksum_unidirectional(value)
@@ -90,6 +97,7 @@ impl DshotCodec {
 
     /// Create bidirectional Dshot frame.
     #[inline]
+    #[must_use]
     pub fn frame_bidirectional(value: u16) -> u16 {
         let value = value << 1;
         (value << 4) | Self::checksum_bidirectional(value)
@@ -223,6 +231,7 @@ impl DshotCodec {
     // see [DSHOT - the missing Handbook](https://brushlesswhoop.com/dshot-and-bidirectional-dshot/)
     // for a good description of these conversions
     #[inline]
+    #[must_use]
     pub fn erpm_to_gcr20(value: u16) -> u32 {
         let mut ret = u32::from(Self::NIBBLE_TO_QUINTET[(value & 0x1F) as usize]);
         ret |= u32::from(Self::NIBBLE_TO_QUINTET[((value >> 4) & 0x1F) as usize]) << 5;
@@ -234,6 +243,7 @@ impl DshotCodec {
     /// Map the GCR to a 21 bit value, this new value starts with a 0 and the rest of the bits are set by the following two rules:
     ///    1. If the current input bit in GCR data is a 1 then the output bit is the inverse of the previous output bit
     ///    2. If the current input bit in GCR data is a 0 then the output bit is the same as the previous output
+    #[must_use]
     pub fn gr20_to_gcr21(value: u32) -> u32 {
         let mut ret = 0;
         let mut previous_output_bit = 0;
@@ -250,11 +260,14 @@ impl DshotCodec {
         ret
     }
 
+    #[inline]
+    #[must_use]
     pub fn gcr21_to_gcr20(value: u32) -> u32 {
         value ^ (value >> 1)
     }
 
     #[allow(clippy::cast_possible_truncation)]
+    #[must_use]
     pub fn gcr20_to_erpm(value: u32) -> u16 {
         let mut ret: u32 = Self::QUINTET_TO_NIBBLE[(value & 0x1F) as usize];
         ret |= Self::QUINTET_TO_NIBBLE[((value >> 5) & 0x1F) as usize] << 4;

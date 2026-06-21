@@ -11,6 +11,7 @@ pub struct MotorMixerCommands {
 }
 
 impl MotorMixerCommands {
+    #[must_use]
     pub const fn new() -> Self {
         Self { roll: 0.0, pitch: 0.0, yaw: 0.0, throttle: 0.0 }
     }
@@ -39,6 +40,7 @@ impl From<Vector4df32> for MotorMixerMessage {
 }
 
 impl MotorMixerMessage {
+    #[must_use]
     pub const fn new() -> Self {
         Self { roll_dps: 0.0, pitch_dps: 0.0, yaw_dps: 0.0, throttle: 0.0 }
     }

@@ -27,6 +27,10 @@ Once the API has stabilized this project will adopt semantic versioning, the fir
 
 ## [0.1.5] - 2026-06-xx
 
+### Added
+
+- `#[must_use]` attribute to selected functions.
+
 ### Changed
 
 - Updated to vqm 0.1.11.
@@ -36,6 +40,7 @@ Once the API has stabilized this project will adopt semantic versioning, the fir
 ### Removed
 
 - `katex-header.html`.
+- `allow`s from `lib.rs`.
 
 ## [0.1.4] - 2026-05-23
 

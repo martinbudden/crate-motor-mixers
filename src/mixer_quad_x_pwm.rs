@@ -28,6 +28,7 @@ impl Default for MotorMixerQuadXPwm {
 impl MotorMixerQuadXPwm {
     const MOTOR_COUNT: usize = 4;
 
+    #[must_use]
     pub const fn new(common: MotorMixerCommon) -> Self {
         Self {
             common, // more idiomatic than calling new

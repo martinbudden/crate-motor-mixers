@@ -16,6 +16,8 @@ use crate::{MotorMixerCommands, MotorMixerParameters};
 use vqm::TrigonometricMethods;
 
 /// Mixer for flying wing (ie throttle and flaperons).
+#[inline]
+#[must_use]
 pub fn mix_wing(commands: MotorMixerCommands) -> [f32; 3] {
     let outputs: [f32; 3] = [
         commands.throttle, // throttle may be controlled by a servo for a wing with an internal combustion engine
@@ -26,6 +28,8 @@ pub fn mix_wing(commands: MotorMixerCommands) -> [f32; 3] {
 }
 
 /// Mixer for airplane (ie throttle, ailerons, elevator, and rudder).
+#[inline]
+#[must_use]
 pub fn mix_airplane(commands: MotorMixerCommands) -> [f32; 5] {
     let outputs: [f32; 5] = [
         commands.throttle, // throttle may be controlled by a servo for a wing with an internal combustion engine
@@ -38,6 +42,8 @@ pub fn mix_airplane(commands: MotorMixerCommands) -> [f32; 5] {
 }
 
 /// Bicopter: two tilt-adjustable rotors.
+#[inline]
+#[must_use]
 pub fn mix_bicopter(commands: MotorMixerCommands) -> [f32; 4] {
     let outputs: [f32; 4] = [
         commands.throttle + commands.roll, // motor left
@@ -75,6 +81,7 @@ pub fn mix_bicopter(commands: MotorMixerCommands) -> [f32; 4] {
 /// NOTE: For coordinated flight the aircraft's nose is aligned with the direction of the turn, ie we yaw right when we roll right,
 /// so we want the front right motor to turn clockwise.
 ///
+#[must_use]
 pub fn mix_tricopter(commands: MotorMixerCommands, params: &mut MotorMixerParameters) -> [f32; 4] {
     const REAR: usize = 0;
     const FR: usize = 1;
@@ -143,6 +150,7 @@ pub fn mix_tricopter(commands: MotorMixerCommands, params: &mut MotorMixerParame
 /// Yaw clockwise           (CC+    CW-)     +--+
 /// ```text
 ///
+#[must_use]
 pub fn mix_quad_x(commands: MotorMixerCommands, params: &mut MotorMixerParameters) -> [f32; 4] {
     // NOTE: motor array indices are zero-based, whereas motor numbering in the diagram above is one-based
 
@@ -248,6 +256,7 @@ pub fn mix_quad_x(commands: MotorMixerCommands, params: &mut MotorMixerParameter
 /// Yaw clockwise           (CC+    CW-)     --+++-
 /// ```text
 ///
+#[must_use]
 pub fn mix_hex_x(commands: MotorMixerCommands, params: &mut MotorMixerParameters) -> [f32; 6] {
     // NOTE: motor array indices are zero-based, whereas motor numbering in the diagram above is one-based
 
