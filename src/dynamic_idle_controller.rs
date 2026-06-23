@@ -6,8 +6,10 @@ pub use signal_filters::{Pt1Filterf32, SignalFilter};
 
 /// Conversion between RPM and Hz.
 pub trait RpmHz: Sized {
+    /// Convert from rpm to Hz.
     #[must_use]
     fn to_hz(self) -> Self;
+    /// Convert from Hz to rpm.
     #[must_use]
     fn to_rpm(self) -> Self;
 }
@@ -23,6 +25,7 @@ impl RpmHz for f32 {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[allow(missing_docs)]
 pub struct DynamicIdleControllerConfig {
     pub dyn_idle_min_rpm_d100: u8, // multiply this by 100 to get the actual min RPM
     pub dyn_idle_p_gain_x100: u8,  // divide this by 100 to get the actual kp
@@ -32,6 +35,7 @@ pub struct DynamicIdleControllerConfig {
 }
 
 impl DynamicIdleControllerConfig {
+    /// Constructor.
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -79,6 +83,7 @@ impl Default for DynamicIdleController {
 }
 
 impl DynamicIdleController {
+    /// Constructor.
     fn new(task_interval_microseconds: u32) -> Self {
         Self {
             task_interval_microseconds,

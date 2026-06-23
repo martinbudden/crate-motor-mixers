@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 // parameters to mix function
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[allow(missing_docs)]
 pub struct MotorMixerParameters {
     /// minimum motor output, typically set to 5.5% to avoid ESC desynchronization,
     /// may be set to zero if using dynamic idle control or brushed motors.
@@ -20,6 +21,7 @@ pub struct MotorMixerParameters {
 }
 
 impl MotorMixerParameters {
+    /// Constructor.
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -39,7 +41,9 @@ impl Default for MotorMixerParameters {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
+#[allow(missing_docs)]
 pub enum MixerType {
     Tricopter = 1,
     QuadP = 2,
@@ -92,6 +96,7 @@ impl Default for MixerConfig {
 }
 
 /// PWM (analog) or Dshot (digital).
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
 pub enum ProtocolFamily {
     Unknown = 0,
@@ -100,6 +105,7 @@ pub enum ProtocolFamily {
 }
 
 /// Motor protocol.
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
 pub enum MotorProtocol {
     Pwm = 0,

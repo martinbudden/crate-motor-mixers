@@ -2,6 +2,7 @@
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct DshotCodec;
 
+#[allow(missing_docs)]
 impl DshotCodec {
     /// ```text
     /// DShot Frame Structure
@@ -38,7 +39,9 @@ impl DshotCodec {
     pub const TELEMETRY_TYPE_STATE_EVENTS: u16 = 7;
     pub const TELEMETRY_TYPE_COUNT: u16 = 8;
     pub const TELEMETRY_INVALID: u16 = 0xFFFF;
+}
 
+impl DshotCodec {
     /// Convert PWM (1000-2000) to Dshot value.
     #[inline]
     #[must_use]
