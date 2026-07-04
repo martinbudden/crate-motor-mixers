@@ -67,13 +67,13 @@ serde = { version = "1.0.228", default-features = false, features = ["derive"], 
 postcard = { version = "1.1.3", default-features = false, features = ["embedded-io"], optional = true }
 sequential-storage = { version = "7.2.0", features = ["postcard"], optional = true }
 
-#vqm = { version = "0.1.12" }
-vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix" }
+vqm = { version = "0.1.13" }
+#vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix" }
 #vqm = { path = "../vqm"  }
-#signal-filters = "0.1.8"
-signal-filters = { git = "https://github.com/martinbudden/crate-signal-filters" }
+signal-filters = "0.1.9"
+#signal-filters = { git = "https://github.com/martinbudden/crate-signal-filters" }
 #signal-filters = { path = "../signal-filters" }
-pidsk-controller = "0.1.6"
+pidsk-controller = "0.1.7"
 #pidsk-controller = { path = "../pidsk-controller" }
 # Use embedded-hal for I2C/SPI traits
 #embedded-hal = "1.0.0"
