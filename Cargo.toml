@@ -73,7 +73,8 @@ vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix" }
 #signal-filters = "0.1.9"
 signal-filters = { git = "https://github.com/martinbudden/crate-signal-filters" }
 #signal-filters = { path = "../signal-filters" }
-pidsk-controller = "0.1.7"
+pidsk-controller = { git = "https://github.com/martinbudden/crate-pid-controller" }
+#pidsk-controller = "0.1.7"
 #pidsk-controller = { path = "../pidsk-controller" }
 # Use embedded-hal for I2C/SPI traits
 #embedded-hal = "1.0.0"

@@ -10,9 +10,9 @@ use crate::{
 };
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-use signal_filters::{BiquadFilterVector3df32, Pt1Filterf32};
+use signal_filters::{BiquadFilterVector3f32, Pt1Filterf32};
 
-use vqm::Vector3df32;
+use vqm::Vector3f32;
 
 pub const RPM_FILTER_HARMONICS_COUNT: usize = 3;
 
@@ -123,16 +123,16 @@ impl Default for RpmNotchFilterFrequencies {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct NotchFilters(pub [[BiquadFilterVector3df32; RPM_FILTER_HARMONICS_COUNT]; MAX_MOTOR_COUNT]);
+pub struct NotchFilters(pub [[BiquadFilterVector3f32; RPM_FILTER_HARMONICS_COUNT]; MAX_MOTOR_COUNT]);
 
 impl NotchFilters {
     pub const fn new() -> Self {
-        Self([[BiquadFilterVector3df32::new(); RPM_FILTER_HARMONICS_COUNT]; MAX_MOTOR_COUNT])
+        Self([[BiquadFilterVector3f32::new(); RPM_FILTER_HARMONICS_COUNT]; MAX_MOTOR_COUNT])
     }
 }
 
 impl Deref for NotchFilters {
-    type Target = [[BiquadFilterVector3df32; RPM_FILTER_HARMONICS_COUNT]; MAX_MOTOR_COUNT];
+    type Target = [[BiquadFilterVector3f32; RPM_FILTER_HARMONICS_COUNT]; MAX_MOTOR_COUNT];
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -266,7 +266,7 @@ impl RpmNotchFilterBank {
 
     /// Apply the notch filters for all selected harmonics for the given motor.
     #[inline]
-    pub fn update(ctx: &mut RpmNotchFilterBankContext, input: Vector3df32, motor_index: usize) -> Vector3df32 {
+    pub fn update(ctx: &mut RpmNotchFilterBankContext, input: Vector3f32, motor_index: usize) -> Vector3f32 {
         let mut ret = ctx.notch_filters[motor_index][FUNDAMENTAL].update_notch_weighted(input);
 
         if ctx.weights[SECOND_HARMONIC] != 0.0 {
@@ -284,7 +284,7 @@ pub trait RpmNotchFilters {
     fn common_mut(&mut self) -> &mut RpmNotchFilterBank;
     fn config(&self) -> &RpmNotchFilterBankConfig;
 
-    fn update(&mut self, value: Vector3df32, motor_index: usize) -> Vector3df32;
+    fn update(&mut self, value: Vector3f32, motor_index: usize) -> Vector3f32;
 }
 
 impl RpmNotchFilters for RpmNotchFilterBank {
@@ -298,7 +298,7 @@ impl RpmNotchFilters for RpmNotchFilterBank {
         &self.common().config
     }
 
-    fn update(&mut self, value: Vector3df32, _motor_index: usize) -> Vector3df32 {
+    fn update(&mut self, value: Vector3f32, _motor_index: usize) -> Vector3f32 {
         value
     }
 }
