@@ -1,11 +1,11 @@
 #![allow(unused)]
-use crate::mixer::MotorOutputs;
+
 use cfg_if::cfg_if;
 
 cfg_if! {
 if #[cfg(feature = "rp2040")] {
 use embassy_rp::pwm::{Config, Pwm};
-//#[cfg(feature = "rp2040")]
+use crate::mixer::MotorOutputs;
 //type PwmType = SimplePwm<'static, embassy_rp::peripherals::PWM_SLICE0>;
 
 pub struct MotorDriver {
@@ -31,8 +31,7 @@ impl MotorDriver {
         }
     }
 
-    #[allow(clippy::cast_sign_loss)]
-    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_sign_loss,clippy::cast_possible_truncation)]
     #[inline]
     pub fn write_motors(&mut self, motor_outputs: MotorOutputs) {
         self.config0.compare_a = (((1.0 + motor_outputs[0]) / 20.0) * self.top) as u16;
@@ -51,11 +50,12 @@ let pwm1 = Pwm::new_output_ab(p.PWM_SLICE1, p.PIN_2, p.PIN_3, Config::default())
 */
 
 } else if #[cfg(feature = "stm32")] {
-//#[cfg(feature = "stm32")]
-//type PwmType = SimplePwm<'static, embassy_stm32::peripherals::TIM1>;
 
 use embassy_stm32::timer::simple_pwm::{SimplePwm, SimplePwmChannel};
 use embassy_stm32::timer::GeneralInstance4Channel;
+use crate::mixer::MotorOutputs;
+
+//type PwmType = SimplePwm<'static, embassy_stm32::peripherals::TIM1>;
 
 pub struct MotorDriver<T>
 where
@@ -81,8 +81,7 @@ where
         }
     }
 
-    #[allow(clippy::cast_sign_loss)]
-    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_sign_loss,clippy::cast_possible_truncation)]
     #[inline]
     pub fn write_motors(&mut self, motor_outputs: MotorOutputs) {
         self.ch0.set_duty_cycle(((1.0 + motor_outputs[0]) * 1000.0 / 20.0) as u32);
@@ -117,6 +116,7 @@ channel.set_duty(1023).unwrap(); // 10-bit duty   }
 //type PwmType = SimplePwm<'static, embassy_esp32::peripherals::LED_PWM>;
 
 use esp_idf_hal::ledc::{LedcDriver, LedcTimerDriver, SpeedMode, Channel};
+use crate::mixer::MotorOutputs;
 
 pub struct MotorDriver {
     channels: [LedcDriver<'static>; 4],
@@ -151,8 +151,7 @@ impl MotorDriver {
         self.driver.update_duty().unwrap();
     }
 
-    #[allow(clippy::cast_sign_loss)]
-    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_sign_loss,clippy::cast_possible_truncation)]
     #[inline]
     pub fn write_motors(&mut self, motor_outputs: MotorOutputs) {
         let max_duty = self.driver.get_max_duty();

@@ -1,8 +1,13 @@
-use crate::mixer::MAX_MOTOR_COUNT;
-use crate::rpm_notch_filters::{RpmNotchFilterBankConfig, RpmNotchFilterBankContext, RpmNotchFilterFrequencies};
 use signal_filters::SignalFilter;
 #[allow(unused)]
-use vqm::TrigonometricMethods;
+use vqm::TrigonometricMethods; // Required for .sin_cos()
+
+use crate::{
+    mixer::MAX_MOTOR_COUNT,
+    rpm_notch_filters::{RpmNotchFilterBankConfig, RpmNotchFilterBankContext, RpmNotchFilterFrequencies},
+};
+
+pub const RPM_FILTER_HARMONICS_COUNT: usize = 3;
 
 pub const FUNDAMENTAL: usize = 0;
 pub const SECOND_HARMONIC: usize = 1;
@@ -77,6 +82,7 @@ impl State {
     }
 
     /// Perform one step of the state machine.<br>
+    /// The state machine sets notch filter for one harmonic of one motor on each iteration.
     /// This is called from `MotorMixer::rpm_filter_set_frequency_hz_iteration_step` and so needs to be FAST.
     pub fn update(
         &mut self,
@@ -84,13 +90,11 @@ impl State {
         frequencies: RpmNotchFilterFrequencies,
         ctx: &mut RpmNotchFilterBankContext,
     ) {
-        // state machine sets notch filter for one harmonic of one motor on each iteration.
-
-        match core::mem::take(self) {
+        *self = match core::mem::take(self) {
             State::Stopped => {
                 // If we are stopped, we stay stopped until start() is called
                 // Explicitly setting *self = State::Stopped defends against a change in the default.
-                *self = State::Stopped;
+                State::Stopped
             }
             State::Fundamental(motor_index) => {
                 let frequency_hz = frequencies.motor_frequencies_hz[motor_index];
@@ -127,19 +131,19 @@ impl State {
                     // we have set the notch frequency for all motors, so move onto the next harmonic if there is one, otherwise we are finished
                     if config.rpm_filter_harmonics >= 2 {
                         if config.rpm_filter_weights_x100[SECOND_HARMONIC] != 0 {
-                            *self = State::SecondHarmonic(0);
+                            State::SecondHarmonic(0)
                         } else if config.rpm_filter_harmonics >= 3
                             && config.rpm_filter_weights_x100[THIRD_HARMONIC] != 0
                         {
-                            *self = State::ThirdHarmonic(0);
+                            State::ThirdHarmonic(0)
                         } else {
-                            *self = State::Stopped;
+                            State::Stopped
                         }
                     } else {
-                        *self = State::Stopped;
+                        State::Stopped
                     }
                 } else {
-                    *self = State::Fundamental(motor_index + 1);
+                    State::Fundamental(motor_index + 1)
                 }
             }
             State::SecondHarmonic(motor_index) => {
@@ -164,12 +168,12 @@ impl State {
                 if motor_index == config.motor_count as usize {
                     // we have set the notch frequency for all motors, so move onto the next harmonic if there is one, otherwise we are finished
                     if config.rpm_filter_harmonics >= 3 && config.rpm_filter_weights_x100[THIRD_HARMONIC] != 0 {
-                        *self = State::ThirdHarmonic(0);
+                        State::ThirdHarmonic(0)
                     } else {
-                        *self = State::Stopped;
+                        State::Stopped
                     }
                 } else {
-                    *self = State::Fundamental(motor_index + 1);
+                    State::Fundamental(motor_index + 1)
                 }
             }
             State::ThirdHarmonic(motor_index) => {
@@ -198,9 +202,9 @@ impl State {
                 }
                 if motor_index == config.motor_count as usize {
                     // we have set the notch frequency for all motors, so we are finished
-                    *self = State::Stopped;
+                    State::Stopped
                 } else {
-                    *self = State::Fundamental(motor_index + 1);
+                    State::Fundamental(motor_index + 1)
                 }
             }
         }

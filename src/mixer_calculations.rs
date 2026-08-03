@@ -13,7 +13,7 @@
 
 use crate::{MotorMixerCommands, MotorMixerParameters};
 #[allow(unused)]
-use vqm::TrigonometricMethods;
+use vqm::TrigonometricMethods; // Required for .cos()
 
 /// Mixer for flying wing (ie throttle and flaperons).
 #[inline]

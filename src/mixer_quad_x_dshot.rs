@@ -1,7 +1,7 @@
-use crate::mixer::MotorOutputs;
 use crate::{
     MotorFrequencies, MotorMixer, MotorMixerCommands, MotorMixerCommon, MotorMixerDriver, MotorMixerMessage,
     MotorMixerOutput, MotorMixerParameters, RpmNotchFilterBank, RpmNotchFilterBankConfig, mix_quad_x,
+    mixer::MotorOutputs,
 };
 
 impl MotorMixerDriver for MotorMixerQuadXDshot {

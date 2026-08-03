@@ -23,8 +23,8 @@ all-features = true
 rustc_version = "0.4.1"
 
 [features]
-default = ["libm"]
-#default = ["libm", "serde"]
+#default = ["libm"]
+default = ["libm", "serde"]
 # cargo build --features rp2040 
 #default = ["libm", "rp2040"]
 #default = ["libm", "stm32"]

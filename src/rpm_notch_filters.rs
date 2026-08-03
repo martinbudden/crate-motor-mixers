@@ -1,20 +1,20 @@
 use core::ops::{Deref, DerefMut};
 
+use signal_filters::{BiquadFilterVector3f32, Pt1Filterf32};
+use vqm::Vector3f32;
+
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
+
 //use defmt::debug;
 //use embassy_time::{Instant, Timer};
 use crate::{
     mixer::MAX_MOTOR_COUNT,
     rpm_notch_filters_state_machine::{
-        FUNDAMENTAL, RpmFilterMotorState, RpmFilterMotorStates, SECOND_HARMONIC, State, THIRD_HARMONIC,
+        FUNDAMENTAL, RPM_FILTER_HARMONICS_COUNT, RpmFilterMotorState, RpmFilterMotorStates, SECOND_HARMONIC, State,
+        THIRD_HARMONIC,
     },
 };
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
-use signal_filters::{BiquadFilterVector3f32, Pt1Filterf32};
-
-use vqm::Vector3f32;
-
-pub const RPM_FILTER_HARMONICS_COUNT: usize = 3;
 
 /// Array of motor rotation frequencies, one for each motor.
 #[derive(Clone, Copy, Debug, PartialEq)]
