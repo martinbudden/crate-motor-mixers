@@ -5,11 +5,33 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[allow(missing_docs)]
-pub struct MotorMixerParameters {
-    /// minimum motor output, typically set to 5.5% to avoid ESC desynchronization,
+pub struct MotorOutputRange {
+    /// Minimum motor output, typically set to 5.5% to avoid ESC desynchronization,
     /// may be set to zero if using dynamic idle control or brushed motors.
-    pub motor_output_min: f32,
-    pub motor_output_max: f32,
+    pub min: f32,
+    /// Maximum motor output, typically set to 1.0.
+    pub max: f32,
+}
+
+impl MotorOutputRange {
+    /// Constructor.
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { min: 0.0, max: 1.0 }
+    }
+}
+
+impl Default for MotorOutputRange {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// parameters to mix function
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[allow(missing_docs)]
+pub struct MotorMixerParameters {
     /// used by tricopter.
     pub max_servo_angle_radians: f32,
     /// possibly adjusted throttle value for recording by blackbox.
@@ -24,14 +46,7 @@ impl MotorMixerParameters {
     /// Constructor.
     #[must_use]
     pub const fn new() -> Self {
-        Self {
-            motor_output_min: 0.0,
-            motor_output_max: 1.0,
-            max_servo_angle_radians: 0.0,
-            throttle: 0.0,
-            undershoot: 0.0,
-            overshoot: 0.0,
-        }
+        Self { max_servo_angle_radians: 0.0, throttle: 0.0, undershoot: 0.0, overshoot: 0.0 }
     }
 }
 
@@ -41,12 +56,14 @@ impl Default for MotorMixerParameters {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[repr(u8)]
 #[allow(missing_docs)]
 pub enum MixerType {
     Tricopter = 1,
-    QuadP = 2,
+    //QuadP = 2,
+    #[default]
     QuadX = 3,
     Bicopter = 4,
     Gimbal = 5,
@@ -63,7 +80,7 @@ pub enum MixerType {
     Heli90Deg = 16,
     Vtail4 = 17,
     HexH = 18,
-    PpmToServo = 19, // PPM -> servo relay
+    PpmToServo = 19,  // PPM -> servo relay
     DualCopter = 20,
     SingleCopter = 21,
     Atail4 = 22,
@@ -72,20 +89,71 @@ pub enum MixerType {
     CustomTri = 25,
     QuadX1234 = 26,
     OctoXp = 27,
+    // Don't forget to update COUNT if you add any new mixer types.
+}
+
+impl MixerType {
+    pub const COUNT: u8 = 28;
+
+    #[must_use]
+    pub fn from_u8(value: u8) -> Self {
+        match value {
+            1 => Self::Tricopter,
+            //2 => Self::QuadP,
+            3 => Self::QuadX,
+            4 => Self::Bicopter,
+            //5 => Self::Gimbal,
+            //6 => Self::Y6,
+            //7 => Self::HexP,
+            8 => Self::FlyingWingSinglePropeller,
+            //9 => Self::Y4,
+            #[cfg(feature = "eight_motors")]
+            10 => Self::HexX,
+            //11 => Self::OctoQuadX,
+            //12 => Self::OctoFlatP,
+            //13 => Self::OctoFlatX,
+            14 => Self::AirplaneSinglePropeller,
+            //15 => Self::Heli120Ccpm,
+            //16 => Self::Heli90Deg,
+            //17 => Self::Vtail4,
+            //18 => Self::HexH,
+            //19 => Self::PpmToServo,
+            //20 => Self::DualCopter,
+            //21 => Self::SingleCopter,
+            //22 => Self::Atail4,
+            //23 => Self::Custom,
+            //24 => Self::CustomAirplane,
+            //25 => Self::CustomTri,
+            //26 => Self::QuadX1234,
+            //27 => Self::OctoXp,
+            _ => Self::default(),
+        }
+    }
+}
+
+impl TryFrom<u8> for MixerType {
+    type Error = ();
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        if value < Self::COUNT { Ok(Self::from_u8(value)) } else { Err(()) }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct MixerConfig {
     /// constants compatible with Betaflight `mixerMode_e` enums.
-    pub mixer_type: u8,
+    pub mixer_type: MixerType,
     pub yaw_motors_reversed: u8,
 }
 
 impl MixerConfig {
     #[must_use]
     pub const fn new() -> Self {
-        Self { mixer_type: MixerType::QuadX as u8, yaw_motors_reversed: 1 }
+        Self { mixer_type: MixerType::QuadX, yaw_motors_reversed: 1 }
+    }
+    pub fn set_mixer_type(&mut self, mixer_type: u8) {
+        self.mixer_type = MixerType::from_u8(mixer_type);
     }
 }
 
@@ -105,20 +173,51 @@ pub enum ProtocolFamily {
 }
 
 /// Motor protocol.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[repr(u8)]
 pub enum MotorProtocol {
+    #[default]
     Pwm = 0,
-    Oneshot125 = 1,
-    Oneshot42 = 2,
-    Multishot = 3,
+    OneShot125 = 1,
+    OneShot42 = 2,
+    MultiShot = 3,
     Brushed = 4,
     Dshot150 = 5,
     Dshot300 = 6,
     Dshot600 = 7,
     Proshot1000 = 8,
     Disabled = 9,
-    //Count = 10,
+    // Don't forget to update COUNT if you add any new protocols.
+}
+
+impl MotorProtocol {
+    pub const COUNT: u8 = 10;
+
+    #[must_use]
+    pub fn from_u8(value: u8) -> Self {
+        match value {
+            0 => Self::Pwm,
+            1 => Self::OneShot125,
+            2 => Self::OneShot42,
+            3 => Self::MultiShot,
+            4 => Self::Brushed,
+            5 => Self::Dshot150,
+            6 => Self::Dshot300,
+            7 => Self::Dshot600,
+            8 => Self::Proshot1000,
+            9 => Self::Disabled,
+            _ => Self::default(),
+        }
+    }
+}
+
+impl TryFrom<u8> for MotorProtocol {
+    type Error = ();
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        if value < Self::COUNT { Ok(Self::from_u8(value)) } else { Err(()) }
+    }
 }
 
 #[allow(clippy::struct_excessive_bools)]
@@ -127,7 +226,7 @@ pub enum MotorProtocol {
 pub struct MotorDeviceConfig {
     /// The update rate of motor outputs (50-498Hz).
     pub motor_pwm_rate: u16,
-    pub motor_protocol: u8,
+    pub motor_protocol: MotorProtocol,
     /// Active-High vs Active-Low. Useful for brushed FCs converted for brushless operation.
     pub motor_inversion: u8,
     pub use_continuous_update: u8,
@@ -141,13 +240,16 @@ impl MotorDeviceConfig {
     pub const fn new() -> Self {
         Self {
             motor_pwm_rate: 480, // 16000 for brushed
-            motor_protocol: MotorProtocol::Dshot300 as u8,
+            motor_protocol: MotorProtocol::Dshot300,
             motor_inversion: 0,
             use_continuous_update: 1,
             use_burst_dshot: 0,
             use_dshot_telemetry: 0,
             use_dshot_edt: 0,
         }
+    }
+    pub fn set_motor_protocol(&mut self, motor_protocol: u8) {
+        self.motor_protocol = MotorProtocol::from_u8(motor_protocol);
     }
 }
 
@@ -279,6 +381,6 @@ mod tests {
     #[test]
     fn new() {
         let config = MixerConfig::new();
-        assert_eq!(3, config.mixer_type);
+        assert_eq!(MixerType::QuadX, config.mixer_type);
     }
 }

@@ -2,13 +2,14 @@
 
 use cfg_if::cfg_if;
 
+use crate::mixer_common::MotorOutputs;
+
 cfg_if! {
 if #[cfg(feature = "rp2040")] {
 use embassy_rp::pwm::{Config, Pwm};
-use crate::mixer::MotorOutputs;
 //type PwmType = SimplePwm<'static, embassy_rp::peripherals::PWM_SLICE0>;
 
-pub struct MotorDriver {
+pub struct MotorDriverQuadPwm {
     pwm0: Pwm<'static>,
     pwm1: Pwm<'static>,
     config0: Config,
@@ -16,7 +17,7 @@ pub struct MotorDriver {
     top: f32,
 }
 
-impl MotorDriver {
+impl MotorDriverQuadPwm {
     pub fn new(pwm0: Pwm<'static>, pwm1: Pwm<'static>) -> Self {
         let config0 = Config::default();
         let config1 = Config::default();
@@ -53,11 +54,10 @@ let pwm1 = Pwm::new_output_ab(p.PWM_SLICE1, p.PIN_2, p.PIN_3, Config::default())
 
 use embassy_stm32::timer::simple_pwm::{SimplePwm, SimplePwmChannel};
 use embassy_stm32::timer::GeneralInstance4Channel;
-use crate::mixer::MotorOutputs;
 
 //type PwmType = SimplePwm<'static, embassy_stm32::peripherals::TIM1>;
 
-pub struct MotorDriver<T>
+pub struct MotorDriverQuadPwm<T>
 where
     T: GeneralInstance4Channel,
 {
@@ -67,7 +67,7 @@ where
     ch3: SimplePwmChannel<'static, T>,
 }
 
-impl<T> MotorDriver<T>
+impl<T> MotorDriverQuadPwm<T>
 where
     T: GeneralInstance4Channel,
 {
@@ -99,7 +99,7 @@ let p = embassy_stm32::init(Default::default());
 let ch1 = PwmPin::new_ch1(p.PA8); // TIM1_CH1
 let ch2 = PwmPin::new_ch2(p.PA9);
 let pwm = SimplePwm::new(p.TIM1, Some(ch1), Some(ch2), None, None, khz(1));
-let mut driver = MotorDriver::new(pwm);
+let mut driver = MotorDriverQuadPwm::new(pwm);
 */
 
 } else if #[cfg(feature = "esp32")] {
@@ -116,13 +116,12 @@ channel.set_duty(1023).unwrap(); // 10-bit duty   }
 //type PwmType = SimplePwm<'static, embassy_esp32::peripherals::LED_PWM>;
 
 use esp_idf_hal::ledc::{LedcDriver, LedcTimerDriver, SpeedMode, Channel};
-use crate::mixer::MotorOutputs;
 
-pub struct MotorDriver {
+pub struct MotorDriverQuadPwm {
     channels: [LedcDriver<'static>; 4],
 }
 
-impl MotorDriver {
+impl MotorDriverQuadPwm {
     pub fn new(
         ch0: LedcDriver<'static>,
         ch1: LedcDriver<'static>,
@@ -160,6 +159,21 @@ impl MotorDriver {
         self.driver.set_duty(Channel::CH1, ((1.0 + motor_outputs[1]) * max_duty / 20.0) as u32);
         self.driver.set_duty(Channel::CH2, ((1.0 + motor_outputs[2]) * max_duty / 20.0) as u32);
         self.driver.set_duty(Channel::CH3, ((1.0 + motor_outputs[3]) * max_duty / 20.0) as u32);
+    }
+}
+
+} else {
+
+    #[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct MotorDriverQuadPwm;
+
+impl MotorDriverQuadPwm {
+    pub const fn new() -> Self {
+        Self {}
+    }
+
+    pub fn write_to_motors(&mut self, _outputs: MotorOutputs) {
+        _ = self;
     }
 }
 

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 //use defmt::debug;
 //use embassy_time::{Instant, Timer};
 use crate::{
-    mixer::MAX_SUPPORTED_MOTOR_COUNT,
+    mixer_common::MAX_SUPPORTED_MOTOR_COUNT,
     rpm_notch_filters_state_machine::{
         FUNDAMENTAL, RPM_FILTER_HARMONICS_COUNT, RpmFilterMotorState, RpmFilterMotorStates, SECOND_HARMONIC, State,
         THIRD_HARMONIC,

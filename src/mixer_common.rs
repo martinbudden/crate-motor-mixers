@@ -1,7 +1,7 @@
 use core::ops::{Deref, DerefMut};
-
-use crate::{MixerConfig, MixerType, MotorConfig, MotorFrequencies, MotorMixerMessage, MotorMixerParameters};
 use signal_filters::SlewRateLimiterf32;
+
+use crate::{MixerConfig, MixerType, MotorConfig, MotorMixerParameters, MotorOutputRange};
 
 #[cfg(feature = "eight_motors")]
 pub const MAX_SUPPORTED_MOTOR_COUNT: usize = 8;
@@ -71,8 +71,9 @@ impl DerefMut for MotorOutputFilters {
 pub struct MotorMixerCommon {
     pub outputs: MotorOutputs,
     pub output_filters: MotorOutputFilters,
-    mixer_type: u8,
-    output_denominator: u8,
+    pub mixer_type: MixerType,
+    pub motor_count: u8,
+    pub output_denominator: u8,
     output_count: u8,
     pub mixer_config: MixerConfig,
     pub motor_config: MotorConfig,
@@ -83,17 +84,35 @@ pub struct MotorMixerCommon {
     motors_is_armed: bool,
     /// reversed motors typically used to flip multi-rotor after a crash.
     motors_is_reversed: bool,
+    pub mix_params: MotorMixerParameters,
+    pub range: MotorOutputRange,
 }
 
 impl MotorMixerCommon {
     #[must_use]
-    pub const fn with_config(mixer_config: MixerConfig, motor_config: MotorConfig) -> Self {
+    pub const fn new(mixer_config: MixerConfig, motor_config: MotorConfig) -> Self {
+        let motor_count = match mixer_config.mixer_type {
+            MixerType::Tricopter | MixerType::CustomTri => 3,
+            MixerType::Bicopter | MixerType::DualCopter => 2,
+            MixerType::FlyingWingSinglePropeller | MixerType::AirplaneSinglePropeller | MixerType::SingleCopter => 1,
+            MixerType::Y6 | MixerType::HexP | MixerType::HexX | MixerType::HexH => 6,
+            MixerType::OctoQuadX | MixerType::OctoFlatP | MixerType::OctoFlatX | MixerType::OctoXp => 8,
+            _ => 4,
+        };
+        // output count includes servos.
+        let output_count = match mixer_config.mixer_type {
+            MixerType::FlyingWingSinglePropeller => 3,
+            MixerType::Y6 | MixerType::HexP | MixerType::HexX | MixerType::HexH => 6,
+            MixerType::OctoQuadX | MixerType::OctoFlatP | MixerType::OctoFlatX | MixerType::OctoXp => 8,
+            _ => 4,
+        };
         Self {
             outputs: MotorOutputs::new(),
             output_filters: MotorOutputFilters::new(),
-            mixer_type: MixerType::QuadX as u8,
+            mixer_type: mixer_config.mixer_type,
+            motor_count,
             output_denominator: 1,
-            output_count: 0,
+            output_count,
             mixer_config,
             motor_config,
             mixer_parameters: MotorMixerParameters::new(),
@@ -101,96 +120,96 @@ impl MotorMixerCommon {
             motors_is_on: false,
             motors_is_armed: false,
             motors_is_reversed: false, //reversed motors typically used to flip multi-rotor after a crash
+            mix_params: MotorMixerParameters::new(),
+            range: MotorOutputRange::new(),
         }
-    }
-
-    #[must_use]
-    pub const fn new() -> Self {
-        Self::with_config(MixerConfig::new(), MotorConfig::new())
     }
 }
 
 impl Default for MotorMixerCommon {
     fn default() -> Self {
-        Self::new()
+        Self::new(MixerConfig::new(), MotorConfig::new())
     }
 }
 
-pub trait MotorMixerOutput {
-    fn output_to_motors(&mut self, motor_mixer_message: MotorMixerMessage);
-}
-
-pub trait MotorMixer {
-    fn common(&self) -> &MotorMixerCommon;
-    fn common_mut(&mut self) -> &mut MotorMixerCommon;
-
+#[allow(unused)]
+impl MotorMixerCommon {
     #[inline]
-    fn output_denominator(&self) -> usize {
-        self.common().output_denominator as usize
+    #[must_use]
+    pub fn output_denominator(&self) -> usize {
+        self.output_denominator as usize
     }
 
-    fn set_output_denominator(&mut self, output_denominator: u8) {
-        self.common_mut().output_denominator = output_denominator;
+    pub fn set_output_denominator(&mut self, output_denominator: u8) {
+        self.output_denominator = output_denominator;
     }
 
-    fn motors_is_on(&self) -> bool {
-        self.common().motors_is_on
+    #[must_use]
+    pub fn output_count(&self) -> usize {
+        usize::from(self.output_count)
     }
-    fn motors_switch_off(&mut self) {
-        self.common_mut().motors_is_on = false;
+
+    #[must_use]
+    pub fn motor_count(&self) -> usize {
+        usize::from(self.motor_count)
     }
-    fn motors_switch_on(&mut self) {
-        self.common_mut().motors_is_on = true;
+
+    #[must_use]
+    pub fn motors_is_on(&self) -> bool {
+        self.motors_is_on
     }
-    fn motors_is_armed(&self) -> bool {
-        self.common().motors_is_armed
+
+    pub fn motors_switch_off(&mut self) {
+        self.motors_is_on = false;
     }
+
+    pub fn motors_switch_on(&mut self) {
+        self.motors_is_on = true;
+    }
+
+    #[must_use]
+    pub fn motors_is_armed(&self) -> bool {
+        self.motors_is_armed
+    }
+
     /// Switch off motors and disarm.
-    fn disarm_motors(&mut self) {
+    pub fn disarm_motors(&mut self) {
         self.motors_switch_off();
-        self.common_mut().motors_is_armed = false;
+        self.motors_is_armed = false;
     }
+
     /// Arm motors, ensuring they are switched off first.
-    fn arm_motors(&mut self) {
+    pub fn arm_motors(&mut self) {
         self.motors_switch_off();
-        self.common_mut().motors_is_armed = true;
+        self.motors_is_armed = true;
     }
-    fn throttle_command(&self) -> f32 {
-        self.common().throttle_command
+
+    #[must_use]
+    pub fn throttle_command(&self) -> f32 {
+        self.throttle_command
     }
+
     #[inline]
-    fn set_throttle_command(&mut self, throttle_command: f32) {
-        self.common_mut().throttle_command = throttle_command;
+    pub fn set_throttle_command(&mut self, throttle_command: f32) {
+        self.throttle_command = throttle_command;
     }
+
     #[inline]
-    fn output_this_cycle(&mut self) -> bool {
+    pub fn output_this_cycle(&mut self) -> bool {
         // TODO: check the logic of this
-        self.common_mut().output_count += 1;
-        if self.common().output_count < self.common().output_denominator {
+        self.output_count += 1;
+        if self.output_count < self.output_denominator {
             return false;
         }
-        self.common_mut().output_count = 0;
+        self.output_count = 0;
         true
     }
 }
 
-impl MotorMixer for MotorMixerCommon {
-    #[inline]
-    fn common(&self) -> &MotorMixerCommon {
-        self
-    }
-    #[inline]
-    fn common_mut(&mut self) -> &mut MotorMixerCommon {
-        self
-    }
-}
-pub trait MotorMixerDriver {
-    fn write_to_motors(&mut self, motor_outputs: MotorOutputs);
-    fn read_motor_frequencies_hz(&mut self) -> MotorFrequencies;
-}
-
 #[cfg(test)]
 mod tests {
+    use crate::MixerType;
+
     use super::*;
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
@@ -199,12 +218,14 @@ mod tests {
     #[test]
     fn normal_types() {
         is_full::<MotorMixerCommon>();
+        is_full::<MotorOutputs>();
+        is_full::<MotorOutputFilters>();
     }
     #[test]
     fn new() {
         let mixer_config = MixerConfig::new();
         let motor_config = MotorConfig::new();
-        let mixer = MotorMixerCommon::with_config(mixer_config, motor_config);
-        assert_eq!(MixerType::QuadX as u8, mixer.mixer_type);
+        let mixer = MotorMixerCommon::new(mixer_config, motor_config);
+        assert_eq!(MixerType::QuadX, mixer.mixer_type);
     }
 }

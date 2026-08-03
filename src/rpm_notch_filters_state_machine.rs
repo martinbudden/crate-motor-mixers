@@ -3,7 +3,7 @@ use signal_filters::SignalFilter;
 use vqm::TrigonometricMethods; // Required for .sin_cos()
 
 use crate::{
-    mixer::MAX_SUPPORTED_MOTOR_COUNT,
+    mixer_common::MAX_SUPPORTED_MOTOR_COUNT,
     rpm_notch_filters::{RpmNotchFilterBankConfig, RpmNotchFilterBankContext, RpmNotchFilterFrequencies},
 };
 
