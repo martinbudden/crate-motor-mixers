@@ -256,6 +256,7 @@ pub fn mix_quad_x(commands: MotorMixerCommands, params: &mut MotorMixerParameter
 /// Yaw clockwise           (CC+    CW-)     --+++-
 /// ```text
 ///
+#[cfg(feature = "eight_motors")]
 #[must_use]
 pub fn mix_hex_x(commands: MotorMixerCommands, params: &mut MotorMixerParameters) -> [f32; 6] {
     // NOTE: motor array indices are zero-based, whereas motor numbering in the diagram above is one-based

@@ -28,6 +28,7 @@
         "CLKSEL",
         "codegen",
         "codespan",
+        "coeffs",
         "Controllerf",
         "corasick",
         "cordyceps",

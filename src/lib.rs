@@ -42,7 +42,9 @@ pub use mixer_config::{
     ServoConfig, ServoDeviceConfig,
 };
 
-pub use mixer_calculations::{mix_airplane, mix_bicopter, mix_hex_x, mix_quad_x, mix_tricopter, mix_wing};
+#[cfg(feature = "eight_motors")]
+pub use mixer_calculations::mix_hex_x;
+pub use mixer_calculations::{mix_airplane, mix_bicopter, mix_quad_x, mix_tricopter, mix_wing};
 
 pub use mixer_quad_x_pwm::MotorMixerQuadXPwm;
 

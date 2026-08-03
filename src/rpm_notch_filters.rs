@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 //use defmt::debug;
 //use embassy_time::{Instant, Timer};
 use crate::{
-    mixer::MAX_MOTOR_COUNT,
+    mixer::MAX_SUPPORTED_MOTOR_COUNT,
     rpm_notch_filters_state_machine::{
         FUNDAMENTAL, RPM_FILTER_HARMONICS_COUNT, RpmFilterMotorState, RpmFilterMotorStates, SECOND_HARMONIC, State,
         THIRD_HARMONIC,
@@ -18,12 +18,12 @@ use crate::{
 
 /// Array of motor rotation frequencies, one for each motor.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MotorFrequencies(pub [f32; MAX_MOTOR_COUNT]);
+pub struct MotorFrequencies(pub [f32; MAX_SUPPORTED_MOTOR_COUNT]);
 
 impl MotorFrequencies {
     #[must_use]
     pub const fn new() -> Self {
-        Self([0.0; MAX_MOTOR_COUNT])
+        Self([0.0; MAX_SUPPORTED_MOTOR_COUNT])
     }
 }
 
@@ -34,7 +34,7 @@ impl Default for MotorFrequencies {
 }
 
 impl Deref for MotorFrequencies {
-    type Target = [f32; MAX_MOTOR_COUNT];
+    type Target = [f32; MAX_SUPPORTED_MOTOR_COUNT];
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -57,8 +57,6 @@ pub struct RpmNotchFilterBankConfig {
     pub rpm_filter_lpf_hz: u16,
     /// weight as a percentage for each harmonic.
     pub rpm_filter_weights_x100: [u16; RPM_FILTER_HARMONICS_COUNT],
-    /// number of harmonics, zero means filters off.
-    pub rpm_filter_harmonics: u8,
     /// minimum notch frequency for fundamental harmonic.
     pub rpm_filter_min_hz: u8,
     pub motor_count: u8,
@@ -72,9 +70,9 @@ impl RpmNotchFilterBankConfig {
             rpm_filter_q_x100: 500,
             rpm_filter_lpf_hz: 150,
             rpm_filter_weights_x100: [100, 0, 100],
-            rpm_filter_harmonics: 3,
+            #[allow(clippy::cast_possible_truncation)]
             rpm_filter_min_hz: 100,
-            motor_count: 4,
+            motor_count: 4, // default to using 4 motors
         }
     }
 }
@@ -90,8 +88,6 @@ pub struct RpmNotchFilterFrequencies {
     pub motor_frequencies_hz: MotorFrequencies,
     pub min_hz: f32,
     pub max_hz: f32,
-    pub half_of_max_hz: f32,
-    pub third_of_max_hz: f32,
     pub fade_range_hz: f32,
 }
 
@@ -100,14 +96,7 @@ impl RpmNotchFilterFrequencies {
 
     #[must_use]
     pub const fn with_fade_range_hz(fade_range_hz: f32) -> Self {
-        Self {
-            motor_frequencies_hz: MotorFrequencies::new(),
-            min_hz: 100.0,
-            max_hz: 0.0,
-            half_of_max_hz: 0.0,
-            third_of_max_hz: 0.0,
-            fade_range_hz,
-        }
+        Self { motor_frequencies_hz: MotorFrequencies::new(), min_hz: 100.0, max_hz: 0.0, fade_range_hz }
     }
 
     #[must_use]
@@ -123,16 +112,16 @@ impl Default for RpmNotchFilterFrequencies {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct NotchFilters(pub [[BiquadFilterVector3f32; RPM_FILTER_HARMONICS_COUNT]; MAX_MOTOR_COUNT]);
+pub struct NotchFilters(pub [[BiquadFilterVector3f32; RPM_FILTER_HARMONICS_COUNT]; MAX_SUPPORTED_MOTOR_COUNT]);
 
 impl NotchFilters {
     pub const fn new() -> Self {
-        Self([[BiquadFilterVector3f32::new(); RPM_FILTER_HARMONICS_COUNT]; MAX_MOTOR_COUNT])
+        Self([[BiquadFilterVector3f32::new(); RPM_FILTER_HARMONICS_COUNT]; MAX_SUPPORTED_MOTOR_COUNT])
     }
 }
 
 impl Deref for NotchFilters {
-    type Target = [[BiquadFilterVector3f32; RPM_FILTER_HARMONICS_COUNT]; MAX_MOTOR_COUNT];
+    type Target = [[BiquadFilterVector3f32; RPM_FILTER_HARMONICS_COUNT]; MAX_SUPPORTED_MOTOR_COUNT];
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -146,7 +135,7 @@ impl DerefMut for NotchFilters {
 }
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RpmNotchFilterBankContext {
-    pub motor_rpm_filters: [Pt1Filterf32; MAX_MOTOR_COUNT],
+    pub motor_rpm_filters: [Pt1Filterf32; MAX_SUPPORTED_MOTOR_COUNT],
     pub notch_filters: NotchFilters,
     pub motor_states: RpmFilterMotorStates,
     pub weights: [f32; RPM_FILTER_HARMONICS_COUNT],
@@ -155,9 +144,9 @@ pub struct RpmNotchFilterBankContext {
 impl RpmNotchFilterBankContext {
     pub const fn new() -> Self {
         Self {
-            motor_rpm_filters: [Pt1Filterf32::new(); MAX_MOTOR_COUNT],
+            motor_rpm_filters: [Pt1Filterf32::new(); MAX_SUPPORTED_MOTOR_COUNT],
             notch_filters: NotchFilters::new(),
-            motor_states: [RpmFilterMotorState::new(); MAX_MOTOR_COUNT],
+            motor_states: [RpmFilterMotorState::new(); MAX_SUPPORTED_MOTOR_COUNT],
             weights: [0.0; RPM_FILTER_HARMONICS_COUNT],
         }
     }
@@ -179,36 +168,40 @@ pub struct RpmNotchFilterBank {
     // all the notch filters have the same q and looptime
     looptime_seconds: f32,
     q: f32,
+    rpm_filter_harmonics_count: usize,
 }
 
 impl RpmNotchFilterBank {
     pub const DEFAULT_LOOPTIME_SECONDS: f32 = 0.001;
 
     #[must_use]
-    pub const fn with_looptime_seconds(looptime_seconds: f32) -> Self {
-        Self {
-            config: RpmNotchFilterBankConfig::new(),
+    pub fn new(config: RpmNotchFilterBankConfig, looptime_seconds: f32) -> Self {
+        let mut this = Self {
+            config,
             frequencies: RpmNotchFilterFrequencies::new(),
             state: State::new(),
             ctx: RpmNotchFilterBankContext::new(),
             looptime_seconds,
             q: 0.0,
-        }
-    }
-
-    #[must_use]
-    pub const fn new() -> Self {
-        Self::with_looptime_seconds(Self::DEFAULT_LOOPTIME_SECONDS)
+            rpm_filter_harmonics_count: 0,
+        };
+        this.set_config(config);
+        this
     }
 }
 
 impl Default for RpmNotchFilterBank {
     fn default() -> Self {
-        Self::new()
+        Self::new(RpmNotchFilterBankConfig::new(), Self::DEFAULT_LOOPTIME_SECONDS)
     }
 }
 
 impl RpmNotchFilterBank {
+    #[must_use]
+    pub fn rpm_filter_harmonics_count(&self) -> usize {
+        self.rpm_filter_harmonics_count
+    }
+
     pub fn set_config(&mut self, config: RpmNotchFilterBankConfig) {
         self.config = config;
 
@@ -220,14 +213,17 @@ impl RpmNotchFilterBank {
         self.frequencies.max_hz = 480_000.0 / self.looptime_seconds;
 
         // pre-calculate frequencies for speed in iteration steps
-        self.frequencies.half_of_max_hz = self.frequencies.max_hz / 2.0;
-        self.frequencies.third_of_max_hz = self.frequencies.max_hz / 3.0;
         self.frequencies.min_hz = f32::from(config.rpm_filter_min_hz);
         self.frequencies.fade_range_hz = f32::from(config.rpm_filter_fade_range_hz);
 
-        #[allow(clippy::cast_precision_loss)]
-        for harmonic in 0..config.rpm_filter_harmonics as usize {
-            for motor in 0..config.motor_count as usize {
+        self.rpm_filter_harmonics_count = 0;
+        for harmonic in 0..RPM_FILTER_HARMONICS_COUNT {
+            if config.rpm_filter_weights_x100[harmonic] != 0 {
+                self.rpm_filter_harmonics_count += 1;
+            }
+            self.ctx.weights[harmonic] = f32::from(config.rpm_filter_weights_x100[harmonic]);
+            #[allow(clippy::cast_precision_loss)]
+            for motor in 0..(config.motor_count as usize).min(MAX_SUPPORTED_MOTOR_COUNT) {
                 self.ctx.notch_filters[motor][harmonic].init_notch(
                     self.frequencies.min_hz * (harmonic + 1) as f32,
                     self.looptime_seconds,
@@ -260,13 +256,16 @@ impl RpmNotchFilterBank {
 
     #[inline]
     pub fn update_filter_frequencies_step(&mut self) {
-        //self.state = self.state.update(self);
-        self.state.update(&self.config, self.frequencies, &mut self.ctx);
+        self.state.update_filter_frequencies_step(&self.config, self.frequencies, &mut self.ctx);
     }
 
     /// Apply the notch filters for all selected harmonics for the given motor.
     #[inline]
-    pub fn update(ctx: &mut RpmNotchFilterBankContext, input: Vector3f32, motor_index: usize) -> Vector3f32 {
+    pub fn update_notch_filters_for_motor(
+        ctx: &mut RpmNotchFilterBankContext,
+        input: Vector3f32,
+        motor_index: usize,
+    ) -> Vector3f32 {
         let mut ret = ctx.notch_filters[motor_index][FUNDAMENTAL].update_notch_weighted(input);
 
         if ctx.weights[SECOND_HARMONIC] != 0.0 {

@@ -2175,7 +2175,7 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 [[package]]
 name = "signal-filters"
 version = "0.1.9"
-source = "git+https://github.com/martinbudden/crate-signal-filters#6920dd94b2c0b946055dd536470e7305e5deae63"
+source = "git+https://github.com/martinbudden/crate-signal-filters#f84208b70057257b0d08802ed7e2e2de78b6e97d"
 dependencies = [
  "libm",
  "num-traits",

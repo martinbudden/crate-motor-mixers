@@ -3,15 +3,18 @@ use core::ops::{Deref, DerefMut};
 use crate::{MixerConfig, MixerType, MotorConfig, MotorFrequencies, MotorMixerMessage, MotorMixerParameters};
 use signal_filters::SlewRateLimiterf32;
 
-pub const MAX_MOTOR_COUNT: usize = 8;
+#[cfg(feature = "eight_motors")]
+pub const MAX_SUPPORTED_MOTOR_COUNT: usize = 8;
+#[cfg(not(feature = "eight_motors"))]
+pub const MAX_SUPPORTED_MOTOR_COUNT: usize = 4;
 
 /// Array of motor rotation frequencies, one for each motor.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MotorOutputs(pub [f32; MAX_MOTOR_COUNT]);
+pub struct MotorOutputs(pub [f32; MAX_SUPPORTED_MOTOR_COUNT]);
 
 impl MotorOutputs {
     pub const fn new() -> Self {
-        Self([0.0; MAX_MOTOR_COUNT])
+        Self([0.0; MAX_SUPPORTED_MOTOR_COUNT])
     }
 }
 
@@ -22,7 +25,7 @@ impl Default for MotorOutputs {
 }
 
 impl Deref for MotorOutputs {
-    type Target = [f32; MAX_MOTOR_COUNT];
+    type Target = [f32; MAX_SUPPORTED_MOTOR_COUNT];
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -34,13 +37,13 @@ impl DerefMut for MotorOutputs {
     }
 }
 
-//pub type MotorOutputFilters = [SlewRateLimiterf32; MAX_MOTOR_COUNT];
+//pub type MotorOutputFilters = [SlewRateLimiterf32; MAX_SUPPORTED_MOTOR_COUNT];
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MotorOutputFilters(pub [SlewRateLimiterf32; MAX_MOTOR_COUNT]);
+pub struct MotorOutputFilters(pub [SlewRateLimiterf32; MAX_SUPPORTED_MOTOR_COUNT]);
 
 impl MotorOutputFilters {
     pub const fn new() -> Self {
-        Self([SlewRateLimiterf32::new(); MAX_MOTOR_COUNT])
+        Self([SlewRateLimiterf32::new(); MAX_SUPPORTED_MOTOR_COUNT])
     }
 }
 
@@ -51,7 +54,7 @@ impl Default for MotorOutputFilters {
 }
 
 impl Deref for MotorOutputFilters {
-    type Target = [SlewRateLimiterf32; MAX_MOTOR_COUNT];
+    type Target = [SlewRateLimiterf32; MAX_SUPPORTED_MOTOR_COUNT];
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -124,6 +127,10 @@ pub trait MotorMixer {
     #[inline]
     fn output_denominator(&self) -> usize {
         self.common().output_denominator as usize
+    }
+
+    fn set_output_denominator(&mut self, output_denominator: u8) {
+        self.common_mut().output_denominator = output_denominator;
     }
 
     fn motors_is_on(&self) -> bool {

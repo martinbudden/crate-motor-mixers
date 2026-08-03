@@ -72,6 +72,8 @@ impl MotorMixerOutput for MotorMixerQuadXPwm {
 
 #[cfg(test)]
 mod tests {
+    use crate::{MixerConfig, MotorConfig};
+
     use super::*;
 
     #[allow(unused)]
@@ -84,7 +86,10 @@ mod tests {
     }
     #[test]
     fn new() {
-        let quadx = MotorMixerQuadXPwm::new(MotorMixerCommon::default());
-        assert_eq!(255, quadx.max_duty);
+        let mixer_config = MixerConfig::new();
+        let motor_config = MotorConfig::new();
+        let motor_mixer_common = MotorMixerCommon::with_config(mixer_config, motor_config);
+        let motor_mixer_quad_x_pwm = MotorMixerQuadXPwm::new(motor_mixer_common);
+        assert_eq!(255, motor_mixer_quad_x_pwm.max_duty);
     }
 }

@@ -1,7 +1,7 @@
 use crate::{
     MotorFrequencies, MotorMixer, MotorMixerCommands, MotorMixerCommon, MotorMixerDriver, MotorMixerMessage,
     MotorMixerOutput, MotorMixerParameters, RpmNotchFilterBank, RpmNotchFilterBankConfig, mix_quad_x,
-    mixer::MotorOutputs,
+    mixer::{MAX_SUPPORTED_MOTOR_COUNT, MotorOutputs},
 };
 
 impl MotorMixerDriver for MotorMixerQuadXDshot {
@@ -25,7 +25,11 @@ pub struct MotorMixerQuadXDshot {
 
 impl Default for MotorMixerQuadXDshot {
     fn default() -> Self {
-        Self::new()
+        Self::new(
+            MotorMixerCommon::new(),
+            RpmNotchFilterBankConfig::new(),
+            RpmNotchFilterBank::DEFAULT_LOOPTIME_SECONDS,
+        )
     }
 }
 
@@ -33,13 +37,21 @@ impl MotorMixerQuadXDshot {
     pub const MOTOR_COUNT: usize = 4;
 
     #[must_use]
-    pub const fn new() -> Self {
+    pub fn new(common: MotorMixerCommon, config: RpmNotchFilterBankConfig, looptime_seconds: f32) -> Self {
+        let rpm_notch_filters = RpmNotchFilterBank::new(config, looptime_seconds);
+        // rpm_filter_harmonics_count calculated in RpmNotchFilterBank::new()
+        // We need to complete the rpm_filter iterations before the next time rpm_filter.start() is called.
+        // So, for example, if there are 2 harmonics and 4 motors that gives 8 iterations in total.
+        // So if output_denominator is 2, then we need to do 4 iterations.
+        // If output denominator is 3, then we need to do 3 iterations.
+        let rpm_filter_iteration_count =
+            (rpm_notch_filters.rpm_filter_harmonics_count() * Self::MOTOR_COUNT).div_ceil(common.output_denominator());
         Self {
-            common: MotorMixerCommon::new(),
-            config: RpmNotchFilterBankConfig::new(),
-            rpm_notch_filters: RpmNotchFilterBank::new(),
-            motor_frequencies_hz: MotorFrequencies::new(),
-            rpm_filter_iteration_count: 0,
+            common,
+            config,
+            rpm_notch_filters,
+            motor_frequencies_hz: MotorFrequencies([0.0f32; MAX_SUPPORTED_MOTOR_COUNT]),
+            rpm_filter_iteration_count,
         }
     }
 }
@@ -77,14 +89,7 @@ impl MotorMixerOutput for MotorMixerQuadXDshot {
             self.write_to_motors(self.common.outputs);
         }
 
-        // We need to complete the rpm_filter iterations before the next time rpm_filter.start() is called.
-        // So, for example, if there are 2 harmonics and 4 motors that gives 8 iterations in total.
-        // So if output_denominator is 2, then we need to do 4 iterations.
-        // If output denominator is 3, then we need to do 3 iterations.
-        // TODO: move the calculation of iteration_count into set_config.
-        let iteration_count =
-            (self.config.rpm_filter_harmonics as usize * Self::MOTOR_COUNT).div_ceil(self.common.output_denominator());
-        for _ in 0..iteration_count {
+        for _ in 0..self.rpm_filter_iteration_count {
             self.rpm_notch_filters.update_filter_frequencies_step();
         }
     }
@@ -92,6 +97,8 @@ impl MotorMixerOutput for MotorMixerQuadXDshot {
 
 #[cfg(test)]
 mod tests {
+    use crate::{MixerConfig, MotorConfig};
+
     use super::*;
 
     #[allow(unused)]
@@ -104,6 +111,13 @@ mod tests {
     }
     #[test]
     fn test_new() {
-        let _quadx = MotorMixerQuadXDshot::new();
+        let mixer_config = MixerConfig::new();
+        let motor_config = MotorConfig::new();
+        let motor_mixer_common = MotorMixerCommon::with_config(mixer_config, motor_config);
+        let rpm_notch_filter_bank_config = RpmNotchFilterBankConfig::new();
+        let looptime_seconds = RpmNotchFilterBank::DEFAULT_LOOPTIME_SECONDS;
+
+        let _motor_mixer_quad_x_pwm =
+            MotorMixerQuadXDshot::new(motor_mixer_common, rpm_notch_filter_bank_config, looptime_seconds);
     }
 }

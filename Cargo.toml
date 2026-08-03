@@ -25,10 +25,13 @@ rustc_version = "0.4.1"
 [features]
 #default = ["libm"]
 default = ["libm", "serde"]
+#default = ["libm", "serde", "eight_motors"]
 # cargo build --features rp2040 
 #default = ["libm", "rp2040"]
 #default = ["libm", "stm32"]
 #default = ["libm", "esp32"]
+
+eight_motors = []
 
 # Core backend features declared explicitly
 libm = ["dep:libm", "vqm/libm", "signal-filters/libm"]
