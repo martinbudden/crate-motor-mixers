@@ -43,9 +43,15 @@ pub type RpmFilterMotorStates = [RpmFilterMotorState; MAX_MOTOR_COUNT];
 pub enum State {
     #[default]
     Stopped,
-    Fundamental(usize),
-    SecondHarmonic(usize),
-    ThirdHarmonic(usize),
+    Fundamental {
+        motor_index: usize,
+    },
+    SecondHarmonic {
+        motor_index: usize,
+    },
+    ThirdHarmonic {
+        motor_index: usize,
+    },
 }
 
 impl State {
@@ -53,18 +59,6 @@ impl State {
         Self::Stopped
     }
 }
-
-/*impl From<u8> for State {
-    fn from(value: u8) -> Self {
-        match value {
-            0 => State::Stopped,
-            1 => State::Fundamental(0),
-            2 => Self::SecondHarmonic(0),
-            3 => Self::ThirdHarmonic(0),
-            _ => State::Stopped,
-        }
-    }
-}*/
 
 /// State machine to set notch frequencies for the rpm filter bank.
 ///
@@ -77,7 +71,7 @@ impl State {
     pub fn start(&mut self) {
         // TODO: consider if we want to restart from the beginning if start is called before state machine has stopped
         if let State::Stopped = self {
-            *self = State::Fundamental(0);
+            *self = State::Fundamental { motor_index: 0 };
         }
     }
 
@@ -90,17 +84,21 @@ impl State {
         frequencies: RpmNotchFilterFrequencies,
         ctx: &mut RpmNotchFilterBankContext,
     ) {
+        let motor_count = usize::from(config.motor_count);
         *self = match core::mem::take(self) {
             State::Stopped => {
                 // If we are stopped, we stay stopped until start() is called
                 // Explicitly setting *self = State::Stopped defends against a change in the default.
                 State::Stopped
             }
-            State::Fundamental(motor_index) => {
+            State::Fundamental { motor_index } => {
+                let motor_state = &mut ctx.motor_states[motor_index];
+                let notch = &mut ctx.notch_filters[motor_index][FUNDAMENTAL];
+
                 let frequency_hz = frequencies.motor_frequencies_hz[motor_index];
                 let frequency_hz_unclamped = ctx.motor_rpm_filters[motor_index].update(frequency_hz);
                 let frequency_hz = frequency_hz_unclamped.clamp(frequencies.min_hz, frequencies.max_hz);
-                ctx.motor_states[motor_index].frequency_hz_unclamped = frequency_hz_unclamped;
+                motor_state.frequency_hz_unclamped = frequency_hz_unclamped;
 
                 let margin_frequency_hz = frequency_hz - frequencies.min_hz;
                 let weight_multiplier = if margin_frequency_hz < frequencies.fade_range_hz {
@@ -108,46 +106,47 @@ impl State {
                 } else {
                     1.0
                 };
-                ctx.motor_states[motor_index].weight_multiplier = weight_multiplier;
+                motor_state.weight_multiplier = weight_multiplier;
 
                 // omega = frequency * _2PiLoopTimeSeconds
                 // max_frequency < 0.5 / looptime_seconds
                 // max_omega = (0.5 / looptime_seconds) * 2PiLooptimeSeconds = 0.5 * 2PI = PI;
                 // so omega is in range [0, PI]
-                let omega = ctx.notch_filters[motor_index][FUNDAMENTAL].calculate_omega(frequency_hz);
+                let omega = notch.calculate_omega(frequency_hz);
 
                 // Calculate sin(omega) and cos(omega) and cache their values.
                 // The second and third harmonics use trigonometric identities to calculate sin(2*omega), sin(3*omega) etc,
                 // this is significantly faster than calling sin_cos() again.
-                (ctx.motor_states[motor_index].sin_omega, ctx.motor_states[motor_index].cos_omega) = omega.sin_cos();
+                (motor_state.sin_omega, motor_state.cos_omega) = omega.sin_cos();
 
-                ctx.notch_filters[motor_index][FUNDAMENTAL].set_notch_frequency_weighted_from_sin_cos_assuming_q(
-                    ctx.motor_states[motor_index].sin_omega,
-                    ctx.motor_states[motor_index].cos_omega,
+                notch.set_notch_frequency_weighted_from_sin_cos_assuming_q(
+                    motor_state.sin_omega,
+                    motor_state.cos_omega,
                     ctx.weights[FUNDAMENTAL] * weight_multiplier,
                 );
                 // move onto the next state
-                if motor_index == config.motor_count as usize {
+                let motor_index = motor_index + 1;
+                if motor_index < motor_count {
+                    State::Fundamental { motor_index }
+                } else {
                     // we have set the notch frequency for all motors, so move onto the next harmonic if there is one, otherwise we are finished
                     if config.rpm_filter_harmonics >= 2 {
                         if config.rpm_filter_weights_x100[SECOND_HARMONIC] != 0 {
-                            State::SecondHarmonic(0)
+                            State::SecondHarmonic { motor_index: 0 }
                         } else if config.rpm_filter_harmonics >= 3
                             && config.rpm_filter_weights_x100[THIRD_HARMONIC] != 0
                         {
-                            State::ThirdHarmonic(0)
+                            State::ThirdHarmonic { motor_index: 0 }
                         } else {
                             State::Stopped
                         }
                     } else {
                         State::Stopped
                     }
-                } else {
-                    State::Fundamental(motor_index + 1)
                 }
             }
-            State::SecondHarmonic(motor_index) => {
-                let motor_state = ctx.motor_states[motor_index];
+            State::SecondHarmonic { motor_index } => {
+                let motor_state = &ctx.motor_states[motor_index];
                 if motor_state.frequency_hz_unclamped > frequencies.half_of_max_hz {
                     // ie 2.0 * frequency_hz_unclamped > _max_frequency_hz
                     // no point filtering the second harmonic if it is above the Nyquist frequency
@@ -165,19 +164,20 @@ impl State {
                             ctx.weights[SECOND_HARMONIC] * ctx.motor_states[motor_index].weight_multiplier,
                         );
                 }
-                if motor_index == config.motor_count as usize {
+                let motor_index = motor_index + 1;
+                if motor_index < motor_count {
+                    State::SecondHarmonic { motor_index }
+                } else {
                     // we have set the notch frequency for all motors, so move onto the next harmonic if there is one, otherwise we are finished
                     if config.rpm_filter_harmonics >= 3 && config.rpm_filter_weights_x100[THIRD_HARMONIC] != 0 {
-                        State::ThirdHarmonic(0)
+                        State::ThirdHarmonic { motor_index: 0 }
                     } else {
                         State::Stopped
                     }
-                } else {
-                    State::Fundamental(motor_index + 1)
                 }
             }
-            State::ThirdHarmonic(motor_index) => {
-                let motor_state = ctx.motor_states[motor_index];
+            State::ThirdHarmonic { motor_index } => {
+                let motor_state = &ctx.motor_states[motor_index];
                 if motor_state.frequency_hz_unclamped > frequencies.third_of_max_hz {
                     // ie 3.0 * frequency_hz_unclamped > _max_frequency_hz
                     // no point filtering the third harmonic if it is above the Nyquist frequency
@@ -200,11 +200,12 @@ impl State {
                             ctx.weights[THIRD_HARMONIC] * motor_state.weight_multiplier,
                         );
                 }
-                if motor_index == config.motor_count as usize {
+                let motor_index = motor_index + 1;
+                if motor_index < motor_count {
+                    State::ThirdHarmonic { motor_index }
+                } else {
                     // we have set the notch frequency for all motors, so we are finished
                     State::Stopped
-                } else {
-                    State::Fundamental(motor_index + 1)
                 }
             }
         }
