@@ -11,8 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     mixer_common::MAX_SUPPORTED_MOTOR_COUNT,
     rpm_notch_filters_state_machine::{
-        FUNDAMENTAL, RPM_FILTER_HARMONICS_COUNT, SECOND_HARMONIC, State,
-        THIRD_HARMONIC,
+        FUNDAMENTAL, RPM_FILTER_HARMONICS_COUNT, SECOND_HARMONIC, State, THIRD_HARMONIC,
     },
 };
 
@@ -138,7 +137,7 @@ pub struct RpmNotchFilterBankContext {
     /// 2D array of notch filters, one for each harmonic for each motor.
     pub notch_filters: [[BiquadFilterVector3f32; RPM_FILTER_HARMONICS_COUNT]; MAX_SUPPORTED_MOTOR_COUNT],
     /// Array of `RpmFilterMotorState`s, one for each motor.
-    pub motor_states:  [RpmFilterMotorState; MAX_SUPPORTED_MOTOR_COUNT],
+    pub motor_states: [RpmFilterMotorState; MAX_SUPPORTED_MOTOR_COUNT],
     pub weights: [f32; RPM_FILTER_HARMONICS_COUNT],
 }
 

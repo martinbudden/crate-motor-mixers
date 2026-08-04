@@ -2,9 +2,7 @@ use signal_filters::SignalFilter;
 #[allow(unused)]
 use vqm::TrigonometricMethods; // Required for .sin_cos()
 
-use crate::{
-    rpm_notch_filters::{RpmNotchFilterBankConfig, RpmNotchFilterBankContext, RpmNotchFilterFrequencies},
-};
+use crate::rpm_notch_filters::{RpmNotchFilterBankConfig, RpmNotchFilterBankContext, RpmNotchFilterFrequencies};
 
 pub const RPM_FILTER_HARMONICS_COUNT: usize = 3;
 

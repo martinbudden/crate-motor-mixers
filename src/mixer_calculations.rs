@@ -82,7 +82,11 @@ pub fn mix_bicopter(commands: MotorMixerCommands) -> [f32; 4] {
 /// so we want the front right motor to turn clockwise.
 ///
 #[must_use]
-pub fn mix_tricopter(commands: MotorMixerCommands, range: MotorOutputRange, params: &mut MotorMixerParameters) -> [f32; 4] {
+pub fn mix_tricopter(
+    commands: MotorMixerCommands,
+    range: MotorOutputRange,
+    params: &mut MotorMixerParameters,
+) -> [f32; 4] {
     const REAR: usize = 0;
     const FR: usize = 1;
     const FL: usize = 2;
@@ -151,7 +155,11 @@ pub fn mix_tricopter(commands: MotorMixerCommands, range: MotorOutputRange, para
 /// ```text
 ///
 #[must_use]
-pub fn mix_quad_x(commands: MotorMixerCommands, range: MotorOutputRange, params: &mut MotorMixerParameters) -> [f32; 4] {
+pub fn mix_quad_x(
+    commands: MotorMixerCommands,
+    range: MotorOutputRange,
+    params: &mut MotorMixerParameters,
+) -> [f32; 4] {
     // NOTE: motor array indices are zero-based, whereas motor numbering in the diagram above is one-based
 
     const BACK_RIGHT: usize = 0;
@@ -580,7 +588,7 @@ mod tests {
         const S0: usize = 3;
         const EPSILON: f32 = 0.000_000_1;
         let mut commands = MotorMixerCommands::default();
-        let range = MotorOutputRange { min: 0.1, max: 1.0};
+        let range = MotorOutputRange { min: 0.1, max: 1.0 };
         let mut mix_params = MotorMixerParameters {
             max_servo_angle_radians: 60.0f32.to_radians(),
             throttle: 0.0,

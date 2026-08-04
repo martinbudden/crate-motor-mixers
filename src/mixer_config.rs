@@ -80,7 +80,7 @@ pub enum MixerType {
     Heli90Deg = 16,
     Vtail4 = 17,
     HexH = 18,
-    PpmToServo = 19,  // PPM -> servo relay
+    PpmToServo = 19, // PPM -> servo relay
     DualCopter = 20,
     SingleCopter = 21,
     Atail4 = 22,

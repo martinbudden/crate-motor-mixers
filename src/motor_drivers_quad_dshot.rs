@@ -23,4 +23,3 @@ impl MotorDriverQuadDshot {
         Some(self.motor_frequencies)
     }
 }
-
