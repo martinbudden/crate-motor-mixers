@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     mixer_common::MAX_SUPPORTED_MOTOR_COUNT,
     rpm_notch_filters_state_machine::{
-        FUNDAMENTAL, RPM_FILTER_HARMONICS_COUNT, RpmFilterMotorState, RpmFilterMotorStates, SECOND_HARMONIC, State,
+        FUNDAMENTAL, RPM_FILTER_HARMONICS_COUNT, SECOND_HARMONIC, State,
         THIRD_HARMONIC,
     },
 };
@@ -112,32 +112,33 @@ impl Default for RpmNotchFilterFrequencies {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct NotchFilters(pub [[BiquadFilterVector3f32; RPM_FILTER_HARMONICS_COUNT]; MAX_SUPPORTED_MOTOR_COUNT]);
+pub struct RpmFilterMotorState {
+    pub frequency_hz: f32,
+    pub weight_multiplier: f32,
+    // no need to cache omega, since we are caching sin_omega and cos_omega instead
+    pub sin_omega: f32,
+    pub cos_omega: f32,
+}
 
-impl NotchFilters {
+impl RpmFilterMotorState {
     pub const fn new() -> Self {
-        Self([[BiquadFilterVector3f32::new(); RPM_FILTER_HARMONICS_COUNT]; MAX_SUPPORTED_MOTOR_COUNT])
+        Self { frequency_hz: 0.0, weight_multiplier: 0.0, sin_omega: 0.0, cos_omega: 0.0 }
     }
 }
 
-impl Deref for NotchFilters {
-    type Target = [[BiquadFilterVector3f32; RPM_FILTER_HARMONICS_COUNT]; MAX_SUPPORTED_MOTOR_COUNT];
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
+impl Default for RpmFilterMotorState {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
-impl DerefMut for NotchFilters {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RpmNotchFilterBankContext {
     pub motor_rpm_filters: [Pt1Filterf32; MAX_SUPPORTED_MOTOR_COUNT],
-    pub notch_filters: NotchFilters,
-    pub motor_states: RpmFilterMotorStates,
+    /// 2D array of notch filters, one for each harmonic for each motor.
+    pub notch_filters: [[BiquadFilterVector3f32; RPM_FILTER_HARMONICS_COUNT]; MAX_SUPPORTED_MOTOR_COUNT],
+    /// Array of `RpmFilterMotorState`s, one for each motor.
+    pub motor_states:  [RpmFilterMotorState; MAX_SUPPORTED_MOTOR_COUNT],
     pub weights: [f32; RPM_FILTER_HARMONICS_COUNT],
 }
 
@@ -145,7 +146,7 @@ impl RpmNotchFilterBankContext {
     pub const fn new() -> Self {
         Self {
             motor_rpm_filters: [Pt1Filterf32::new(); MAX_SUPPORTED_MOTOR_COUNT],
-            notch_filters: NotchFilters::new(),
+            notch_filters: [[BiquadFilterVector3f32::new(); RPM_FILTER_HARMONICS_COUNT]; MAX_SUPPORTED_MOTOR_COUNT],
             motor_states: [RpmFilterMotorState::new(); MAX_SUPPORTED_MOTOR_COUNT],
             weights: [0.0; RPM_FILTER_HARMONICS_COUNT],
         }
@@ -279,28 +280,15 @@ impl RpmNotchFilterBank {
 }
 
 pub trait RpmNotchFilters {
-    fn common(&self) -> &RpmNotchFilterBank;
-    fn common_mut(&mut self) -> &mut RpmNotchFilterBank;
-    fn config(&self) -> &RpmNotchFilterBankConfig;
-
-    fn update(&mut self, value: Vector3f32, motor_index: usize) -> Vector3f32;
+    fn update_notch_filters_for_motor(&mut self, value: Vector3f32, motor_index: usize) -> Vector3f32;
 }
 
 impl RpmNotchFilters for RpmNotchFilterBank {
-    fn common(&self) -> &RpmNotchFilterBank {
-        self
-    }
-    fn common_mut(&mut self) -> &mut RpmNotchFilterBank {
-        self
-    }
-    fn config(&self) -> &RpmNotchFilterBankConfig {
-        &self.common().config
-    }
-
-    fn update(&mut self, value: Vector3f32, _motor_index: usize) -> Vector3f32 {
-        value
+    fn update_notch_filters_for_motor(&mut self, gyro_rps: Vector3f32, motor_index: usize) -> Vector3f32 {
+        RpmNotchFilterBank::update_notch_filters_for_motor(&mut self.ctx, gyro_rps, motor_index)
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -321,6 +309,7 @@ mod tests {
         is_full::<RpmNotchFilterFrequencies>();
         is_full::<RpmNotchFilterBankContext>();
         is_full::<RpmNotchFilterBank>();
+        is_full::<RpmFilterMotorState>();
     }
     #[test]
     fn test_new() {

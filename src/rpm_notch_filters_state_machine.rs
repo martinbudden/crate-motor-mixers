@@ -3,7 +3,6 @@ use signal_filters::SignalFilter;
 use vqm::TrigonometricMethods; // Required for .sin_cos()
 
 use crate::{
-    mixer_common::MAX_SUPPORTED_MOTOR_COUNT,
     rpm_notch_filters::{RpmNotchFilterBankConfig, RpmNotchFilterBankContext, RpmNotchFilterFrequencies},
 };
 
@@ -12,29 +11,6 @@ pub const RPM_FILTER_HARMONICS_COUNT: usize = 3;
 pub const FUNDAMENTAL: usize = 0;
 pub const SECOND_HARMONIC: usize = 1;
 pub const THIRD_HARMONIC: usize = 2;
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct RpmFilterMotorState {
-    frequency_hz: f32,
-    weight_multiplier: f32,
-    // no need to cache omega, since we are caching sin_omega and cos_omega instead
-    sin_omega: f32,
-    cos_omega: f32,
-}
-
-impl RpmFilterMotorState {
-    pub const fn new() -> Self {
-        Self { frequency_hz: 0.0, weight_multiplier: 0.0, sin_omega: 0.0, cos_omega: 0.0 }
-    }
-}
-
-impl Default for RpmFilterMotorState {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-pub type RpmFilterMotorStates = [RpmFilterMotorState; MAX_SUPPORTED_MOTOR_COUNT];
 
 // NOTE: I have considered the typestate pattern for the state machine and have elected not to use it.
 /// State enum to drive state machine.
@@ -64,7 +40,7 @@ impl State {
 ///
 /// On each iteration of the state machine, one harmonic is set for one motor.
 ///
-/// For a tri-bladed quadcopter (which will typically filter the fundamental frequency and first harmonic)
+/// For a tri-bladed quadcopter (which will typically filter the fundamental frequency and third harmonic)
 /// 8 iterations of the state machine are required to set all the notch filters.
 impl State {
     /// External trigger to start the state machine.
@@ -203,11 +179,5 @@ mod tests {
     #[test]
     fn normal_types() {
         is_full::<State>();
-        is_full::<RpmFilterMotorState>();
-    }
-    #[test]
-    fn test_new() {
-        let config = RpmNotchFilterBankConfig::new();
-        assert_eq!(50, config.rpm_filter_fade_range_hz);
     }
 }
