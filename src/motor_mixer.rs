@@ -1,33 +1,25 @@
 use crate::{
-    MixerConfig, MixerType, MotorConfig, MotorFrequencies, MotorMixerCommands, MotorMixerMessage, MotorProtocol,
-    mixer_common::{MotorMixerCommon, MotorOutputs},
-    motor_drivers_quad_dshot::MotorDriverQuadDshot,
-    motor_drivers_quad_pwm::MotorDriverQuadPwm,
+    MixerConfig, MixerType, MotorConfig, MotorMixerCommands, MotorMixerMessage,
+    mixer_common::MotorMixerCommon,
+    motor_driver::{MotorDriver, MotorFrequencies, MotorOutputs},
 };
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum MotorDriver {
-    QuadPwm(MotorDriverQuadPwm),
-    QuadDshot(MotorDriverQuadDshot),
-}
+/*
+        MotorMixer
+            │
+            │ MotorOutputs
+            ▼
+    MotorDriver
+    /          \
+QuadPwm        QuadDshot
+    │                │
+    │                ├── DShot output
+    │                └── telemetry
+    │
+    └── PWM output
+*/
 
-impl MotorDriver {
-    fn write_to_motors(&mut self, outputs: MotorOutputs) {
-        match self {
-            MotorDriver::QuadPwm(driver) => driver.write_to_motors(outputs),
-            MotorDriver::QuadDshot(driver) => driver.write_to_motors(outputs),
-        }
-    }
-
-    fn motor_frequencies(&self) -> Option<MotorFrequencies> {
-        match self {
-            MotorDriver::QuadPwm(_) => None,
-            MotorDriver::QuadDshot(driver) => driver.motor_frequencies(),
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[allow(missing_debug_implementations, missing_copy_implementations)]
 pub struct MotorMixer {
     common: MotorMixerCommon,
     driver: MotorDriver,
@@ -35,13 +27,7 @@ pub struct MotorMixer {
 
 impl MotorMixer {
     #[must_use]
-    pub const fn new(mixer_config: MixerConfig, motor_config: MotorConfig) -> Self {
-        let driver = match motor_config.device.motor_protocol {
-            MotorProtocol::Dshot150 | MotorProtocol::Dshot300 | MotorProtocol::Dshot600 => {
-                MotorDriver::QuadDshot(MotorDriverQuadDshot::new())
-            }
-            _ => MotorDriver::QuadPwm(MotorDriverQuadPwm::new()),
-        };
+    pub const fn new(mixer_config: MixerConfig, motor_config: MotorConfig, driver: MotorDriver) -> Self {
         Self { common: MotorMixerCommon::new(mixer_config, motor_config), driver }
     }
 }

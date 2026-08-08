@@ -2,25 +2,41 @@
 
 use cfg_if::cfg_if;
 
-use crate::mixer_common::MotorOutputs;
+use crate::motor_driver::MotorOutputs;
+
+#[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+#[inline]
+fn output_to_duty(output: f32, max_duty: f32) -> u32 {
+    let output = output.clamp(-1.0, 1.0);
+
+    // -1.0 → 1000 µs
+    //  0.0 → 1500 µs
+    // +1.0 → 2000 µs
+    let pulse_width_us = 1500.0 + output * 500.0;
+
+    // 50 Hz → 20,000 µs period.
+    (pulse_width_us / 20_000.0 * max_duty) as u32
+}
 
 cfg_if! {
 if #[cfg(feature = "rp2040")] {
-use embassy_rp::pwm::{Config, Pwm};
+use embassy_rp::pwm::{Config as PwmConfig, Pwm};
 //type PwmType = SimplePwm<'static, embassy_rp::peripherals::PWM_SLICE0>;
 
+#[allow(missing_debug_implementations,missing_copy_implementations)]
 pub struct MotorDriverQuadPwm {
     pwm0: Pwm<'static>,
     pwm1: Pwm<'static>,
-    config0: Config,
-    config1: Config,
+    config0: PwmConfig,
+    config1: PwmConfig,
     top: f32,
 }
 
 impl MotorDriverQuadPwm {
+    #[must_use]
     pub fn new(pwm0: Pwm<'static>, pwm1: Pwm<'static>) -> Self {
-        let config0 = Config::default();
-        let config1 = Config::default();
+        let config0 = PwmConfig::default();
+        let config1 = PwmConfig::default();
         let top = f32::from(config0.top);
 
         Self {
@@ -34,11 +50,12 @@ impl MotorDriverQuadPwm {
 
     #[allow(clippy::cast_sign_loss,clippy::cast_possible_truncation)]
     #[inline]
-    pub fn write_motors(&mut self, motor_outputs: MotorOutputs) {
-        self.config0.compare_a = (((1.0 + motor_outputs[0]) / 20.0) * self.top) as u16;
-        self.config0.compare_b = (((1.0 + motor_outputs[1]) / 20.0) * self.top) as u16;
-        self.config1.compare_a = (((1.0 + motor_outputs[2]) / 20.0) * self.top) as u16;
-        self.config1.compare_b = (((1.0 + motor_outputs[3]) / 20.0) * self.top) as u16;
+    pub fn write_to_motors(&mut self, motor_outputs: MotorOutputs) {
+        let max_duty = 1000.0_f32;
+        self.config0.compare_a = output_to_duty(motor_outputs[0], max_duty) as u16;
+        self.config0.compare_b = output_to_duty(motor_outputs[1], max_duty) as u16;
+        self.config1.compare_a = output_to_duty(motor_outputs[2], max_duty) as u16;
+        self.config1.compare_b = output_to_duty(motor_outputs[3], max_duty) as u16;
 
         self.pwm0.set_config(&self.config0);
         self.pwm1.set_config(&self.config1);
@@ -52,45 +69,57 @@ let pwm1 = Pwm::new_output_ab(p.PWM_SLICE1, p.PIN_2, p.PIN_3, Config::default())
 
 } else if #[cfg(feature = "stm32")] {
 
-use embassy_stm32::timer::simple_pwm::{SimplePwm, SimplePwmChannel};
-use embassy_stm32::timer::GeneralInstance4Channel;
+use embassy_stm32::timer::{
+    simple_pwm::{SimplePwm, SimplePwmChannel},
+    GeneralInstance4Channel
+};
 
 //type PwmType = SimplePwm<'static, embassy_stm32::peripherals::TIM1>;
+pub type MotorDriverQuadPwm = MotorDriverQuadPwmGeneral<embassy_stm32::peripherals::TIM4,embassy_stm32::peripherals::TIM3>;
 
-pub struct MotorDriverQuadPwm<T>
+#[allow(missing_debug_implementations,missing_copy_implementations)]
+pub struct MotorDriverQuadPwmGeneral<T1, T2>
 where
-    T: GeneralInstance4Channel,
+    T1: GeneralInstance4Channel,
+    T2: GeneralInstance4Channel,
 {
-    ch0: SimplePwmChannel<'static, T>,
-    ch1: SimplePwmChannel<'static, T>,
-    ch2: SimplePwmChannel<'static, T>,
-    ch3: SimplePwmChannel<'static, T>,
+    ch0: SimplePwmChannel<'static, T1>,
+    ch1: SimplePwmChannel<'static, T1>,
+    ch2: SimplePwmChannel<'static, T2>,
+    ch3: SimplePwmChannel<'static, T2>,
 }
 
-impl<T> MotorDriverQuadPwm<T>
+impl<T1, T2> MotorDriverQuadPwmGeneral<T1, T2>
 where
-    T: GeneralInstance4Channel,
+    T1: GeneralInstance4Channel,
+    T2: GeneralInstance4Channel,
 {
-    pub fn new(pwm: SimplePwm<'static, T>) -> Self {
-        let channels = pwm.split();
+    pub fn new(
+        pwm1: SimplePwm<'static, T1>,
+        pwm2: SimplePwm<'static, T2>,
+    ) -> Self {
+        let channels1 = pwm1.split();
+        let channels2 = pwm2.split();
+
         Self {
-            ch0: channels.ch1,
-            ch1: channels.ch2,
-            ch2: channels.ch3,
-            ch3: channels.ch4,
+            ch0: channels1.ch1,
+            ch1: channels1.ch2,
+            ch2: channels2.ch3,
+            ch3: channels2.ch4,
         }
     }
 
-    #[allow(clippy::cast_sign_loss,clippy::cast_possible_truncation)]
     #[inline]
-    pub fn write_motors(&mut self, motor_outputs: MotorOutputs) {
-        self.ch0.set_duty_cycle(((1.0 + motor_outputs[0]) * 1000.0 / 20.0) as u32);
+    pub fn write_to_motors(&mut self, motor_outputs: MotorOutputs) {
+        let max_duty = 1000.0_f32;
+        self.ch0.set_duty_cycle(output_to_duty(motor_outputs[0], max_duty));
+        self.ch1.set_duty_cycle(output_to_duty(motor_outputs[1], max_duty));
+        self.ch2.set_duty_cycle(output_to_duty(motor_outputs[2], max_duty));
+        self.ch3.set_duty_cycle(output_to_duty(motor_outputs[3], max_duty));
+
         self.ch0.enable();
-        self.ch1.set_duty_cycle(((1.0 + motor_outputs[1]) * 1000.0 / 20.0) as u32);
         self.ch1.enable();
-        self.ch2.set_duty_cycle(((1.0 + motor_outputs[2]) * 1000.0 / 20.0) as u32);
         self.ch2.enable();
-        self.ch3.set_duty_cycle(((1.0 + motor_outputs[3]) * 1000.0 / 20.0) as u32);
         self.ch3.enable();
     }
 }
@@ -103,6 +132,7 @@ let mut driver = MotorDriverQuadPwm::new(pwm);
 */
 
 } else if #[cfg(feature = "esp32")] {
+
 /*use esp_idf_hal::ledc::{config::TimerConfig, LedcDriver, LedcTimerDriver, SpeedMode};
 use esp_idf_hal::gpio::PinDriver;
 
@@ -132,42 +162,27 @@ impl MotorDriverQuadPwm {
             channels: [ch0, ch1, ch2, ch3],
         }
     }
-    pub fn write_motor(&mut self, motor_index: u8, motor_output: f32) {
-        // Convert [0.0, 1.0] to pulse width (1-2ms for ESCs)
-        let pulse_ms = 1.0 + motor_output;
-        // Scale to duty cycle based on timer resolution
-        let max_duty = self.driver.get_max_duty();
-        let duty = ((pulse_ms / 20.0) * max_duty as f32) as u32;
 
-        // Set duty for the appropriate channel
-        match motor_index {
-            0 => self.driver.set_duty(Channel::CH0, duty).unwrap(),
-            1 => self.driver.set_duty(Channel::CH1, duty).unwrap(),
-            2 => self.driver.set_duty(Channel::CH2, duty).unwrap(),
-            3 => self.driver.set_duty(Channel::CH3, duty).unwrap(),
-            _ => return,
-        }
-        self.driver.update_duty().unwrap();
-    }
-
-    #[allow(clippy::cast_sign_loss,clippy::cast_possible_truncation)]
     #[inline]
-    pub fn write_motors(&mut self, motor_outputs: MotorOutputs) {
-        let max_duty = self.driver.get_max_duty();
+    pub fn write_to_motors(&mut self, motor_outputs: MotorOutputs) {
+        let max_duty = self.driver.get_max_duty() as f32;
 
-        self.driver.set_duty(Channel::CH0, ((1.0 + motor_outputs[0]) * max_duty / 20.0) as u32);
-        self.driver.set_duty(Channel::CH1, ((1.0 + motor_outputs[1]) * max_duty / 20.0) as u32);
-        self.driver.set_duty(Channel::CH2, ((1.0 + motor_outputs[2]) * max_duty / 20.0) as u32);
-        self.driver.set_duty(Channel::CH3, ((1.0 + motor_outputs[3]) * max_duty / 20.0) as u32);
+        self.driver.set_duty(Channel::CH0, output_to_duty(motor_outputs[0]), max_duty);
+        self.driver.set_duty(Channel::CH1, output_to_duty(motor_outputs[1]), max_duty);
+        self.driver.set_duty(Channel::CH2, output_to_duty(motor_outputs[2]), max_duty);
+        self.driver.set_duty(Channel::CH3, output_to_duty(motor_outputs[3]), max_duty);
+
+        self.driver.update_duty().unwrap();
     }
 }
 
 } else {
 
-    #[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct MotorDriverQuadPwm;
 
 impl MotorDriverQuadPwm {
+    #[must_use]
     pub const fn new() -> Self {
         Self {}
     }
@@ -185,9 +200,19 @@ impl MotorDriverQuadPwm {
 
 #[cfg(test)]
 mod tests {
+    //    #![allow(clippy::float_cmp)]
+    use super::*;
+
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn _is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
 
     #[test]
     fn normal_types() {}
+
+    #[test]
+    fn test_output_to_duty() {
+        assert_eq!(1000, output_to_duty(-1.0, 20_000.0));
+        assert_eq!(1500, output_to_duty(0.0, 20_000.0));
+        assert_eq!(2000, output_to_duty(1.0, 20_000.0));
+    }
 }

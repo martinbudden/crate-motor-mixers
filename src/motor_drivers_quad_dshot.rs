@@ -1,8 +1,8 @@
 #![allow(unused)]
-use crate::{MotorFrequencies, mixer_common::MotorOutputs};
+use crate::motor_driver::{MotorFrequencies, MotorOutputs};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub(crate) struct MotorDriverQuadDshot {
+pub struct MotorDriverQuadDshot {
     motor_frequencies: MotorFrequencies,
 }
 

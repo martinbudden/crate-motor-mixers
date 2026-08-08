@@ -27,6 +27,7 @@ mod commands;
 mod mixer_calculations;
 mod mixer_common;
 mod mixer_config;
+mod motor_driver;
 mod motor_drivers_quad_dshot;
 mod motor_drivers_quad_pwm;
 mod motor_mixer;
@@ -41,6 +42,9 @@ pub use mixer_config::{
     ProtocolFamily, ServoConfig, ServoDeviceConfig,
 };
 
+pub use motor_driver::MotorDriver;
+pub use motor_drivers_quad_pwm::MotorDriverQuadPwm;
+
 #[cfg(feature = "eight_motors")]
 pub use mixer_calculations::mix_hex_x;
 pub use mixer_calculations::{mix_airplane, mix_bicopter, mix_quad_x, mix_tricopter, mix_wing};
@@ -48,9 +52,7 @@ pub use mixer_calculations::{mix_airplane, mix_bicopter, mix_quad_x, mix_tricopt
 pub use mixer_common::MotorMixerCommon;
 pub use motor_mixer::MotorMixer;
 
-pub use rpm_notch_filters::{
-    MotorFrequencies, RpmNotchFilterBank, RpmNotchFilterBankConfig, RpmNotchFilterFrequencies, RpmNotchFilters,
-};
+pub use rpm_notch_filters::{RpmNotchFilterBank, RpmNotchFilterBankConfig, RpmNotchFilterFrequencies, RpmNotchFilters};
 
 pub use dynamic_idle_controller::{DynamicIdleController, DynamicIdleControllerConfig, RpmHz};
 

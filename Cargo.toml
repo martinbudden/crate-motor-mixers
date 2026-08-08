@@ -23,8 +23,8 @@ all-features = true
 rustc_version = "0.4.1"
 
 [features]
-#default = ["libm"]
-default = ["libm", "serde"]
+default = ["libm"]
+#default = ["libm", "serde"]
 #default = ["libm", "serde", "eight_motors"]
 # cargo build --features rp2040 
 #default = ["libm", "rp2040"]
@@ -43,7 +43,7 @@ simd = ["vqm/simd", "signal-filters/simd"]
 std = ["embassy-time/std", "embassy-executor/platform-std", "vqm/std", "signal-filters/std"]
 rp2040 = ["dep:embassy-rp", "embassy-rp/rp2040"]
 rp2350 = ["dep:embassy-rp", "embassy-rp/rp235xa"]
-stm32 = ["dep:embassy-stm32"]
+stm32 = ["dep:embassy-stm32", "embassy-stm32/time-driver-any", "embassy-stm32/stm32f407vg"]
 esp32 = ["dep:esp-idf-hal"]
 #esp32 = ["esp-idf-hal", "esp-hal-embassy", "esp-backtrace", "esp-println"]
 
@@ -59,9 +59,7 @@ embassy-time = { version = "0.5.1", default-features = false }
 # Hardware-specific Embassy HAL
 #embassy-rp = { version = "0.10.0", features = ["rp2040", "time-driver", "rt"], optional = true }
 embassy-rp = { version = "0.10.0", default-features = false, features = ["time-driver", "critical-section-impl"], optional = true }
-embassy-stm32 = { version = "0.6.0", default-features = false, features = ["stm32f407vg", "time-driver-any"], optional = true }
-# embassy-stm32 = { version = "0.8", default-features = false, features = ["stm32f407vg", "time-driver"], optional = true }
-# embassy-stm32 = { version = "0.5.0", default-features = false, optional = true }
+embassy-stm32 = { version = "0.6.0", default-features = false, features = ["time-driver-any"], optional = true }
 # embassy-esp32 = { version = "0.8", default-features = false, optional = true }
 esp-idf-hal = { version = "0.46.2", default-features = false, optional = true }
 

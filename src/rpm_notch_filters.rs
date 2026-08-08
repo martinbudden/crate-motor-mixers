@@ -1,5 +1,3 @@
-use core::ops::{Deref, DerefMut};
-
 use signal_filters::{BiquadFilterVector3f32, Pt1Filterf32};
 use vqm::Vector3f32;
 
@@ -9,41 +7,11 @@ use serde::{Deserialize, Serialize};
 //use defmt::debug;
 //use embassy_time::{Instant, Timer};
 use crate::{
-    mixer_common::MAX_SUPPORTED_MOTOR_COUNT,
+    motor_driver::{MAX_SUPPORTED_MOTOR_COUNT, MotorFrequencies},
     rpm_notch_filters_state_machine::{
         FUNDAMENTAL, RPM_FILTER_HARMONICS_COUNT, SECOND_HARMONIC, State, THIRD_HARMONIC,
     },
 };
-
-/// Array of motor rotation frequencies, one for each motor.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MotorFrequencies(pub [f32; MAX_SUPPORTED_MOTOR_COUNT]);
-
-impl MotorFrequencies {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self([0.0; MAX_SUPPORTED_MOTOR_COUNT])
-    }
-}
-
-impl Default for MotorFrequencies {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Deref for MotorFrequencies {
-    type Target = [f32; MAX_SUPPORTED_MOTOR_COUNT];
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for MotorFrequencies {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
