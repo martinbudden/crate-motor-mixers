@@ -7,10 +7,7 @@ use crate::drivers_std::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 #[cfg(feature = "stm32")]
 use crate::drivers_stm32::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 
-
-use crate::{
-    mixer_common::{MotorFrequencies, MotorOutputs},
-};
+use crate::mixer_common::{MotorFrequencies, MotorOutputs};
 
 #[allow(unused)]
 #[allow(missing_debug_implementations, missing_copy_implementations)]
@@ -59,8 +56,7 @@ mod tests {
     fn _is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
 
     #[test]
-    fn normal_types() {
-    }
+    fn normal_types() {}
     #[test]
     fn test_output_to_duty() {
         assert_eq!(1000, output_to_duty(-1.0, 20_000.0));

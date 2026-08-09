@@ -1,11 +1,10 @@
 #![cfg(any(feature = "rp2350", feature = "rp2040"))]
 
-use embassy_rp::pwm::{Config as PwmConfig, Pwm};
 use crate::{
     drivers::output_to_duty,
     mixer_common::{MotorFrequencies, MotorOutputs},
 };
-
+use embassy_rp::pwm::{Config as PwmConfig, Pwm};
 
 //type PwmType = SimplePwm<'static, embassy_rp::peripherals::PWM_SLICE0>;
 

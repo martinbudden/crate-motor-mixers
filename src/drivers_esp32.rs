@@ -1,11 +1,10 @@
 #![cfg(feature = "esp32")]
 
-use esp_idf_hal::ledc::{Channel, LedcDriver, LedcTimerDriver, SpeedMode};
 use crate::{
     drivers::output_to_duty,
     mixer_common::{MotorFrequencies, MotorOutputs},
 };
-
+use esp_idf_hal::ledc::{Channel, LedcDriver, LedcTimerDriver, SpeedMode};
 
 /*
 use esp_idf_hal::ledc::{config::TimerConfig, LedcDriver, LedcTimerDriver, SpeedMode};
