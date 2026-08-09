@@ -1,7 +1,16 @@
+use core::ops::{Deref, DerefMut};
+
+use signal_filters::SlewRateLimiterf32;
+
 use crate::{
     MixerConfig, MixerType, MotorConfig, MotorMixerParameters, MotorOutputRange,
-    motor_driver::{MotorOutputFilters, MotorOutputs},
 };
+
+#[cfg(feature = "eight_motors")]
+pub const MAX_SUPPORTED_MOTOR_COUNT: usize = 8;
+#[cfg(not(feature = "eight_motors"))]
+pub const MAX_SUPPORTED_MOTOR_COUNT: usize = 4;
+
 
 /// Common properties of all motor mixers.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -143,6 +152,92 @@ impl MotorMixerCommon {
     }
 }
 
+/// Struct containing array of motor outputs, one for each motor.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MotorOutputs(pub [f32; MAX_SUPPORTED_MOTOR_COUNT]);
+
+impl MotorOutputs {
+    pub const fn new() -> Self {
+        Self([0.0; MAX_SUPPORTED_MOTOR_COUNT])
+    }
+}
+
+impl Default for MotorOutputs {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Deref for MotorOutputs {
+    type Target = [f32; MAX_SUPPORTED_MOTOR_COUNT];
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for MotorOutputs {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+/// Array of motor rotation frequencies, one for each motor.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MotorFrequencies(pub [f32; MAX_SUPPORTED_MOTOR_COUNT]);
+
+impl MotorFrequencies {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self([0.0; MAX_SUPPORTED_MOTOR_COUNT])
+    }
+}
+
+impl Default for MotorFrequencies {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Deref for MotorFrequencies {
+    type Target = [f32; MAX_SUPPORTED_MOTOR_COUNT];
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for MotorFrequencies {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MotorOutputFilters(pub [SlewRateLimiterf32; MAX_SUPPORTED_MOTOR_COUNT]);
+
+impl MotorOutputFilters {
+    pub const fn new() -> Self {
+        Self([SlewRateLimiterf32::new(); MAX_SUPPORTED_MOTOR_COUNT])
+    }
+}
+
+impl Default for MotorOutputFilters {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Deref for MotorOutputFilters {
+    type Target = [SlewRateLimiterf32; MAX_SUPPORTED_MOTOR_COUNT];
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for MotorOutputFilters {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 #[cfg(test)]
 mod tests {
     use crate::MixerType;
@@ -155,6 +250,8 @@ mod tests {
     #[test]
     fn normal_types() {
         is_full::<MotorMixerCommon>();
+        is_full::<MotorOutputs>();
+        is_full::<MotorOutputFilters>();
     }
     #[test]
     fn new() {

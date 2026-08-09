@@ -1,5 +1,20 @@
-#![allow(unused)]
-use crate::motor_driver::{MotorFrequencies, MotorOutputs};
+#![cfg(feature = "std")]
+
+use crate::mixer_common::{MotorFrequencies, MotorOutputs};
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct MotorDriverQuadPwm;
+
+impl MotorDriverQuadPwm {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {}
+    }
+
+    pub fn write_to_motors(&mut self, _outputs: MotorOutputs) {
+        _ = self;
+    }
+}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct MotorDriverQuadDshot {

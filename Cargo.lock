@@ -1572,7 +1572,6 @@ name = "motor-mixers"
 version = "0.1.5"
 dependencies = [
  "approx",
- "cfg-if",
  "embassy-executor",
  "embassy-futures",
  "embassy-rp",

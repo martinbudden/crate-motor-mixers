@@ -24,12 +24,14 @@ mod dynamic_idle_controller;
 
 mod commands;
 
+mod drivers;
+mod drivers_esp32;
+mod drivers_rp;
+mod drivers_std;
+mod drivers_stm32;
 mod mixer_calculations;
 mod mixer_common;
 mod mixer_config;
-mod motor_driver;
-mod motor_drivers_quad_dshot;
-mod motor_drivers_quad_pwm;
 mod motor_mixer;
 
 mod rpm_notch_filters;
@@ -42,8 +44,15 @@ pub use mixer_config::{
     ProtocolFamily, ServoConfig, ServoDeviceConfig,
 };
 
-pub use motor_driver::MotorDriver;
-pub use motor_drivers_quad_pwm::MotorDriverQuadPwm;
+pub use drivers::MotorDriver;
+#[cfg(feature = "esp32")]
+pub use drivers_esp32::MotorDriverQuadPwm;
+#[cfg(any(feature = "rp2350", feature = "rp2040"))]
+pub use drivers_rp::MotorDriverQuadPwm;
+#[cfg(feature = "std")]
+pub use drivers_std::MotorDriverQuadPwm;
+#[cfg(feature = "stm32")]
+pub use drivers_stm32::MotorDriverQuadPwm;
 
 #[cfg(feature = "eight_motors")]
 pub use mixer_calculations::mix_hex_x;

@@ -23,13 +23,12 @@ all-features = true
 rustc_version = "0.4.1"
 
 [features]
-default = ["libm"]
-#default = ["libm", "serde"]
-#default = ["libm", "serde", "eight_motors"]
-# cargo build --features rp2040 
-#default = ["libm", "rp2040"]
+default = ["libm", "std"]
+#default = ["libm", "rp2350"]
 #default = ["libm", "stm32"]
 #default = ["libm", "esp32"]
+#default = ["libm", "serde"]
+#default = ["libm", "serde", "eight_motors"]
 
 eight_motors = []
 
@@ -48,7 +47,6 @@ esp32 = ["dep:esp-idf-hal"]
 #esp32 = ["esp-idf-hal", "esp-hal-embassy", "esp-backtrace", "esp-println"]
 
 [dependencies]
-cfg-if = "1.0.4"
 
 # Core Embassy executor and concurrency primitives
 embassy-executor = { version = "0.10.0", default-features = false, features = ["executor-thread"] }

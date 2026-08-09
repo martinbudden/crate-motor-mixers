@@ -1,7 +1,7 @@
 use crate::{
     MixerConfig, MixerType, MotorConfig, MotorMixerCommands, MotorMixerMessage,
-    mixer_common::MotorMixerCommon,
-    motor_driver::{MotorDriver, MotorFrequencies, MotorOutputs},
+    drivers::MotorDriver,
+    mixer_common::{MotorMixerCommon,MotorFrequencies, MotorOutputs},
 };
 
 /*
