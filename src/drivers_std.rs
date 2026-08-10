@@ -22,6 +22,7 @@ pub struct MotorDriverQuadDshot {
 }
 
 impl MotorDriverQuadDshot {
+    #[must_use]
     pub const fn new() -> Self {
         Self { motor_frequencies: MotorFrequencies::new() }
     }
@@ -33,6 +34,7 @@ impl MotorDriverQuadDshot {
     }
 
     #[allow(clippy::unnecessary_wraps)]
+    #[must_use]
     pub fn motor_frequencies(&self) -> Option<MotorFrequencies> {
         _ = self;
         Some(self.motor_frequencies)
