@@ -46,15 +46,15 @@ pub use mixer_config::{
 
 pub use drivers::MotorDriver;
 #[cfg(feature = "esp32")]
-pub use drivers_esp32::{MotorDriverQuadPwm, MotorDriverQuadDshot};
+pub use drivers_esp32::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 
 #[cfg(any(feature = "rp2350", feature = "rp2040"))]
-pub use drivers_rp::{MotorDriverQuadPwm, MotorDriverQuadDshot};
+pub use drivers_rp::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 
 #[cfg(feature = "std")]
-pub use drivers_std::{MotorDriverQuadPwm, MotorDriverQuadDshot};
+pub use drivers_std::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 #[cfg(feature = "stm32")]
-pub use drivers_stm32::{MotorDriverQuadPwm, MotorDriverQuadDshot};
+pub use drivers_stm32::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 
 #[cfg(feature = "eight_motors")]
 pub use mixer_calculations::mix_hex_x;

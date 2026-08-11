@@ -15,6 +15,10 @@ use crate::{
 #[cfg(feature = "motors_t8")]
 pub type MotorDriverQuadPwm = MotorDriverQuadPwmGeneral<embassy_stm32::peripherals::TIM8>;
 
+#[cfg(feature = "motors_t3_t2")]
+pub type MotorDriverQuadPwm =
+    MotorDriverQuadPwmGeneral2<embassy_stm32::peripherals::TIM3, embassy_stm32::peripherals::TIM2>;
+
 #[cfg(feature = "motors_t4_t3")]
 pub type MotorDriverQuadPwm =
     MotorDriverQuadPwmGeneral2<embassy_stm32::peripherals::TIM4, embassy_stm32::peripherals::TIM3>;
