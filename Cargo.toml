@@ -25,11 +25,13 @@ rustc_version = "0.4.1"
 [features]
 default = ["libm", "std"]
 #default = ["libm", "rp2350"]
-#default = ["libm", "stm32"]
+#default = ["libm", "stm32", "motors_t4_t3"]
 #default = ["libm", "esp32"]
 #default = ["libm", "serde"]
 #default = ["libm", "serde", "eight_motors"]
 
+motors_t8 = []
+motors_t4_t3 = []
 eight_motors = []
 
 # Core backend features declared explicitly
@@ -42,7 +44,12 @@ simd = ["vqm/simd", "signal-filters/simd"]
 std = ["embassy-time/std", "embassy-executor/platform-std", "vqm/std", "signal-filters/std"]
 rp2040 = ["dep:embassy-rp", "embassy-rp/rp2040"]
 rp2350 = ["dep:embassy-rp", "embassy-rp/rp235xa"]
-stm32 = ["dep:embassy-stm32"]
+stm32 = [
+    "dep:embassy-stm32",
+    "embassy-stm32/time-driver-tim2",
+    "embassy-executor/platform-cortex-m",   # <-- Explicitly satisfies the executor's platform check
+    "embassy-executor/executor-thread",
+]
 stm32f405 = ["embassy-stm32/stm32f405rg"]
 esp32 = ["dep:esp-idf-hal"]
 #esp32 = ["esp-idf-hal", "esp-hal-embassy", "esp-backtrace", "esp-println"]
