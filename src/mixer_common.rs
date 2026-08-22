@@ -31,7 +31,14 @@ pub struct MotorMixerCommon {
     pub range: MotorOutputRange,
 }
 
+impl Default for MotorMixerCommon {
+    fn default() -> Self {
+        Self::new(MixerConfig::new(), MotorConfig::new())
+    }
+}
+
 impl MotorMixerCommon {
+    /// Constructor.
     #[must_use]
     pub const fn new(mixer_config: MixerConfig, motor_config: MotorConfig) -> Self {
         let motor_count = match mixer_config.mixer_type {
@@ -66,12 +73,6 @@ impl MotorMixerCommon {
             mix_params: MotorMixerParameters::new(),
             range: MotorOutputRange::new(),
         }
-    }
-}
-
-impl Default for MotorMixerCommon {
-    fn default() -> Self {
-        Self::new(MixerConfig::new(), MotorConfig::new())
     }
 }
 
@@ -153,15 +154,15 @@ impl MotorMixerCommon {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MotorOutputs(pub [f32; MAX_SUPPORTED_MOTOR_COUNT]);
 
-impl MotorOutputs {
-    pub const fn new() -> Self {
-        Self([0.0; MAX_SUPPORTED_MOTOR_COUNT])
-    }
-}
-
 impl Default for MotorOutputs {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl MotorOutputs {
+    pub const fn new() -> Self {
+        Self([0.0; MAX_SUPPORTED_MOTOR_COUNT])
     }
 }
 

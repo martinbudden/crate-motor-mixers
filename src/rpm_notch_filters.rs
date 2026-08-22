@@ -29,6 +29,12 @@ pub struct RpmNotchFilterBankConfig {
     pub motor_count: u8,
 }
 
+impl Default for RpmNotchFilterBankConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RpmNotchFilterBankConfig {
     #[must_use]
     pub const fn new() -> Self {
@@ -44,12 +50,6 @@ impl RpmNotchFilterBankConfig {
     }
 }
 
-impl Default for RpmNotchFilterBankConfig {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RpmNotchFilterFrequencies {
     pub motor_frequencies_hz: MotorFrequencies,
@@ -58,23 +58,25 @@ pub struct RpmNotchFilterFrequencies {
     pub fade_range_hz: f32,
 }
 
+impl Default for RpmNotchFilterFrequencies {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RpmNotchFilterFrequencies {
     const DEFAULT_FADE_RANGE: f32 = 50.0;
 
+    /// Constructor.
     #[must_use]
     pub const fn with_fade_range_hz(fade_range_hz: f32) -> Self {
         Self { motor_frequencies_hz: MotorFrequencies::new(), min_hz: 100.0, max_hz: 0.0, fade_range_hz }
     }
 
+    /// Constructor.
     #[must_use]
     pub const fn new() -> Self {
         Self::with_fade_range_hz(Self::DEFAULT_FADE_RANGE)
-    }
-}
-
-impl Default for RpmNotchFilterFrequencies {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -87,15 +89,15 @@ pub struct RpmFilterMotorState {
     pub cos_omega: f32,
 }
 
-impl RpmFilterMotorState {
-    pub const fn new() -> Self {
-        Self { frequency_hz: 0.0, weight_multiplier: 0.0, sin_omega: 0.0, cos_omega: 0.0 }
-    }
-}
-
 impl Default for RpmFilterMotorState {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl RpmFilterMotorState {
+    pub const fn new() -> Self {
+        Self { frequency_hz: 0.0, weight_multiplier: 0.0, sin_omega: 0.0, cos_omega: 0.0 }
     }
 }
 
@@ -109,6 +111,12 @@ pub struct RpmNotchFilterBankContext {
     pub weights: [f32; RPM_FILTER_HARMONICS_COUNT],
 }
 
+impl Default for RpmNotchFilterBankContext {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RpmNotchFilterBankContext {
     pub const fn new() -> Self {
         Self {
@@ -117,12 +125,6 @@ impl RpmNotchFilterBankContext {
             motor_states: [RpmFilterMotorState::new(); MAX_SUPPORTED_MOTOR_COUNT],
             weights: [0.0; RPM_FILTER_HARMONICS_COUNT],
         }
-    }
-}
-
-impl Default for RpmNotchFilterBankContext {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -137,6 +139,12 @@ pub struct RpmNotchFilterBank {
     looptime_seconds: f32,
     q: f32,
     rpm_filter_harmonics_count: usize,
+}
+
+impl Default for RpmNotchFilterBank {
+    fn default() -> Self {
+        Self::new(RpmNotchFilterBankConfig::new(), Self::DEFAULT_LOOPTIME_SECONDS)
+    }
 }
 
 impl RpmNotchFilterBank {
@@ -155,12 +163,6 @@ impl RpmNotchFilterBank {
         };
         this.set_config(config);
         this
-    }
-}
-
-impl Default for RpmNotchFilterBank {
-    fn default() -> Self {
-        Self::new(RpmNotchFilterBankConfig::new(), Self::DEFAULT_LOOPTIME_SECONDS)
     }
 }
 

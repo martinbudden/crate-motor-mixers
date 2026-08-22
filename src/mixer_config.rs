@@ -13,17 +13,17 @@ pub struct MotorOutputRange {
     pub max: f32,
 }
 
+impl Default for MotorOutputRange {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MotorOutputRange {
     /// Constructor.
     #[must_use]
     pub const fn new() -> Self {
         Self { min: 0.0, max: 1.0 }
-    }
-}
-
-impl Default for MotorOutputRange {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -42,17 +42,17 @@ pub struct MotorMixerParameters {
     pub overshoot: f32,
 }
 
+impl Default for MotorMixerParameters {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MotorMixerParameters {
     /// Constructor.
     #[must_use]
     pub const fn new() -> Self {
         Self { max_servo_angle_radians: 0.0, throttle: 0.0, undershoot: 0.0, overshoot: 0.0 }
-    }
-}
-
-impl Default for MotorMixerParameters {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -147,6 +147,12 @@ pub struct MixerConfig {
     pub yaw_motors_reversed: u8,
 }
 
+impl Default for MixerConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MixerConfig {
     #[must_use]
     pub const fn new() -> Self {
@@ -154,12 +160,6 @@ impl MixerConfig {
     }
     pub fn set_mixer_type(&mut self, mixer_type: u8) {
         self.mixer_type = MixerType::from_u8(mixer_type);
-    }
-}
-
-impl Default for MixerConfig {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -235,6 +235,12 @@ pub struct MotorDeviceConfig {
     pub use_dshot_edt: u8,
 }
 
+impl Default for MotorDeviceConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MotorDeviceConfig {
     #[must_use]
     pub const fn new() -> Self {
@@ -250,12 +256,6 @@ impl MotorDeviceConfig {
     }
     pub fn set_motor_protocol(&mut self, motor_protocol: u8) {
         self.motor_protocol = MotorProtocol::from_u8(motor_protocol);
-    }
-}
-
-impl Default for MotorDeviceConfig {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -275,6 +275,12 @@ pub struct MotorConfig {
     pub motor_pole_count: u8,
 }
 
+impl Default for MotorConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MotorConfig {
     #[must_use]
     pub const fn new() -> Self {
@@ -289,12 +295,6 @@ impl MotorConfig {
     }
 }
 
-impl Default for MotorConfig {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct ServoDeviceConfig {
@@ -305,16 +305,16 @@ pub struct ServoDeviceConfig {
     pub servo_pwm_rate: u16,
 }
 
+impl Default for ServoDeviceConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ServoDeviceConfig {
     #[must_use]
     pub const fn new() -> Self {
         Self { servo_center_pulse: 1500, servo_pwm_rate: 50 }
-    }
-}
-
-impl Default for ServoDeviceConfig {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -329,6 +329,12 @@ pub struct ServoConfig {
     pub channel_forwarding_start_channel: u8,
 }
 
+impl Default for ServoConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ServoConfig {
     #[must_use]
     pub const fn new() -> Self {
@@ -338,12 +344,6 @@ impl ServoConfig {
             tri_unarmed_servo: 0,
             channel_forwarding_start_channel: 0,
         }
-    }
-}
-
-impl Default for ServoConfig {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

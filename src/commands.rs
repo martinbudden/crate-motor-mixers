@@ -11,17 +11,17 @@ pub struct MotorMixerCommands {
     pub throttle: f32,
 }
 
+impl Default for MotorMixerCommands {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MotorMixerCommands {
     /// Constructor.
     #[must_use]
     pub const fn new() -> Self {
         Self { roll: 0.0, pitch: 0.0, yaw: 0.0, throttle: 0.0 }
-    }
-}
-
-impl Default for MotorMixerCommands {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -42,17 +42,17 @@ impl From<Vector4f32> for MotorMixerMessage {
     }
 }
 
+impl Default for MotorMixerMessage {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MotorMixerMessage {
     #[must_use]
     /// Constructor.
     pub const fn new() -> Self {
         Self { roll_dps: 0.0, pitch_dps: 0.0, yaw_dps: 0.0, throttle: 0.0 }
-    }
-}
-
-impl Default for MotorMixerMessage {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

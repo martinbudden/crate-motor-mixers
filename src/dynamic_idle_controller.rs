@@ -34,6 +34,12 @@ pub struct DynamicIdleControllerConfig {
     pub dyn_idle_max_increase: u8,
 }
 
+impl Default for DynamicIdleControllerConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DynamicIdleControllerConfig {
     /// Constructor.
     #[must_use]
@@ -45,12 +51,6 @@ impl DynamicIdleControllerConfig {
             dyn_idle_d_gain_x100: 50,
             dyn_idle_max_increase: 150,
         }
-    }
-}
-
-impl Default for DynamicIdleControllerConfig {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
