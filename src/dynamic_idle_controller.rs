@@ -1,5 +1,9 @@
 #[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
+use {
+    postcard::experimental::max_size::MaxSize,
+    sequential_storage::map::PostcardValue,
+    serde::{Deserialize, Serialize},
+};
 
 pub use pidsk_controller::{PidControllerf32, PidGainsf32};
 pub use signal_filters::{Pt1Filterf32, SignalFilter};
@@ -24,7 +28,7 @@ impl RpmHz for f32 {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 #[allow(missing_docs)]
 pub struct DynamicIdleControllerConfig {
     pub dyn_idle_min_rpm_d100: u8, // multiply this by 100 to get the actual min RPM
@@ -33,6 +37,9 @@ pub struct DynamicIdleControllerConfig {
     pub dyn_idle_d_gain_x100: u8,
     pub dyn_idle_max_increase: u8,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for DynamicIdleControllerConfig {}
 
 impl Default for DynamicIdleControllerConfig {
     fn default() -> Self {
@@ -163,6 +170,25 @@ impl DynamicIdleController {
 }
 
 #[cfg(test)]
+mod test_traits {
+    use super::*;
+
+    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
+    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+    #[cfg(feature = "serde")]
+    #[cfg(feature = "serde")]
+    fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
+
+    #[test]
+    fn normal_types() {
+        is_full::<DynamicIdleControllerConfig>();
+        #[cfg(feature = "serde")]
+        is_config::<DynamicIdleControllerConfig>();
+        is_full::<DynamicIdleController>();
+    }
+}
+
+#[cfg(test)]
 mod tests {
     #![allow(clippy::float_cmp)]
     use super::*;
@@ -172,22 +198,6 @@ mod tests {
         ($left:expr, $right:expr) => {
             approx::assert_abs_diff_eq!($left, $right, epsilon = 4e-6);
         };
-    }
-
-    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
-    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-    #[cfg(feature = "serde")]
-    fn is_config<
-        T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq + Serialize + for<'a> Deserialize<'a>,
-    >() {
-    }
-
-    #[test]
-    fn normal_types() {
-        is_full::<DynamicIdleControllerConfig>();
-        #[cfg(feature = "serde")]
-        is_config::<DynamicIdleControllerConfig>();
-        is_full::<DynamicIdleController>();
     }
     #[test]
     fn dynamic_idle_controller() {

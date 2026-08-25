@@ -1,9 +1,13 @@
 #[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
+use {
+    postcard::experimental::max_size::MaxSize,
+    sequential_storage::map::PostcardValue,
+    serde::{Deserialize, Serialize},
+};
 
 // parameters to mix function
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 #[allow(missing_docs)]
 pub struct MotorOutputRange {
     /// Minimum motor output, typically set to 5.5% to avoid ESC desynchronization,
@@ -12,6 +16,9 @@ pub struct MotorOutputRange {
     /// Maximum motor output, typically set to 1.0.
     pub max: f32,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for MotorOutputRange {}
 
 impl Default for MotorOutputRange {
     fn default() -> Self {
@@ -29,7 +36,7 @@ impl MotorOutputRange {
 
 // parameters to mix function
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 #[allow(missing_docs)]
 pub struct MotorMixerParameters {
     /// used by tricopter.
@@ -41,6 +48,9 @@ pub struct MotorMixerParameters {
     /// used by test code.
     pub overshoot: f32,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for MotorMixerParameters {}
 
 impl Default for MotorMixerParameters {
     fn default() -> Self {
@@ -57,7 +67,7 @@ impl MotorMixerParameters {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 #[repr(u8)]
 #[allow(missing_docs)]
 pub enum MixerType {
@@ -140,12 +150,15 @@ impl TryFrom<u8> for MixerType {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct MixerConfig {
     /// constants compatible with Betaflight `mixerMode_e` enums.
     pub mixer_type: MixerType,
     pub yaw_motors_reversed: u8,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for MixerConfig {}
 
 impl Default for MixerConfig {
     fn default() -> Self {
@@ -174,7 +187,7 @@ pub enum ProtocolFamily {
 
 /// Motor protocol.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 #[repr(u8)]
 pub enum MotorProtocol {
     #[default]
@@ -222,7 +235,7 @@ impl TryFrom<u8> for MotorProtocol {
 
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct MotorDeviceConfig {
     /// The update rate of motor outputs (50-498Hz).
     pub motor_pwm_rate: u16,
@@ -234,6 +247,9 @@ pub struct MotorDeviceConfig {
     pub use_dshot_telemetry: u8,
     pub use_dshot_edt: u8,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for MotorDeviceConfig {}
 
 impl Default for MotorDeviceConfig {
     fn default() -> Self {
@@ -260,7 +276,7 @@ impl MotorDeviceConfig {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct MotorConfig {
     pub device: MotorDeviceConfig,
     /// percentage of the motor range added to the disarmed value to give the idle value.
@@ -274,6 +290,9 @@ pub struct MotorConfig {
     // Number of motor poles, used to calculate actual RPM from eRPM.
     pub motor_pole_count: u8,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for MotorConfig {}
 
 impl Default for MotorConfig {
     fn default() -> Self {
@@ -296,7 +315,7 @@ impl MotorConfig {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct ServoDeviceConfig {
     /// PWM values, in milliseconds, common range is 1000-2000 (1ms to 2ms).
     /// This is the value for servos when they should be in the middle. e.g. 1500.
@@ -304,6 +323,9 @@ pub struct ServoDeviceConfig {
     // The update rate of servo outputs, typically 50-498Hz.
     pub servo_pwm_rate: u16,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for ServoDeviceConfig {}
 
 impl Default for ServoDeviceConfig {
     fn default() -> Self {
@@ -319,7 +341,7 @@ impl ServoDeviceConfig {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct ServoConfig {
     pub device: ServoDeviceConfig,
     /// lowpass servo filter frequency selection; 1/1000ths of loop freq.
@@ -328,6 +350,9 @@ pub struct ServoConfig {
     pub tri_unarmed_servo: u8,
     pub channel_forwarding_start_channel: u8,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for ServoConfig {}
 
 impl Default for ServoConfig {
     fn default() -> Self {
@@ -354,10 +379,7 @@ mod tests {
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     #[cfg(feature = "serde")]
-    fn is_config<
-        T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq + Serialize + for<'a> Deserialize<'a>,
-    >() {
-    }
+    fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {

@@ -23,6 +23,9 @@ rustflags = [
 # target = "thumbv8m.main-none-eabihf" 
 
 [alias]
+# Run using: 'cargo test-serde'
+test-serde = "test --features serde"
+
 test-rp2350 = [
     "test",
     "--target", "thumbv8m.main-none-eabihf",

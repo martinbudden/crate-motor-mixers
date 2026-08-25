@@ -2,7 +2,11 @@ use signal_filters::{BiquadFilterVector3f32, Pt1Filterf32};
 use vqm::Vector3f32;
 
 #[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
+use {
+    postcard::experimental::max_size::MaxSize,
+    sequential_storage::map::PostcardValue,
+    serde::{Deserialize, Serialize},
+};
 
 //use defmt::debug;
 //use embassy_time::{Instant, Timer};
@@ -14,7 +18,7 @@ use crate::{
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct RpmNotchFilterBankConfig {
     /// range in which notch filters fade down to `min_hz`.
     pub rpm_filter_fade_range_hz: u16,
@@ -28,6 +32,9 @@ pub struct RpmNotchFilterBankConfig {
     pub rpm_filter_min_hz: u8,
     pub motor_count: u8,
 }
+
+#[cfg(feature = "serde")]
+impl PostcardValue<'_> for RpmNotchFilterBankConfig {}
 
 impl Default for RpmNotchFilterBankConfig {
     fn default() -> Self {
@@ -259,16 +266,14 @@ impl RpmNotchFilters for RpmNotchFilterBank {
 }
 
 #[cfg(test)]
-mod tests {
+mod test_traits {
     use super::*;
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     #[cfg(feature = "serde")]
-    fn is_config<
-        T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq + Serialize + for<'a> Deserialize<'a>,
-    >() {
-    }
+    #[cfg(feature = "serde")]
+    fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
@@ -280,6 +285,12 @@ mod tests {
         is_full::<RpmNotchFilterBank>();
         is_full::<RpmFilterMotorState>();
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
     #[test]
     fn test_new() {
         let config = RpmNotchFilterBankConfig::new();
