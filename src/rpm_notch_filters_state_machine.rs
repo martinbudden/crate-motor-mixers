@@ -1,6 +1,6 @@
 use signal_filters::SignalFilter;
 #[allow(unused)]
-use vqm::TrigonometricMethods; // Required for .sin_cos()
+use vqm::MathMethods; // Required for .sin_cos()
 
 use crate::rpm_notch_filters::{RpmNotchFilterBankConfig, RpmNotchFilterBankContext, RpmNotchFilterFrequencies};
 
