@@ -281,18 +281,21 @@ impl DshotCodec {
 }
 
 #[cfg(test)]
-mod tests {
-
+mod test_traits {
     use super::*;
 
-    #[allow(unused)]
-    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
 
     #[test]
     fn normal_types() {
         is_full::<DshotCodec>();
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
     #[test]
     fn dshot_quintets() {
         assert_eq!(0, DshotCodec::QUINTET_TO_NIBBLE[DshotCodec::NIBBLE_TO_QUINTET[0] as usize]);

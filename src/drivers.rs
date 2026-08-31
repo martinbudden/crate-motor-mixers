@@ -1,9 +1,9 @@
 #[cfg(feature = "esp32")]
 use crate::drivers_esp32::{MotorDriverQuadDshot, MotorDriverQuadPwm};
+#[cfg(not(any(feature = "esp32", feature = "rp2350", feature = "stm32")))]
+use crate::drivers_host::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 #[cfg(feature = "rp2350")]
 use crate::drivers_rp::{MotorDriverQuadDshot, MotorDriverQuadPwm};
-#[cfg(feature = "std")]
-use crate::drivers_std::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 #[cfg(feature = "stm32")]
 use crate::drivers_stm32::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 
@@ -52,11 +52,6 @@ pub fn output_to_duty(output: f32, max_duty: f32) -> u32 {
 mod tests {
     use super::*;
 
-    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
-    fn _is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
-
-    #[test]
-    fn normal_types() {}
     #[test]
     fn test_output_to_duty() {
         assert_eq!(1000, output_to_duty(-1.0, 20_000.0));

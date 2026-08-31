@@ -34,6 +34,10 @@ test-rp2350 = [
     "rp2350,libm"
 ]
 
+check-none = [ "check", "--no-default-features"]
+check-8 = [ "check", "--no-default-features", "--features", "eight_motors"]
+check-serde = [ "check", "--no-default-features", "--features", "serde"]
+
 check-rp2350 = [
     "check",
     "--target", "thumbv8m.main-none-eabihf",

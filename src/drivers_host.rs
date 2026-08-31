@@ -1,5 +1,4 @@
-#![cfg(feature = "std")]
-
+#[cfg(not(any(feature = "esp32", feature = "rp2350", feature = "stm32")))]
 use crate::mixer_common::{MotorFrequencies, MotorOutputs};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -38,5 +37,17 @@ impl MotorDriverQuadDshot {
     pub fn motor_frequencies(&self) -> Option<MotorFrequencies> {
         _ = self;
         Some(self.motor_frequencies)
+    }
+}
+
+#[cfg(test)]
+mod test_traits {
+    use super::*;
+
+    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+
+    #[test]
+    fn normal_types() {
+        is_full::<MotorDriverQuadPwm>();
     }
 }

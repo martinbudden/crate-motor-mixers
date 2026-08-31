@@ -405,14 +405,10 @@ pub fn mix_hex_x(commands: MotorMixerCommands, range: MotorOutputRange, params: 
 }
 
 #[cfg(test)]
-mod tests {
+mod test_traits {
     #![allow(clippy::float_cmp)]
-    use approx::assert_abs_diff_eq;
-
     use super::*;
 
-    #[allow(unused)]
-    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
 
     #[test]
@@ -420,6 +416,15 @@ mod tests {
         is_full::<MotorMixerCommands>();
         is_full::<MotorMixerParameters>();
     }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::float_cmp)]
+    use approx::assert_abs_diff_eq;
+
+    use super::*;
+
     #[test]
     fn test_mixer_quad_x_roll() {
         const EPSILON: f32 = 0.000_000_1;

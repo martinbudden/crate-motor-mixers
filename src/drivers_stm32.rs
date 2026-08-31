@@ -128,3 +128,15 @@ impl MotorDriverQuadDshot {
         Some(self.motor_frequencies)
     }
 }
+
+#[cfg(test)]
+mod test_traits {
+    use super::*;
+
+    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+
+    #[test]
+    fn normal_types() {
+        is_full::<MotorDriverQuadPwm>();
+    }
+}

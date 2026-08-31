@@ -104,19 +104,22 @@ impl MotorMixer {
 }
 
 #[cfg(test)]
-mod tests {
-    use crate::{MixerConfig, MotorConfig};
-
+mod test_traits {
     use super::*;
 
-    #[allow(unused)]
-    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
 
     #[test]
     fn normal_types() {
         is_full::<MotorMixerCommon>();
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{MixerConfig, MotorConfig};
+
     #[test]
     fn new() {
         let mixer_config = MixerConfig::new();

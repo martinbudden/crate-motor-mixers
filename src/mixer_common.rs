@@ -237,9 +237,7 @@ impl DerefMut for MotorOutputFilters {
     }
 }
 #[cfg(test)]
-mod tests {
-    use crate::MixerType;
-
+mod test_traits {
     use super::*;
 
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
@@ -251,6 +249,13 @@ mod tests {
         is_full::<MotorOutputs>();
         is_full::<MotorOutputFilters>();
     }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::MixerType;
+
+    use super::*;
     #[test]
     fn new() {
         let mixer_config = MixerConfig::new();
