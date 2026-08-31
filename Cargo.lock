@@ -1592,7 +1592,6 @@ dependencies = [
  "embassy-sync 0.8.0",
  "embassy-time",
  "esp-idf-hal",
- "libm",
  "pidsk-controller",
  "postcard",
  "rustc_version 0.4.1",
@@ -2573,7 +2572,7 @@ dependencies = [
 [[package]]
 name = "vqm"
 version = "0.1.14"
-source = "git+https://github.com/martinbudden/crate-vector-quaternion-matrix#1237f7c612c3b91fc7181fcdce84e0b6c0decb74"
+source = "git+https://github.com/martinbudden/crate-vector-quaternion-matrix#f90a9c4eb649ee4526b280f635765fe3bb75dd6a"
 dependencies = [
  "cfg-if",
  "derive_more",

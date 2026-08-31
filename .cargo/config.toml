@@ -31,7 +31,7 @@ test-rp2350 = [
     "--target", "thumbv8m.main-none-eabihf",
     "--no-default-features",
     "--features",
-    "rp2350,libm"
+    "rp2350"
 ]
 
 check-none = [ "check", "--no-default-features"]
@@ -43,7 +43,7 @@ check-rp2350 = [
     "--target", "thumbv8m.main-none-eabihf",
     "--no-default-features",
     "--features",
-    "rp2350,libm"
+    "rp2350"
 ]
 
 check-stm32 = [
@@ -51,7 +51,7 @@ check-stm32 = [
     "--target", "thumbv8m.main-none-eabihf",
     "--no-default-features",
     "--features",
-    "stm32,stm32f405,libm,motors_t4_t3"
+    "stm32,stm32f405,motors_t4_t3"
 ]
 
 check-stm32-t8 = [
@@ -59,5 +59,5 @@ check-stm32-t8 = [
     "--target", "thumbv8m.main-none-eabihf",
     "--no-default-features",
     "--features",
-    "stm32,stm32f405,libm,motors_t8"
+    "stm32,stm32f405,motors_t8"
 ]
