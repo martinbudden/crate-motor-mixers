@@ -977,9 +977,9 @@ dependencies = [
 
 [[package]]
 name = "embuild"
-version = "0.33.3"
+version = "0.33.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1767ebe775033ebaed7a04fb02cc2ae7abfdc660656190957403f97594e687c7"
+checksum = "da917eb70489bcdf79deeeaa01a7511e243fad41b432a40a007024075e27634b"
 dependencies = [
  "anyhow",
  "bindgen",
@@ -1756,7 +1756,7 @@ checksum = "5be167a7af36ee22fe3115051bc51f6e6c7054c9348e28deb4f49bd6f705a315"
 [[package]]
 name = "pidsk-controller"
 version = "0.1.8"
-source = "git+https://github.com/martinbudden/crate-pid-controller#57a5e05fb98fccc58a90317c865dd265d6e32c68"
+source = "git+https://github.com/martinbudden/crate-pid-controller#7984fcca8fd865d55172a7512924cde4c80e5316"
 dependencies = [
  "num-traits",
  "rustc_version 0.4.1",
@@ -2198,7 +2198,7 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 [[package]]
 name = "signal-filters"
 version = "0.1.10"
-source = "git+https://github.com/martinbudden/crate-signal-filters#321bc238bd5aeed5455cc5470f67aa8707503e05"
+source = "git+https://github.com/martinbudden/crate-signal-filters#2cd3c86eb80c648d271d74ff1d53e9bf4cc7cece"
 dependencies = [
  "libm",
  "num-traits",
@@ -2220,9 +2220,9 @@ checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
 
 [[package]]
 name = "smallvec"
-version = "1.15.2"
+version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ed6a63f02c8539c91a8685a86f4099661ba3da017932f6ebbea6de3f0fa7c90"
+checksum = "b9be42f50aa861c555654aa3a37f52f4b1074bacf4e48fe0ef7fa584e80f1f0f"
 
 [[package]]
 name = "smart-leds"
@@ -2571,8 +2571,9 @@ dependencies = [
 
 [[package]]
 name = "vqm"
-version = "0.1.14"
-source = "git+https://github.com/martinbudden/crate-vector-quaternion-matrix#f90a9c4eb649ee4526b280f635765fe3bb75dd6a"
+version = "0.1.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0157e3f66ef66ae242156ab7dfc9a5c286020f6f06672d39efd222c665d24112"
 dependencies = [
  "cfg-if",
  "derive_more",
