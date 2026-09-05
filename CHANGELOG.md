@@ -9,7 +9,7 @@ that is each release may contain incompatible API changes.
 
 Once the API has stabilized this project will adopt semantic versioning, the first release to do so will be `0.2.0`.
 
-## [0.1.6] - 2026-08-05
+## [0.1.6] - 2026-09-05
 
 ### Changed
 
@@ -17,24 +17,38 @@ Once the API has stabilized this project will adopt semantic versioning, the fir
 - Updated to `signal-filters` `0.1.12`.
 - Updated to `pidsk-controller` `0.1.9`.
 
+### Removed
+
+- dependency on `libm`.
+
 ## [0.1.5] - 2026-08-04
 
 ### Added
 
 - `#[must_use]` attribute to selected functions.
+- support for `postcard` `MaxSize`.
+- feature flags for PWM timers.
+- `stm32f405` feature.
 
 ### Changed
 
 - Updated to `vqm 0.1.14`.
 - Updated to `signal-filters` `0.1.10`.
 - Updated to `pidsk-controller` `0.1.8`.
+- Updated to `sequential-storage` `8.0.1`.
 - Improved notch filter state machine.
 - Refactored motor mixers to match on enum rather than trait.
+- Made `MotorDriverQuadDshot` public.
+- Better split of `esp32`, `rp`, `stm32`, and `std` variants.
 
 ### Removed
 
 - `katex-header.html`.
 - `allow`s from `lib.rs`.
+
+## Fixed
+
+- dependency on `rp235xa`.
 
 ## [0.1.4] - 2026-05-23
 
