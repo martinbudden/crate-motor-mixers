@@ -9,21 +9,13 @@ that is each release may contain incompatible API changes.
 
 Once the API has stabilized this project will adopt semantic versioning, the first release to do so will be `0.2.0`.
 
-## [Possible future]
-
-## [Unreleased]
-
-### Added
+## [0.1.6] - 2026-08-05
 
 ### Changed
 
-### Removed
-
-### Deprecated
-
-### Fixed
-
-### Security
+- Updated to `vqm` `0.1.16`.
+- Updated to `signal-filters` `0.1.12`.
+- Updated to `pidsk-controller` `0.1.9`.
 
 ## [0.1.5] - 2026-08-04
 
@@ -33,9 +25,9 @@ Once the API has stabilized this project will adopt semantic versioning, the fir
 
 ### Changed
 
-- Updated to vqm 0.1.14.
-- Updated to signal-filters 0.1.10.
-- Updated to pidsk-controller 0.1.8.
+- Updated to `vqm 0.1.14`.
+- Updated to `signal-filters` `0.1.10`.
+- Updated to `pidsk-controller` `0.1.8`.
 - Improved notch filter state machine.
 - Refactored motor mixers to match on enum rather than trait.
 
@@ -48,9 +40,9 @@ Once the API has stabilized this project will adopt semantic versioning, the fir
 
 ### Changed
 
-- Updated to vqm 0.1.8.
-- Updated to signal-filters 0.1.6.
-- Updated to pidsk-controller 0.1.5.
+- Updated to `vqm` `0.1.8`.
+- Updated to `signal-filters` `0.1.6`.
+- Updated to `pidsk-controller` `0.1.5`.
 - made `serde` an optional feature.
 - Made constructors `const` where possible.
 - Improved documentation.

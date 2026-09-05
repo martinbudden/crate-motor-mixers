@@ -1755,8 +1755,9 @@ checksum = "5be167a7af36ee22fe3115051bc51f6e6c7054c9348e28deb4f49bd6f705a315"
 
 [[package]]
 name = "pidsk-controller"
-version = "0.1.8"
-source = "git+https://github.com/martinbudden/crate-pid-controller#7984fcca8fd865d55172a7512924cde4c80e5316"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ca793b7104f7a2d2cea62d3ceb372c59464826f006c4943a40977f07a2bf52d"
 dependencies = [
  "num-traits",
  "rustc_version 0.4.1",
@@ -2197,8 +2198,9 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 
 [[package]]
 name = "signal-filters"
-version = "0.1.10"
-source = "git+https://github.com/martinbudden/crate-signal-filters#2cd3c86eb80c648d271d74ff1d53e9bf4cc7cece"
+version = "0.1.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "88cb17b4022094596d0d29cc0aa228dccb1ac253770fe4cda0125ddc0a0f1c5d"
 dependencies = [
  "libm",
  "num-traits",
@@ -2571,9 +2573,9 @@ dependencies = [
 
 [[package]]
 name = "vqm"
-version = "0.1.15"
+version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0157e3f66ef66ae242156ab7dfc9a5c286020f6f06672d39efd222c665d24112"
+checksum = "feb6e14a7701f0ae3c373e61687ded0042156cab4b7a0a0056bac9f873c51cd3"
 dependencies = [
  "cfg-if",
  "derive_more",
