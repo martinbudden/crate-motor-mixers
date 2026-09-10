@@ -117,6 +117,11 @@ impl EscDshot {
                 self.data_high_pulse_width /= 4;
                 self.wrap_cycle_count /= 4;
             }
+            Protocol::Dshot1200 | Protocol::Proshot => {
+                self.data_low_pulse_width /= 8;
+                self.data_high_pulse_width /= 8;
+                self.wrap_cycle_count /= 8;
+            }
             Protocol::W2818B => {
                 self.data_low_pulse_width = self.nano_seconds_to_cycles(Self::W2818B_T0H); // =  60 =  400 * 0.15GHz
                 self.data_high_pulse_width = self.nano_seconds_to_cycles(Self::W2818B_T1H); // = 120 =  800 * 0.15GHz

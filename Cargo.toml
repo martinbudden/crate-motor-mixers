@@ -24,7 +24,7 @@ rustc_version = "0.4.1"
 
 [features]
 #default = ["std", "serde"]
-#default = ["rp2350"]
+#default = ["rp235xa"]
 #default = ["stm32", "motors_t4_t3"]
 #default = ["esp32"]
 #default = ["serde"]
@@ -43,8 +43,9 @@ simd = ["vqm/simd", "signal-filters/simd"]
 # Target platforms
 host = []
 std = ["embassy-time/std", "embassy-executor/platform-std", "vqm/std", "signal-filters/std"]
-rp2040 = ["dep:embassy-rp"]
-rp2350 = ["dep:embassy-rp"]
+rp2040 = ["dep:embassy-rp", "embassy-rp/rp2040"]
+rp235xa = ["dep:embassy-rp", "embassy-rp/rp235xa"]
+rp235xb = ["dep:embassy-rp", "embassy-rp/rp235xb"]
 stm32 = [
     "dep:embassy-stm32",
     "embassy-stm32/time-driver-tim2",
@@ -53,7 +54,6 @@ stm32 = [
 ]
 stm32f405 = ["embassy-stm32/stm32f405rg"]
 esp32 = ["dep:esp-idf-hal"]
-#esp32 = ["esp-idf-hal", "esp-hal-embassy", "esp-backtrace", "esp-println"]
 
 [dependencies]
 
@@ -64,15 +64,16 @@ embassy-sync = { version = "0.8.0", default-features = false }
 embassy-time = { version = "0.5.1", default-features = false }
 
 # Hardware-specific Embassy HAL
-#embassy-rp = { version = "0.10.0", features = ["rp2040", "time-driver", "rt"], optional = true }
 embassy-rp = { version = "0.10.0", default-features = false, optional = true }
 embassy-stm32 = { version = "0.6.0", default-features = false, optional = true }
-# embassy-esp32 = { version = "0.8", default-features = false, optional = true }
 esp-idf-hal = { version = "0.46.2", default-features = false, optional = true }
 
 serde = { version = "1.0.229", default-features = false, features = ["derive"], optional = true }
 postcard = { version = "1.1.3", default-features = false, features = ["embedded-io", "experimental-derive"], optional = true }
 sequential-storage = { version = "8.0.1", features = ["postcard"], optional = true }
+
+defmt = { version = "1.1", optional = true }
+fixed = "1.31"
 
 vqm = { version = "0.1.16" }
 #vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix" }
@@ -83,6 +84,7 @@ signal-filters = "0.1.12"
 pidsk-controller = "0.1.9"
 #pidsk-controller = { git = "https://github.com/martinbudden/crate-pid-controller" }
 #pidsk-controller = { path = "../pidsk-controller" }
+
 # Use embedded-hal for I2C/SPI traits
 #embedded-hal = "1.0.0"
 # Embedded HAL traits (often re-exported by embassy-rp)

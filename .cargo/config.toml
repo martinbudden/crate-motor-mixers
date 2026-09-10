@@ -28,24 +28,24 @@ test-none = [ "test", "--no-default-features"]
 test-serde = "test --features serde"
 test-8 = [ "test", "--no-default-features", "--features", "eight_motors"]
 
-test-rp2350 = [
+test-rp235xa = [
     "test",
     "--target", "thumbv8m.main-none-eabihf",
     "--no-default-features",
     "--features",
-    "rp2350"
+    "rp235xa"
 ]
 
 check-none = [ "check", "--no-default-features"]
 check-8 = [ "check", "--no-default-features", "--features", "eight_motors"]
 check-serde = [ "check", "--no-default-features", "--features", "serde"]
 
-check-rp2350 = [
+check-rp235xa = [
     "check",
     "--target", "thumbv8m.main-none-eabihf",
     "--no-default-features",
     "--features",
-    "rp2350"
+    "rp235xa"
 ]
 
 check-stm32 = [

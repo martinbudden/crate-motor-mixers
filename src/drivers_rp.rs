@@ -1,4 +1,4 @@
-#![cfg(any(feature = "rp2350", feature = "rp2040"))]
+#![cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
 
 use crate::{
     drivers::output_to_duty,

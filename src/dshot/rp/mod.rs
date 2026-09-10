@@ -18,17 +18,4 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::doc_paragraphs_missing_punctuation)]
 
-mod command;
-mod dshot_codec;
-mod dshot_error;
-mod esc_dshot;
-mod protocol;
-mod rp;
-mod telemetry;
-
-#[allow(unused)]
-pub use dshot_codec::DshotCodec;
-#[allow(unused)]
-pub use dshot_error::DshotError;
-#[allow(unused)]
-pub use esc_dshot::EscDshot;
+mod bidirectional_pio;

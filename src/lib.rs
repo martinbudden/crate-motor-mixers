@@ -49,13 +49,19 @@ pub use drivers::MotorDriver;
 #[cfg(feature = "esp32")]
 pub use drivers_esp32::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 
-#[cfg(any(feature = "rp2350", feature = "rp2040"))]
+#[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
 pub use drivers_rp::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 
 #[cfg(feature = "stm32")]
 pub use drivers_stm32::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 
-#[cfg(not(any(feature = "esp32", feature = "rp2350", feature = "stm32")))]
+#[cfg(not(any(
+    feature = "esp32",
+    feature = "rp2040",
+    feature = "rp235xa",
+    feature = "rp235xb",
+    feature = "stm32"
+)))]
 pub use drivers_host::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 
 #[cfg(feature = "eight_motors")]

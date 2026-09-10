@@ -4,8 +4,9 @@ pub enum Protocol {
     Dshot150 = 0,
     Dshot300 = 1,
     Dshot600 = 2,
-    Proshot = 3,
-    W2818B = 4,
+    Dshot1200 = 3,
+    Proshot = 4,
+    W2818B = 255,
 }
 
 impl Protocol {
@@ -15,11 +16,13 @@ impl Protocol {
             Self::Dshot150 => 150_000,
             Self::Dshot300 => 300_000,
             Self::Dshot600 => 600_000,
+            Self::Dshot1200 => 1_200_000,
             Self::Proshot => 1_000_000,
             Self::W2818B => 800_000,
         }
     }
 }
+
 impl TryFrom<u8> for Protocol {
     type Error = ();
 
@@ -43,8 +46,9 @@ impl Protocol {
             0 => Self::Dshot150,
             1 => Self::Dshot300,
             2 => Self::Dshot600,
-            3 => Self::Proshot,
-            4 => Self::W2818B,
+            3 => Self::Dshot1200,
+            4 => Self::Proshot,
+            255 => Self::W2818B,
             _ => Self::default(),
         }
     }

@@ -1,8 +1,14 @@
 #[cfg(feature = "esp32")]
 use crate::drivers_esp32::{MotorDriverQuadDshot, MotorDriverQuadPwm};
-#[cfg(not(any(feature = "esp32", feature = "rp2350", feature = "stm32")))]
+#[cfg(not(any(
+    feature = "esp32",
+    feature = "rp2040",
+    feature = "rp235xa",
+    feature = "rp235xb",
+    feature = "stm32"
+)))]
 use crate::drivers_host::{MotorDriverQuadDshot, MotorDriverQuadPwm};
-#[cfg(feature = "rp2350")]
+#[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
 use crate::drivers_rp::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 #[cfg(feature = "stm32")]
 use crate::drivers_stm32::{MotorDriverQuadDshot, MotorDriverQuadPwm};
