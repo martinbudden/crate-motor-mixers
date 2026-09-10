@@ -41,6 +41,7 @@ align = ["vqm/align", "signal-filters/align"]
 simd = ["vqm/simd", "signal-filters/simd"]
 
 # Target platforms
+host = []
 std = ["embassy-time/std", "embassy-executor/platform-std", "vqm/std", "signal-filters/std"]
 rp2040 = ["dep:embassy-rp"]
 rp2350 = ["dep:embassy-rp"]

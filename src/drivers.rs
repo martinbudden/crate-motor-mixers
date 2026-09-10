@@ -9,7 +9,6 @@ use crate::drivers_stm32::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 
 use crate::mixer_common::{MotorFrequencies, MotorOutputs};
 
-#[allow(unused)]
 #[allow(missing_debug_implementations, missing_copy_implementations)]
 pub enum MotorDriver {
     QuadPwm(MotorDriverQuadPwm),

@@ -1,4 +1,4 @@
-#[cfg(not(any(feature = "esp32", feature = "rp2350", feature = "stm32")))]
+#![cfg(not(any(feature = "esp32", feature = "rp2350", feature = "stm32")))]
 use crate::mixer_common::{MotorFrequencies, MotorOutputs};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

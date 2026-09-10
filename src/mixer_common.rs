@@ -76,7 +76,6 @@ impl MotorMixerCommon {
     }
 }
 
-#[allow(unused)]
 impl MotorMixerCommon {
     #[inline]
     #[must_use]

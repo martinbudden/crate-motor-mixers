@@ -19,7 +19,7 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::doc_paragraphs_missing_punctuation)]
 
-mod dshot_codec;
+mod dshot;
 mod dynamic_idle_controller;
 
 mod commands;
@@ -68,5 +68,3 @@ pub use motor_mixer::MotorMixer;
 pub use rpm_notch_filters::{RpmNotchFilterBank, RpmNotchFilterBankConfig, RpmNotchFilterFrequencies, RpmNotchFilters};
 
 pub use dynamic_idle_controller::{DynamicIdleController, DynamicIdleControllerConfig, RpmHz};
-
-pub use dshot_codec::DshotCodec;

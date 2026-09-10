@@ -1,64 +1,94 @@
+use crate::dshot::command::Command;
+
 /// Dshot Encoder/Decoder.
+/// ```text
+/// DShot Frame Structure
+/// The DShot Frame defines which information is at which position in the data stream:
+///
+///     11 bit throttle(S): 2048 possible values.
+///         0 is reserved for disarmed.
+///         1 to 47 are reserved for special commands.
+///         48 to 2047 (2000 steps) are for the actual throttle value
+///     1 bit telemetry request(T) - if this is set, telemetry data is sent back via a separate channel
+///     4 bit checksum(C) aka CRC (Cyclic Redundancy Check) to validate the frame
+///
+/// This results in a 16 bit (2 byte) frame with the following structure:
+///
+///    SSSSSSSSSSSTCCCC
+///
+/// eRPM Telemetry Frame Structure
+///
+/// The eRPM telemetry frame sent by the ESC in bidirectional DSHOT mode is a 16 bit value, in the format:
+/// The encoding of the eRPM data is not as straight forward as the one of the throttle frame:
+///
+///     eeemmmmmmmmmcccc
+///
+/// where m is the 9-bit mantissa and e is the 3 bit exponent and cccc the checksum.
+/// The resultant value is the mantissa shifted left by the exponent.
+/// ```
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct DshotCodec;
 
-#[allow(missing_docs)]
-impl DshotCodec {
-    /// ```text
-    /// DShot Frame Structure
-    /// The DShot Frame defines which information is at which position in the data stream:
-    ///
-    ///     11 bit throttle(S): 2048 possible values.
-    ///         0 is reserved for disarmed.
-    ///         1 to 47 are reserved for special commands.
-    ///         48 to 2047 (2000 steps) are for the actual throttle value
-    ///     1 bit telemetry request(T) - if this is set, telemetry data is sent back via a separate channel
-    ///     4 bit checksum(C) aka CRC (Cyclic Redundancy Check) to validate the frame
-    ///
-    /// This results in a 16 bit (2 byte) frame with the following structure:
-    ///
-    ///    SSSSSSSSSSSTCCCC
-    ///
-    /// eRPM Telemetry Frame Structure
-    ///
-    /// The eRPM telemetry frame sent by the ESC in bidirectional DSHOT mode is a 16 bit value, in the format:
-    /// The encoding of the eRPM data is not as straight forward as the one of the throttle frame:
-    ///
-    ///     eeemmmmmmmmmcccc
-    ///
-    /// where m is the 9-bit mantissa and e is the 3 bit exponent and cccc the checksum.
-    /// The resultant value is the mantissa shifted left by the exponent.
-    /// ```text
-    pub const TELEMETRY_TYPE_ERPM: u16 = 0;
-    pub const TELEMETRY_TYPE_TEMPERATURE: u16 = 1;
-    pub const TELEMETRY_TYPE_VOLTAGE: u16 = 2;
-    pub const TELEMETRY_TYPE_CURRENT: u16 = 3;
-    pub const TELEMETRY_TYPE_DEBUG1: u16 = 4;
-    pub const TELEMETRY_TYPE_DEBUG2: u16 = 5;
-    pub const TELEMETRY_TYPE_STRESS_LEVEL: u16 = 6;
-    pub const TELEMETRY_TYPE_STATE_EVENTS: u16 = 7;
-    pub const TELEMETRY_TYPE_COUNT: u16 = 8;
-    pub const TELEMETRY_INVALID: u16 = 0xFFFF;
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DecodeError {
+    NoData,
+    InvalidRunLength,
+    GcrData,
+    Crc,
+    Erpm,
+    _TelemetryType,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum TelemetryFrame {
+    Erpm(u32),
+    /// 1°C per unit.
+    Temperature(u8),
+    /// 250mV per unit.
+    Voltage(u32),
+    /// 1A (1000mA) per unit.
+    Current(u32),
+    Debug1(u8),
+    Debug2(u8),
+    Debug3(u8),
+    StateEvent(u8),
+    Unknown {
+        type_id: u16,
+        value: u8,
+    },
+}
+
+#[allow(unused)]
 impl DshotCodec {
-    /// Convert PWM (1000-2000) to Dshot value.
+    const THROTTLE_OFFSET: u16 = 48;
+    const THROTTLE_MIN: u16 = 48;
+    const THROTTLE_MAX: u16 = 2047;
+
+    // GCR lookup tables
+    const GCR_BIT_LENGTHS: [u32; 17] = [0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5, 5, 5];
+    const GCR_SET_BITS: [u32; 6] = [0b_00000, 0b_00001, 0b_00011, 0b_00111, 0b_01111, 0b_11111];
+    const QUINTET_TO_NIBBLE: [u32; 32] =
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 10, 11, 0, 13, 14, 15, 0, 0, 2, 3, 0, 5, 6, 7, 0, 0, 8, 1, 0, 4, 12, 0];
+    const NIBBLE_TO_QUINTET: [u8; 16] =
+        [0x19, 0x1B, 0x12, 0x13, 0x1D, 0x15, 0x16, 0x17, 0x1A, 0x09, 0x0A, 0x0B, 0x1E, 0x0D, 0x0E, 0x0F];
+
+    /// Convert PWM value (1000-2000) to Dshot value (48-2047).
     #[inline]
     #[must_use]
     pub fn pwm_to_dshot(value: u16) -> u16 {
-        ((value - 1000) * 2) + 47
+        ((value - 1000) * 2) + Self::THROTTLE_OFFSET
     }
 
     /// Convert PWM to Dshot with clipping.
     #[inline]
     #[must_use]
     pub fn pwm_to_dshot_clamped(value: u16) -> u16 {
-        if value > 2000 {
-            Self::pwm_to_dshot(2000)
-        } else if value > 1000 {
+        if value >= 2000 {
+            Self::THROTTLE_MAX
+        } else if value >= 1000 {
             Self::pwm_to_dshot(value)
         } else {
-            0
+            Self::THROTTLE_MIN
         }
     }
 
@@ -90,74 +120,96 @@ impl DshotCodec {
         Self::checksum_bidirectional(value >> 4) == (value & 0x0F)
     }
 
-    /// Create unidirectional Dshot frame.
     #[inline]
     #[must_use]
-    pub fn frame_unidirectional(value: u16) -> u16 {
+    pub fn encode_raw_value_unidirectional(value: u16) -> u16 {
         let value = value << 1;
         (value << 4) | Self::checksum_unidirectional(value)
     }
 
-    /// Create bidirectional Dshot frame.
     #[inline]
     #[must_use]
-    pub fn frame_bidirectional(value: u16) -> u16 {
+    pub fn encode_raw_value_bidirectional(value: u16) -> u16 {
         let value = value << 1;
         (value << 4) | Self::checksum_bidirectional(value)
     }
 
-    // GCR lookup tables
-    pub const GCR_BIT_LENGTHS: [u32; 17] = [0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5, 5, 5];
+    #[inline]
+    #[must_use]
+    pub fn encode_command_unidirectional(command: Command) -> u16 {
+        Self::encode_raw_value_unidirectional(command as u16)
+    }
 
-    pub const GCR_SET_BITS: [u32; 6] = [0b00000, 0b00001, 0b00011, 0b00111, 0b01111, 0b11111];
-
-    pub const QUINTET_TO_NIBBLE: [u32; 32] =
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 10, 11, 0, 13, 14, 15, 0, 0, 2, 3, 0, 5, 6, 7, 0, 0, 8, 1, 0, 4, 12, 0];
-
-    pub const NIBBLE_TO_QUINTET: [u8; 16] =
-        [0x19, 0x1B, 0x12, 0x13, 0x1D, 0x15, 0x16, 0x17, 0x1A, 0x09, 0x0A, 0x0B, 0x1E, 0x0D, 0x0E, 0x0F];
+    #[inline]
+    #[must_use]
+    pub fn encode_command_bidirectional(command: Command) -> u16 {
+        Self::encode_raw_value_bidirectional(command as u16)
+    }
 
     /// Decode `erpm`.
-    /// # Errors `TELEMETRY_INVALID`
-    pub fn decode_erpm(value: u16) -> Result<u16, u16> {
-        let mut value = value;
+    /// # Errors `DecodeError`
+    pub fn decode_erpm(value: u16) -> Result<u16, DecodeError> {
         // eRPM range
         if value == 0x0FFF {
             return Ok(0);
         }
         let m: u16 = value & 0x01FF;
         let e: u16 = (value & 0xFE00) >> 9;
-        value = m << e;
-        if value == 0 {
-            return Err(Self::TELEMETRY_INVALID);
+        let result = m << e;
+        if result == 0 {
+            return Err(DecodeError::Erpm);
         }
-        Ok(value)
+        Ok(result)
     }
 
-    fn decode_telemetry_frame(value: u16) -> Result<(u16, u16), u16> {
+    /*fn decode_telemetry_frame(value: u16) -> Result<TelemetryFrame, DecodeError> {
         let type_val = (value & 0x0F00) >> 8;
         let is_erpm = (type_val & 0x01) != 0 || type_val == 0;
         if is_erpm {
-            let m = value & 0x01FF;
-            let e = (value & 0xFE00) >> 9;
-            let result = m << e;
-            if result == 0 {
-                return Err(Self::TELEMETRY_INVALID);
-            }
-            return Ok((result, Self::TELEMETRY_TYPE_ERPM));
+            let result = Self::decode_erpm(value)?;
+            return Ok(TelemetryFrame::Erpm(u32::from(result)));
         }
         let type_val = (value & 0x0F00) >> 8;
-        Ok((value & 0x00FF, type_val >> 1))
+        Ok((value & 0x00FF, TelemetryType::from_u16(type_val >> 1)))
+    }*/
+
+    pub fn decode_telemetry_frame(raw_12: u16) -> TelemetryFrame {
+        let exponent = (raw_12 >> 9) & 0x07;
+        let bit8 = (raw_12 >> 8) & 1;
+
+        if exponent == 0 || bit8 == 1 {
+            if raw_12 == 0 || raw_12 == 0x0FFF {
+                return TelemetryFrame::Erpm(0);
+            }
+            let mantissa = raw_12 & 0x1FF;
+            let period_us = u32::from(mantissa) << u32::from(exponent);
+            if period_us == 0 {
+                return TelemetryFrame::Erpm(0);
+            }
+            return TelemetryFrame::Erpm(60_000_000 / period_us);
+        }
+
+        let data = (raw_12 & 0xFF) as u8;
+        match exponent {
+            1 => TelemetryFrame::Temperature(data),
+            2 => TelemetryFrame::Voltage(u32::from(data) * 250),
+            3 => TelemetryFrame::Current(u32::from(data) * 1000),
+            4 => TelemetryFrame::Debug1(data),
+            5 => TelemetryFrame::Debug2(data),
+            6 => TelemetryFrame::Debug3(data),
+            7 => TelemetryFrame::StateEvent(data),
+            _ => TelemetryFrame::Unknown { type_id: exponent, value: data },
+        }
     }
 
     /// Decode samples returned by Raspberry Pi PIO implementation.
     ///
-    /// Returns the value of the Extended Dshot Telemetry (EDT) frame (without the  checksum).
-    /// # Errors `TELEMETRY_INVALID`
-    pub fn decode_samples(value: u64) -> Result<(u32, u16), u16> {
+    /// Returns the value of the Extended Dshot Telemetry (EDT) frame (without the checksum).
+    /// # Errors `DecodeError`
+    pub fn decode_samples(value: u64) -> Result<TelemetryFrame, DecodeError> {
         // telemetry data must start with a 0, so if the first bit is high, we don't have any data
         if (value & 0x8000_0000_0000_0000) != 0 {
-            return Err(Self::TELEMETRY_INVALID);
+            return Err(DecodeError::NoData);
         }
 
         let mut consecutive_bit_count: usize = 1; // we always start with the MSB
@@ -188,7 +240,7 @@ impl DshotCodec {
                 consecutive_bit_count += 1;
                 if consecutive_bit_count > 16 {
                     // invalid run length at the current sample rate (outside of GCR_BIT_LENGTHS table)
-                    return Err(Self::TELEMETRY_INVALID);
+                    return Err(DecodeError::InvalidRunLength);
                 }
             }
             mask >>= 1;
@@ -206,7 +258,7 @@ impl DshotCodec {
 
         // GCR data should be 21 bits
         if bit_count < 21 {
-            return Err(Self::TELEMETRY_INVALID);
+            return Err(DecodeError::GcrData);
         }
 
         // chop the GCR data down to just the 21 most significant bits
@@ -218,12 +270,10 @@ impl DshotCodec {
         let result: u16 = Self::gcr20_to_erpm(gcr20);
 
         if !Self::checksum_bidirectional_is_ok(result) {
-            return Err(Self::TELEMETRY_INVALID);
+            return Err(DecodeError::Crc);
         }
-        match Self::decode_telemetry_frame(result >> 4) {
-            Ok((result, telemetry_type)) => Ok((u32::from(result), telemetry_type)),
-            Err(_) => Err(Self::TELEMETRY_INVALID),
-        }
+
+        Ok(Self::decode_telemetry_frame(result >> 4))
     }
 
     #[inline]
@@ -318,59 +368,81 @@ mod tests {
 
     #[test]
     fn dshot_codec_checksum() {
-        assert_eq!(0b0000_0000_0110, DshotCodec::checksum_unidirectional(0b1000_0010_1100));
-        assert_eq!(0b0000_0000_1001, DshotCodec::checksum_bidirectional(0b1000_0010_1100));
+        assert_eq!(0b_0000_0000_0110, DshotCodec::checksum_unidirectional(0b_1000_0010_1100));
+        assert_eq!(0b_0000_0000_1001, DshotCodec::checksum_bidirectional(0b_1000_0010_1100));
 
-        assert_eq!(0b1000_0010_1100_0110, DshotCodec::frame_unidirectional(0b0100_0001_0110));
-        assert_eq!(0b1000_0010_1100_1001, DshotCodec::frame_bidirectional(0b0100_0001_0110));
+        assert_eq!(0b_1000_0010_1100_0110, DshotCodec::encode_raw_value_unidirectional(0b_0100_0001_0110));
+        assert_eq!(0b_1000_0010_1100_1001, DshotCodec::encode_raw_value_bidirectional(0b_0100_0001_0110));
 
-        assert!(DshotCodec::checksum_unidirectional_is_ok(DshotCodec::frame_unidirectional(0b0100_0001_0110)));
-        assert!(DshotCodec::checksum_bidirectional_is_ok(DshotCodec::frame_bidirectional(0b0100_0001_0110)));
+        assert!(DshotCodec::checksum_unidirectional_is_ok(DshotCodec::encode_raw_value_unidirectional(
+            0b_0100_0001_0110
+        )));
+        assert!(DshotCodec::checksum_bidirectional_is_ok(DshotCodec::encode_raw_value_bidirectional(
+            0b_0100_0001_0110
+        )));
     }
     #[test]
     fn dshot_codec_mappings() {
-        assert_eq!(0b1101_0100_1011_1101_0110, DshotCodec::erpm_to_gcr20(0b1000_0010_1100_0110));
-        assert_eq!(0b1000_0010_1100_0110, DshotCodec::gcr20_to_erpm(0b1101_0100_1011_1101_0110));
+        assert_eq!(0b_1101_0100_1011_1101_0110, DshotCodec::erpm_to_gcr20(0b_1000_0010_1100_0110));
+        assert_eq!(0b_1000_0010_1100_0110, DshotCodec::gcr20_to_erpm(0b_1101_0100_1011_1101_0110));
 
         assert_eq!(0b0_1010_1010_1010_1010_1010, DshotCodec::gcr21_to_gcr20(0b0_1100_1100_1100_1100_1100));
         // TODO: check dshot_codec_mappings
-        //assert_eq!(0b011001100110011001100, DshotCodec::gr20_to_gcr21(0b10101010101010101010));
+        //assert_eq!(0b_011001100110011001100, DshotCodec::gr20_to_gcr21(0b_10101010101010101010));
     }
     #[test]
     fn dshot_codec() {
-        assert_eq!(47, DshotCodec::pwm_to_dshot(1000));
-        assert_eq!(2047, DshotCodec::pwm_to_dshot(2000));
+        assert_eq!(48, DshotCodec::pwm_to_dshot(1000));
+        assert_eq!(2048, DshotCodec::pwm_to_dshot(2000));
 
-        assert_eq!(0, DshotCodec::pwm_to_dshot_clamped(0));
-        assert_eq!(0, DshotCodec::pwm_to_dshot_clamped(10));
-        assert_eq!(0, DshotCodec::pwm_to_dshot_clamped(999));
+        assert_eq!(48, DshotCodec::pwm_to_dshot_clamped(0));
+        assert_eq!(48, DshotCodec::pwm_to_dshot_clamped(10));
+        assert_eq!(48, DshotCodec::pwm_to_dshot_clamped(999));
 
-        assert_eq!(0, DshotCodec::pwm_to_dshot_clamped(1000)); // should this be 0 or 48 ?
+        assert_eq!(48, DshotCodec::pwm_to_dshot_clamped(1000)); // should this be 0 or 48 ?
         //assert_eq!(48, DshotCodec::pwm_to_dshot_clamped(1000)); // should this be 0 or 48 ?
-        assert_eq!(49, DshotCodec::pwm_to_dshot_clamped(1001));
-        assert_eq!(51, DshotCodec::pwm_to_dshot_clamped(1002));
-        assert_eq!(53, DshotCodec::pwm_to_dshot_clamped(1003));
-        assert_eq!(1047, DshotCodec::pwm_to_dshot_clamped(1500));
-        assert_eq!(2045, DshotCodec::pwm_to_dshot_clamped(1999));
+        assert_eq!(50, DshotCodec::pwm_to_dshot_clamped(1001));
+        assert_eq!(52, DshotCodec::pwm_to_dshot_clamped(1002));
+        assert_eq!(54, DshotCodec::pwm_to_dshot_clamped(1003));
+        assert_eq!(1048, DshotCodec::pwm_to_dshot_clamped(1500));
+        assert_eq!(2046, DshotCodec::pwm_to_dshot_clamped(1999));
         assert_eq!(2047, DshotCodec::pwm_to_dshot_clamped(2000));
         assert_eq!(2047, DshotCodec::pwm_to_dshot_clamped(2001));
         assert_eq!(2047, DshotCodec::pwm_to_dshot_clamped(2002));
         assert_eq!(2047, DshotCodec::pwm_to_dshot_clamped(4000));
 
-        assert_eq!(1542, DshotCodec::frame_unidirectional(48)); //0x606
-        assert_eq!(1572, DshotCodec::frame_unidirectional(49)); // 0x624
-        assert_eq!(33547, DshotCodec::frame_unidirectional(1048)); // 0x830B
-        assert_eq!(65484, DshotCodec::frame_unidirectional(2046)); // 0xFFCC
-        assert_eq!(65518, DshotCodec::frame_unidirectional(2047)); // 0xFFEB, 0xFFFF=65535
+        assert_eq!(1542, DshotCodec::encode_raw_value_unidirectional(48)); //0x606
+        assert_eq!(1572, DshotCodec::encode_raw_value_unidirectional(49)); // 0x624
+        assert_eq!(33547, DshotCodec::encode_raw_value_unidirectional(1048)); // 0x830B
+        assert_eq!(65484, DshotCodec::encode_raw_value_unidirectional(2046)); // 0xFFCC
+        assert_eq!(65518, DshotCodec::encode_raw_value_unidirectional(2047)); // 0xFFEB, 0xFFFF=65535
 
         // testing out of range values
-        assert_eq!(0, DshotCodec::frame_unidirectional(0));
-        assert_eq!(34, DshotCodec::frame_unidirectional(1));
-        assert_eq!(68, DshotCodec::frame_unidirectional(2));
-        assert_eq!(325, DshotCodec::frame_unidirectional(10));
+        assert_eq!(0, DshotCodec::encode_raw_value_unidirectional(0));
+        assert_eq!(34, DshotCodec::encode_raw_value_unidirectional(1));
+        assert_eq!(68, DshotCodec::encode_raw_value_unidirectional(2));
+        assert_eq!(325, DshotCodec::encode_raw_value_unidirectional(10));
 
         //assert_eq!(1, DshotCodec::frame_unidirectional(2048));
         //assert_eq!(35, DshotCodec::frame_unidirectional(2049));
         //assert_eq!(69, DshotCodec::frame_unidirectional(2050));
+    }
+    #[test]
+    fn commands() {
+        assert_eq!(0, DshotCodec::encode_command_unidirectional(Command::MotorStop));
+        //            SSSS_SSSS_SSST_CCCC
+        assert_eq!(0b_0000_0000_0010_0010, DshotCodec::encode_command_unidirectional(Command::Beep1));
+        assert_eq!(0b_0000_0101_1100_1001, DshotCodec::encode_command_unidirectional(Command::SignalLineERPMTelemetry));
+        assert_eq!(
+            0b_0000_0101_1110_1011,
+            DshotCodec::encode_command_unidirectional(Command::SignalLineERPMPeriodTelemetry)
+        );
+        // bidirectional form is the same with the checksum bits inverted
+        assert_eq!(0b_0000_0000_0010_1101, DshotCodec::encode_command_bidirectional(Command::Beep1));
+        assert_eq!(0b_0000_0101_1100_0110, DshotCodec::encode_command_bidirectional(Command::SignalLineERPMTelemetry));
+        assert_eq!(
+            0b_0000_0101_1110_0100,
+            DshotCodec::encode_command_bidirectional(Command::SignalLineERPMPeriodTelemetry)
+        );
     }
 }
