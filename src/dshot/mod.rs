@@ -23,8 +23,10 @@ mod dshot_codec;
 mod dshot_error;
 mod esc_dshot;
 mod protocol;
-mod telemetry;
+mod telemetry_type;
 
+pub use command::Command;
+pub use telemetry_type::TelemetryType;
 pub use dshot_codec::DshotCodec;
 #[allow(unused)]
 pub use dshot_error::DshotError;

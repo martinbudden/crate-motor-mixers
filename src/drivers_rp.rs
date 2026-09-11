@@ -1,6 +1,6 @@
 #![cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
 
-use crate::{
+use super::{
     drivers::output_to_duty,
     mixer_common::{MotorFrequencies, MotorOutputs},
 };

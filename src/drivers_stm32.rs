@@ -6,7 +6,7 @@ use embassy_stm32::timer::{
     simple_pwm::{SimplePwm, SimplePwmChannel},
 };
 
-use crate::{
+use super::{
     drivers::output_to_duty,
     mixer_common::{MotorFrequencies, MotorOutputs},
 };

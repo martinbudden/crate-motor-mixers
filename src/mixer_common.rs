@@ -2,7 +2,7 @@ use core::ops::{Deref, DerefMut};
 
 use signal_filters::SlewRateLimiterf32;
 
-use crate::{MixerConfig, MixerType, MotorConfig, MotorMixerParameters, MotorOutputRange};
+use super::{MixerConfig, MixerType, MotorConfig, MotorMixerParameters, MotorOutputRange};
 
 #[cfg(feature = "eight_motors")]
 pub const MAX_SUPPORTED_MOTOR_COUNT: usize = 8;

@@ -1,21 +1,20 @@
-use crate::dshot::DshotCodec;
 
-use super::{protocol::Protocol, telemetry::TelemetryType};
+use super::{Protocol, TelemetryType, DshotCodec};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct EscDshot {
     protocol: Protocol,
     motor_pole_count: u16,
     erpm_to_hz: f32,
-    data_high_pulse_width: u32,
-    data_low_pulse_width: u32,
+    data_high_pulse_width: u16,
+    data_low_pulse_width: u16,
     use_high_order_bits: bool,
     /// Electronic RPM, ie not taking into account motor pole count.
     erpm: i32,
     telemetry_read_count: u32,
     telemetry_error_count: u32,
     cpu_frequency: u32,
-    wrap_cycle_count: u32,
+    wrap_cycle_count: u16,
     dma_buffer: [u32; Self::DMA_BUFFER_SIZE],
 }
 
@@ -79,13 +78,13 @@ impl EscDshot {
 
 #[allow(unused)]
 impl EscDshot {
-    pub const fn nano_seconds_to_cycles(self, nano_seconds: u32) -> u32 {
+    pub const fn nano_seconds_to_cycles(self, nano_seconds: u32) -> u16 {
         // note: the k values cancel out, but give greater precision in the calculation
         const K: u64 = 128;
         let d = K * 1_000_000_000 / (self.cpu_frequency as u64);
         #[allow(clippy::cast_possible_truncation)]
         {
-            ((nano_seconds as u64) * K / d) as u32
+            ((nano_seconds as u64) * K / d) as u16
         }
     }
 
@@ -142,22 +141,57 @@ impl EscDshot {
     }
 
     pub fn write_frame(&mut self, frame: u16) {
-        let mut mask_bit = 1 << (Self::DSHOT_BIT_COUNT - 1);
+        self.dma_buffer = self.duty_cycles_u32(frame);
+    }
 
+    /// Returns an array of duty cycles for use in PWM DMA.
+    ///
+    /// The array an extra element set to zero to ensure that PWM output gets pulled low at the end of the sequence.
+    pub fn duty_cycles_u16(&self, frame: u16) -> [u16; Self::DMA_BUFFER_SIZE] {
+        let mut ret = [0u16; Self::DMA_BUFFER_SIZE];
+
+        let mut mask_bit = 1 << (Self::DSHOT_BIT_COUNT - 1);
+        for item in &mut ret {
+            *item = if frame & mask_bit == 0 { self.data_high_pulse_width } else { self.data_low_pulse_width };
+            mask_bit >>= 1;
+        }
+
+        // Set last value to zero, (DMA_BUFFER_SIZE = DSHOT_BIT_COUNT + 1).
+        ret[Self::DMA_BUFFER_SIZE - 1] = 0;
+        ret
+    }
+
+    /// Returns an array of duty cycles for use in PWM DMA.
+    ///
+    /// The array an extra element set to zero to ensure that PWM output gets pulled low at the end of the sequence.
+    pub fn duty_cycles_u32(&self, frame: u16) -> [u32; Self::DMA_BUFFER_SIZE] {
+        let mut ret = [0u32; Self::DMA_BUFFER_SIZE];
+
+        let mut mask_bit = 1 << (Self::DSHOT_BIT_COUNT - 1);
         if self.use_high_order_bits {
-            for item in &mut self.dma_buffer {
-                let byte = if frame & mask_bit == 0 { self.data_high_pulse_width } else { self.data_low_pulse_width };
+            for item in &mut ret {
+                let byte = if frame & mask_bit == 0 {
+                    u32::from(self.data_high_pulse_width)
+                } else {
+                    u32::from(self.data_low_pulse_width)
+                };
                 *item = byte << 16;
                 mask_bit >>= 1;
             }
         } else {
-            for item in &mut self.dma_buffer {
-                *item = if frame & mask_bit == 0 { self.data_high_pulse_width } else { self.data_low_pulse_width };
+            for item in &mut ret {
+                *item = if frame & mask_bit == 0 {
+                    u32::from(self.data_high_pulse_width)
+                } else {
+                    u32::from(self.data_low_pulse_width)
+                };
                 mask_bit >>= 1;
             }
         }
+
         // Set last value to zero, (DMA_BUFFER_SIZE = DSHOT_BIT_COUNT + 1).
-        self.dma_buffer[Self::DMA_BUFFER_SIZE - 1] = 0;
+        ret[Self::DMA_BUFFER_SIZE - 1] = 0;
+        ret
     }
 
     pub fn read(&mut self) -> bool {

@@ -188,18 +188,30 @@ mod tests {
         assert_eq!(Command::from_u8(1), Command::Beep1);
         assert_eq!(Command::from_u8(35), Command::SignalLineContinuousERPMPeriodTelemetry);
         assert_eq!(Command::from_u8(36), Command::MotorStop);
+        assert_eq!(Command::from_u8(37), Command::MotorStop);
+        assert_eq!(Command::from_u8(38), Command::MotorStop);
+        assert_eq!(Command::from_u8(39), Command::MotorStop);
+        assert_eq!(Command::from_u8(40), Command::MotorStop);
         assert_eq!(Command::from_u8(41), Command::MotorStop);
         assert_eq!(Command::from_u8(42), Command::SignalLineTemperatureTelemetry);
         assert_eq!(Command::from_u8(47), Command::SignalLineERPMPeriodTelemetry);
         assert_eq!(Command::from_u8(48), Command::MotorStop);
+        assert_eq!(Command::from_u8(49), Command::MotorStop);
+        assert_eq!(Command::from_u8(50), Command::MotorStop);
 
         assert_eq!(Command::try_from(0), Ok(Command::MotorStop));
         assert_eq!(Command::try_from(1), Ok(Command::Beep1));
         assert_eq!(Command::try_from(35), Ok(Command::SignalLineContinuousERPMPeriodTelemetry));
         assert_eq!(Command::try_from(36), Err(()));
+        assert_eq!(Command::try_from(37), Err(()));
+        assert_eq!(Command::try_from(38), Err(()));
+        assert_eq!(Command::try_from(39), Err(()));
+        assert_eq!(Command::try_from(40), Err(()));
         assert_eq!(Command::try_from(41), Err(()));
         assert_eq!(Command::try_from(42), Ok(Command::SignalLineTemperatureTelemetry));
         assert_eq!(Command::try_from(47), Ok(Command::SignalLineERPMPeriodTelemetry));
         assert_eq!(Command::try_from(48), Err(()));
+        assert_eq!(Command::try_from(49), Err(()));
+        assert_eq!(Command::try_from(50), Err(()));
     }
 }

@@ -1,4 +1,4 @@
-use crate::dshot::command::Command;
+use super::Command;
 
 /// Dshot Encoder/Decoder.
 /// ```text

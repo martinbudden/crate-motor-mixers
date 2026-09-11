@@ -1,5 +1,5 @@
 #![cfg(not(any(feature = "esp32", feature = "rp2040", feature = "rp235xa", feature = "rp235xb", feature = "stm32")))]
-use crate::mixer_common::{MotorFrequencies, MotorOutputs};
+use super::mixer_common::{MotorFrequencies, MotorOutputs};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct MotorDriverQuadPwm;

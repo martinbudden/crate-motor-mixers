@@ -1,6 +1,6 @@
 #![cfg(feature = "esp32")]
 
-use crate::{
+use super::{
     drivers::output_to_duty,
     mixer_common::{MotorFrequencies, MotorOutputs},
 };

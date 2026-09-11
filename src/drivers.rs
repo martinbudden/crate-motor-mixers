@@ -1,5 +1,3 @@
-#[cfg(feature = "esp32")]
-use crate::drivers_esp32::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 #[cfg(not(any(
     feature = "esp32",
     feature = "rp2040",
@@ -7,13 +5,18 @@ use crate::drivers_esp32::{MotorDriverQuadDshot, MotorDriverQuadPwm};
     feature = "rp235xb",
     feature = "stm32"
 )))]
-use crate::drivers_host::{MotorDriverQuadDshot, MotorDriverQuadPwm};
-#[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
-use crate::drivers_rp::{MotorDriverQuadDshot, MotorDriverQuadPwm};
-#[cfg(feature = "stm32")]
-use crate::drivers_stm32::{MotorDriverQuadDshot, MotorDriverQuadPwm};
+use super::drivers_host::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 
-use crate::mixer_common::{MotorFrequencies, MotorOutputs};
+#[cfg(feature = "esp32")]
+use super::drivers_esp32::{MotorDriverQuadDshot, MotorDriverQuadPwm};
+
+#[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
+use super::drivers_rp::{MotorDriverQuadDshot, MotorDriverQuadPwm};
+
+#[cfg(feature = "stm32")]
+use super::drivers_stm32::{MotorDriverQuadDshot, MotorDriverQuadPwm};
+
+use super::mixer_common::{MotorFrequencies, MotorOutputs};
 
 #[allow(missing_debug_implementations, missing_copy_implementations)]
 pub enum MotorDriver {

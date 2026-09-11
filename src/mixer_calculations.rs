@@ -11,7 +11,7 @@
 
 #![allow(clippy::excessive_precision)]
 
-use crate::{MotorMixerCommands, MotorMixerParameters, MotorOutputRange};
+use super::{MotorMixerCommands, MotorMixerParameters, MotorOutputRange};
 #[allow(unused)]
 use vqm::MathMethods; // Required for .cos()
 
