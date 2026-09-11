@@ -1,4 +1,4 @@
-#![cfg(not(any(feature = "esp32", feature = "rp2040", feature = "rp235xa", feature = "rp235xb", feature = "stm32")))]
+#![cfg(not(any(feature = "esp32", feature = "rp", feature = "stm32")))]
 use super::mixer_common::{MotorFrequencies, MotorOutputs};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -28,7 +28,8 @@ impl MotorDriverQuadDshot {
 }
 
 impl MotorDriverQuadDshot {
-    pub fn write_to_motors(&mut self, _outputs: MotorOutputs) {
+    #[allow(clippy::unused_async)]
+    pub async fn write_to_motors(&mut self, _outputs: MotorOutputs) {
         _ = self;
     }
 

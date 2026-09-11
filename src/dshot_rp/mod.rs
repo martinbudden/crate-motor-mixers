@@ -18,5 +18,8 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::doc_paragraphs_missing_punctuation)]
 
-mod bidirectional_pio;
 mod clock_divider;
+mod pio_bidirectional_quad_dshot;
+
+#[cfg(feature = "rp")]
+pub use pio_bidirectional_quad_dshot::PioBidirectionalQuadDshot;

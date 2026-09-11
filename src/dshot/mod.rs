@@ -20,16 +20,17 @@
 
 mod command;
 mod dshot_codec;
+mod dshot_decoder;
 mod dshot_error;
 mod esc_dshot;
 mod protocol;
 mod telemetry_type;
 
 pub use command::Command;
-pub use telemetry_type::TelemetryType;
-pub use dshot_codec::DshotCodec;
+pub use dshot_codec::DshotEncoder;
 #[allow(unused)]
 pub use dshot_error::DshotError;
 #[allow(unused)]
 pub use esc_dshot::EscDshot;
 pub use protocol::Protocol;
+pub use telemetry_type::TelemetryType;

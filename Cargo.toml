@@ -43,9 +43,10 @@ simd = ["vqm/simd", "signal-filters/simd"]
 # Target platforms
 host = []
 std = ["embassy-time/std", "embassy-executor/platform-std", "vqm/std", "signal-filters/std"]
-rp2040 = ["dep:embassy-rp", "embassy-rp/rp2040"]
-rp235xa = ["dep:embassy-rp", "embassy-rp/rp235xa"]
-rp235xb = ["dep:embassy-rp", "embassy-rp/rp235xb"]
+rp = ["dep:embassy-rp"] # combined feature for all rp variants
+rp2040 = ["rp", "embassy-rp/rp2040"]
+rp235xa = ["rp", "embassy-rp/rp235xa"]
+rp235xb = ["rp", "embassy-rp/rp235xb"]
 stm32 = [
     "dep:embassy-stm32",
     "embassy-stm32/time-driver-tim2",

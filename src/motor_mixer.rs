@@ -13,7 +13,7 @@ use super::{
     /          \
 QuadPwm        QuadDshot
     │                │
-    │                ├── DShot output
+    │                ├── Dshot output
     │                └── telemetry
     │
     └── PWM output
@@ -40,13 +40,13 @@ impl MotorMixer {
 
     /// Calculate and output motor mix.
     /// It is typically called at frequency of between 500Hz and 1000Hz.
-    pub fn output_to_motors(&mut self, commands_dps: MotorMixerMessage) {
+    pub async fn output_to_motors(&mut self, commands_dps: MotorMixerMessage) {
         const MIXER_OUTPUT_SCALE_FACTOR: f32 = 1000.0;
 
         // ALWAYS write 0.0 to the motors if they are not switched on, as a safety precaution
         if !self.common.motors_is_on() || !self.common.motors_is_armed() {
             self.common.outputs = MotorOutputs::default();
-            self.driver.write_to_motors(self.common.outputs);
+            self.driver.write_to_motors(self.common.outputs).await;
             return;
         }
         let commands = MotorMixerCommands {
@@ -99,7 +99,7 @@ impl MotorMixer {
             }
         }
 
-        self.driver.write_to_motors(self.common.outputs);
+        self.driver.write_to_motors(self.common.outputs).await;
     }
 }
 

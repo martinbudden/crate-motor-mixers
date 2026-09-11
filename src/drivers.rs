@@ -1,16 +1,10 @@
-#[cfg(not(any(
-    feature = "esp32",
-    feature = "rp2040",
-    feature = "rp235xa",
-    feature = "rp235xb",
-    feature = "stm32"
-)))]
+#[cfg(not(any(feature = "esp32", feature = "rp", feature = "stm32")))]
 use super::drivers_host::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 
 #[cfg(feature = "esp32")]
 use super::drivers_esp32::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 
-#[cfg(any(feature = "rp2040", feature = "rp235xa", feature = "rp235xb"))]
+#[cfg(feature = "rp")]
 use super::drivers_rp::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 
 #[cfg(feature = "stm32")]
@@ -25,10 +19,10 @@ pub enum MotorDriver {
 }
 
 impl MotorDriver {
-    pub fn write_to_motors(&mut self, outputs: MotorOutputs) {
+    pub async fn write_to_motors(&mut self, outputs: MotorOutputs) {
         match self {
             Self::QuadPwm(driver) => driver.write_to_motors(outputs),
-            Self::QuadDshot(driver) => driver.write_to_motors(outputs),
+            Self::QuadDshot(driver) => driver.write_to_motors(outputs).await,
         }
     }
 

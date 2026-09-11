@@ -118,7 +118,8 @@ impl MotorDriverQuadDshot {
 }
 
 impl MotorDriverQuadDshot {
-    pub fn write_to_motors(&mut self, _outputs: MotorOutputs) {
+    #[allow(clippy::unused_async)]
+    pub async fn write_to_motors(&mut self, _outputs: MotorOutputs) {
         _ = self;
     }
 

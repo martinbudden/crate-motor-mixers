@@ -55,6 +55,6 @@ WS2812B specification is
 
 | Protocol | Effective Baud Rate | Frame Duration | Max Theoretical Refresh Rate |
 | -------- | ------------------- | -------------- | ---------------------------- |
-| DShot150 |            150 Kbps |      106.7 μ s |                     9.37 kHz |
-| DShot300 |            300 Kbps |       53.3 μ s |                    18.75 kHz |
-| DShot600 |            600 Kbps |       26.7 μ s |                    37.50 kHz |
+| Dshot150 |            150 Kbps |      106.7 μ s |                     9.37 kHz |
+| Dshot300 |            300 Kbps |       53.3 μ s |                    18.75 kHz |
+| Dshot600 |            600 Kbps |       26.7 μ s |                    37.50 kHz |

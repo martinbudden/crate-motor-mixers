@@ -57,7 +57,7 @@ impl MotorDriverQuadDshot {
 }
 
 impl MotorDriverQuadDshot {
-    pub fn write_to_motors(&mut self, _outputs: MotorOutputs) {
+    pub async fn write_to_motors(&mut self, _outputs: MotorOutputs) {
         _ = self;
     }
 

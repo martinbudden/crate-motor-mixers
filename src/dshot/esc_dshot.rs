@@ -1,5 +1,4 @@
-
-use super::{Protocol, TelemetryType, DshotCodec};
+use super::{DshotEncoder, Protocol, TelemetryType};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct EscDshot {
@@ -131,12 +130,12 @@ impl EscDshot {
 
     pub fn write_bidirectional(&mut self, value: u16) {
         _ = self;
-        let frame = DshotCodec::encode_raw_value_bidirectional(value);
+        let frame = DshotEncoder::encode_raw_bidirectional(value);
         //pio_sm_put(self.pio, _pioStateMachine, frame);
     }
 
     pub fn write_unidirectional(&mut self, value: u16) {
-        let frame = DshotCodec::encode_raw_value_unidirectional(value);
+        let frame = DshotEncoder::encode_raw_unidirectional(value);
         self.write_frame(frame);
     }
 

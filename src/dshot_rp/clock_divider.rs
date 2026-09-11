@@ -25,7 +25,7 @@ mod tests {
     #[test]
     fn dshot_bidir_divider_at_125mhz() {
         // Verify bidir divider: target PIO clock = 12MHz * dshot_speed/300kHz
-        // DShot600: target = 12MHz * 600/300 = 24MHz
+        // Dshot600: target = 12MHz * 600/300 = 24MHz
         // At 125MHz: divider = 125/24 = 5.2083...
         const SYS_CLOCK: u32 = 125_000_000;
         let divider = bidir_pio_clock_divider(Protocol::Dshot600, SYS_CLOCK);
