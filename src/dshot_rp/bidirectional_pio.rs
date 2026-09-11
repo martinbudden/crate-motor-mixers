@@ -12,7 +12,7 @@ use embassy_rp::{
 use embassy_time::{Duration, with_timeout};
 
 use super::clock_divider::bidir_pio_clock_divider;
-use crate::dshot::{dshot_error::DshotError, protocol::Protocol};
+use crate::dshot::{DshotError, Protocol};
 
 // Bidirectional DShot PIO program based on pico-bidir-dshot reference.
 //

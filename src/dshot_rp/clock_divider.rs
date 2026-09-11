@@ -1,6 +1,6 @@
 use fixed::{FixedU32, types::extra::U8};
 
-use crate::dshot::protocol::Protocol;
+use crate::dshot::Protocol;
 
 #[allow(unused)]
 pub fn tx_pio_clock_divider(protocol: Protocol, sys_clock_frequency: u32) -> FixedU32<U8> {

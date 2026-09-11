@@ -30,6 +30,8 @@ mod drivers_host;
 mod drivers_rp;
 mod drivers_stm32;
 
+mod dshot_rp;
+
 mod mixer_calculations;
 mod mixer_common;
 mod mixer_config;
