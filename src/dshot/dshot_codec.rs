@@ -67,8 +67,10 @@ impl DshotCodec {
     // GCR lookup tables
     const GCR_BIT_LENGTHS: [u32; 17] = [0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5, 5, 5];
     const GCR_SET_BITS: [u32; 6] = [0b_00000, 0b_00001, 0b_00011, 0b_00111, 0b_01111, 0b_11111];
-    const QUINTET_TO_NIBBLE: [u32; 32] =
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 10, 11, 0, 13, 14, 15, 0, 0, 2, 3, 0, 5, 6, 7, 0, 0, 8, 1, 0, 4, 12, 0];
+    const QUINTET_TO_NIBBLE: [u32; 32] = [
+        255, 255, 255, 255, 255, 255, 255, 255, 255, 9, 10, 11, 255, 13, 14, 15, 255, 255, 2, 3, 255, 5, 6, 7, 255, 0,
+        8, 1, 255, 4, 12, 255,
+    ];
     const NIBBLE_TO_QUINTET: [u8; 16] =
         [0x19, 0x1B, 0x12, 0x13, 0x1D, 0x15, 0x16, 0x17, 0x1A, 0x09, 0x0A, 0x0B, 0x1E, 0x0D, 0x0E, 0x0F];
 
@@ -286,10 +288,10 @@ impl DshotCodec {
     #[inline]
     #[must_use]
     pub fn erpm_to_gcr20(value: u16) -> u32 {
-        let mut ret = u32::from(Self::NIBBLE_TO_QUINTET[(value & 0x1F) as usize]);
-        ret |= u32::from(Self::NIBBLE_TO_QUINTET[((value >> 4) & 0x1F) as usize]) << 5;
-        ret |= u32::from(Self::NIBBLE_TO_QUINTET[((value >> 8) & 0x1F) as usize]) << 10;
-        ret |= u32::from(Self::NIBBLE_TO_QUINTET[((value >> 12) & 0x1F) as usize]) << 15;
+        let mut ret = u32::from(Self::NIBBLE_TO_QUINTET[(value & 0x0F) as usize]);
+        ret |= u32::from(Self::NIBBLE_TO_QUINTET[((value >> 4) & 0x0F) as usize]) << 5;
+        ret |= u32::from(Self::NIBBLE_TO_QUINTET[((value >> 8) & 0x0F) as usize]) << 10;
+        ret |= u32::from(Self::NIBBLE_TO_QUINTET[((value >> 12) & 0x0F) as usize]) << 15;
         ret
     }
 
@@ -297,20 +299,25 @@ impl DshotCodec {
     ///    1. If the current input bit in GCR data is a 1 then the output bit is the inverse of the previous output bit
     ///    2. If the current input bit in GCR data is a 0 then the output bit is the same as the previous output
     #[must_use]
-    pub fn gr20_to_gcr21(value: u32) -> u32 {
+    pub fn gcr20_to_gcr21(input: u32) -> u32 {
         let mut ret = 0;
-        let mut previous_output_bit = 0;
+        let mut prev_gcr_bit = 0;
+        let mut mask = 1 << 19;
 
-        let mut mask = 1 << 20;
         while mask != 0 {
             ret <<= 1;
-            let input_bit = value & mask;
-            let output_bit = if input_bit != 0 { !previous_output_bit } else { previous_output_bit };
-            previous_output_bit = output_bit;
-            ret |= output_bit;
+            let input_bit = u32::from((input & mask) != 0);
+            let gcr_bit = input_bit ^ prev_gcr_bit;
+            prev_gcr_bit = gcr_bit;
+            ret |= gcr_bit;
             mask >>= 1;
         }
         ret
+    }
+
+    pub fn gcr_encode(value: u16) -> u32 {
+        let gcr20 = Self::erpm_to_gcr20(value);
+        Self::gcr20_to_gcr21(gcr20)
     }
 
     #[inline]
@@ -319,14 +326,47 @@ impl DshotCodec {
         value ^ (value >> 1)
     }
 
-    #[allow(clippy::cast_possible_truncation)]
     #[must_use]
     pub fn gcr20_to_erpm(value: u32) -> u16 {
         let mut ret: u32 = Self::QUINTET_TO_NIBBLE[(value & 0x1F) as usize];
         ret |= Self::QUINTET_TO_NIBBLE[((value >> 5) & 0x1F) as usize] << 4;
         ret |= Self::QUINTET_TO_NIBBLE[((value >> 10) & 0x1F) as usize] << 8;
         ret |= Self::QUINTET_TO_NIBBLE[((value >> 15) & 0x1F) as usize] << 12;
-        ret as u16
+        #[allow(clippy::cast_possible_truncation)]
+        {
+            ret as u16
+        }
+    }
+
+    pub fn gcr21_decode(gcr21: u32) -> Result<u16, DecodeError> {
+        let gcr = gcr21 & 0x000F_FFFF;
+        let gcr20 = gcr ^ (gcr >> 1);
+
+        let mut ret: u32 = Self::QUINTET_TO_NIBBLE[(gcr20 & 0x1F) as usize];
+        if ret == 0xFF {
+            return Err(DecodeError::GcrData);
+        }
+
+        let nibble = Self::QUINTET_TO_NIBBLE[((gcr20 >> 5) & 0x1F) as usize];
+        if nibble == 0xFF {
+            return Err(DecodeError::GcrData);
+        }
+        ret |= nibble << 4;
+
+        let nibble = Self::QUINTET_TO_NIBBLE[((gcr20 >> 10) & 0x1F) as usize];
+        if nibble == 0xFF {
+            return Err(DecodeError::GcrData);
+        }
+        ret |= nibble << 8;
+
+        let nibble = Self::QUINTET_TO_NIBBLE[((gcr20 >> 15) & 0x1F) as usize];
+        if nibble == 0xFF {
+            return Err(DecodeError::GcrData);
+        }
+        ret |= nibble << 12;
+
+        #[allow(clippy::cast_possible_truncation)]
+        Ok(ret as u16)
     }
 }
 
@@ -381,6 +421,40 @@ mod tests {
             0b_0100_0001_0110
         )));
     }
+    #[test]
+    fn gcr_decode_rejects_invalid_input() {
+        // All zeros and all ones should fail
+        assert_eq!(Err(DecodeError::GcrData), DshotCodec::gcr21_decode(0));
+        assert_eq!(Err(DecodeError::GcrData), DshotCodec::gcr21_decode(0x1FFFF));
+    }
+
+    #[test]
+    fn gcr_decode_valid_checksum() {
+        // Test values with valid checksum (XOR of nibbles = 0xF)
+        // 0xF000: nibbles 0,0,0,F -> XOR = F ✓
+        let gcr20 = DshotCodec::erpm_to_gcr20(0xF000);
+        assert_eq!(0x7E739, gcr20);
+        let encoded = DshotCodec::gcr20_to_gcr21(gcr20);
+        assert_eq!(Ok(0xF000), DshotCodec::gcr21_decode(encoded));
+
+        let encoded = DshotCodec::gcr_encode(0xF000);
+        assert_eq!(Ok(0xF000), DshotCodec::gcr21_decode(encoded));
+
+        // 0x1E00: nibbles 0,0,E,1 -> XOR = F ✓
+        let encoded = DshotCodec::gcr_encode(0x1E00);
+        assert_eq!(Ok(0x1E00), DshotCodec::gcr21_decode(encoded));
+
+        // 0x2D00: nibbles 0,0,D,2 -> XOR = F ✓
+        let encoded = DshotCodec::gcr_encode(0x2D00);
+        assert_eq!(Ok(0x2D00), DshotCodec::gcr21_decode(encoded));
+
+        // 0x1234: nibbles 4,3,2,1 -> XOR = 4^3^2^1 = 4 (not F, invalid)
+        // Need a value where nibbles XOR to F
+        // 0x8421: nibbles 1,2,4,8 -> XOR = 1^2^4^8 = F ✓
+        let encoded = DshotCodec::gcr_encode(0x8421);
+        assert_eq!(Ok(0x8421), DshotCodec::gcr21_decode(encoded));
+    }
+
     #[test]
     fn dshot_codec_mappings() {
         assert_eq!(0b_1101_0100_1011_1101_0110, DshotCodec::erpm_to_gcr20(0b_1000_0010_1100_0110));

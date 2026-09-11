@@ -7,6 +7,8 @@ pub enum DshotError {
     InvalidThrottle,
     /// Telemetry CRC checksum mismatch.
     InvalidTelemetryCrc,
+    InvalidTelemetryData,
+    TxTimeout,
     /// ESC did not respond to telemetry request in time.
     TelemetryTimeout,
     /// Invalid GCR encoding in telemetry response.

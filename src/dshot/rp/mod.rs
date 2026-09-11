@@ -19,3 +19,4 @@
 #![warn(clippy::doc_paragraphs_missing_punctuation)]
 
 mod bidirectional_pio;
+mod clock_divider;
