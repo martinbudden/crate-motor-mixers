@@ -1,4 +1,4 @@
-use super::DshotFrame;
+use super::DshotBidirectionalFrame;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DecodeError {
@@ -58,7 +58,7 @@ impl DshotDecoder {
     #[inline]
     #[must_use]
     pub fn checksum_bidirectional_is_ok(value: u16) -> bool {
-        DshotFrame::calculate_checksum(value >> 4) == (value & 0x0F)
+        DshotBidirectionalFrame::calculate_checksum(value >> 4) == (value & 0x0F)
     }
 
     /// Decode `erpm`.
@@ -262,22 +262,22 @@ mod tests {
 
     #[test]
     fn dshot_quintets() {
-        assert_eq!(0, DshotDecoder::QUINTET_TO_NIBBLE[DshotFrame::NIBBLE_TO_QUINTET[0] as usize]);
-        assert_eq!(1, DshotDecoder::QUINTET_TO_NIBBLE[DshotFrame::NIBBLE_TO_QUINTET[1] as usize]);
-        assert_eq!(2, DshotDecoder::QUINTET_TO_NIBBLE[DshotFrame::NIBBLE_TO_QUINTET[2] as usize]);
-        assert_eq!(3, DshotDecoder::QUINTET_TO_NIBBLE[DshotFrame::NIBBLE_TO_QUINTET[3] as usize]);
-        assert_eq!(4, DshotDecoder::QUINTET_TO_NIBBLE[DshotFrame::NIBBLE_TO_QUINTET[4] as usize]);
-        assert_eq!(5, DshotDecoder::QUINTET_TO_NIBBLE[DshotFrame::NIBBLE_TO_QUINTET[5] as usize]);
-        assert_eq!(6, DshotDecoder::QUINTET_TO_NIBBLE[DshotFrame::NIBBLE_TO_QUINTET[6] as usize]);
-        assert_eq!(7, DshotDecoder::QUINTET_TO_NIBBLE[DshotFrame::NIBBLE_TO_QUINTET[7] as usize]);
-        assert_eq!(8, DshotDecoder::QUINTET_TO_NIBBLE[DshotFrame::NIBBLE_TO_QUINTET[8] as usize]);
-        assert_eq!(9, DshotDecoder::QUINTET_TO_NIBBLE[DshotFrame::NIBBLE_TO_QUINTET[9] as usize]);
-        assert_eq!(10, DshotDecoder::QUINTET_TO_NIBBLE[DshotFrame::NIBBLE_TO_QUINTET[10] as usize]);
-        assert_eq!(11, DshotDecoder::QUINTET_TO_NIBBLE[DshotFrame::NIBBLE_TO_QUINTET[11] as usize]);
-        assert_eq!(12, DshotDecoder::QUINTET_TO_NIBBLE[DshotFrame::NIBBLE_TO_QUINTET[12] as usize]);
-        assert_eq!(13, DshotDecoder::QUINTET_TO_NIBBLE[DshotFrame::NIBBLE_TO_QUINTET[13] as usize]);
-        assert_eq!(14, DshotDecoder::QUINTET_TO_NIBBLE[DshotFrame::NIBBLE_TO_QUINTET[14] as usize]);
-        assert_eq!(15, DshotDecoder::QUINTET_TO_NIBBLE[DshotFrame::NIBBLE_TO_QUINTET[15] as usize]);
+        assert_eq!(0, DshotDecoder::QUINTET_TO_NIBBLE[DshotBidirectionalFrame::NIBBLE_TO_QUINTET[0] as usize]);
+        assert_eq!(1, DshotDecoder::QUINTET_TO_NIBBLE[DshotBidirectionalFrame::NIBBLE_TO_QUINTET[1] as usize]);
+        assert_eq!(2, DshotDecoder::QUINTET_TO_NIBBLE[DshotBidirectionalFrame::NIBBLE_TO_QUINTET[2] as usize]);
+        assert_eq!(3, DshotDecoder::QUINTET_TO_NIBBLE[DshotBidirectionalFrame::NIBBLE_TO_QUINTET[3] as usize]);
+        assert_eq!(4, DshotDecoder::QUINTET_TO_NIBBLE[DshotBidirectionalFrame::NIBBLE_TO_QUINTET[4] as usize]);
+        assert_eq!(5, DshotDecoder::QUINTET_TO_NIBBLE[DshotBidirectionalFrame::NIBBLE_TO_QUINTET[5] as usize]);
+        assert_eq!(6, DshotDecoder::QUINTET_TO_NIBBLE[DshotBidirectionalFrame::NIBBLE_TO_QUINTET[6] as usize]);
+        assert_eq!(7, DshotDecoder::QUINTET_TO_NIBBLE[DshotBidirectionalFrame::NIBBLE_TO_QUINTET[7] as usize]);
+        assert_eq!(8, DshotDecoder::QUINTET_TO_NIBBLE[DshotBidirectionalFrame::NIBBLE_TO_QUINTET[8] as usize]);
+        assert_eq!(9, DshotDecoder::QUINTET_TO_NIBBLE[DshotBidirectionalFrame::NIBBLE_TO_QUINTET[9] as usize]);
+        assert_eq!(10, DshotDecoder::QUINTET_TO_NIBBLE[DshotBidirectionalFrame::NIBBLE_TO_QUINTET[10] as usize]);
+        assert_eq!(11, DshotDecoder::QUINTET_TO_NIBBLE[DshotBidirectionalFrame::NIBBLE_TO_QUINTET[11] as usize]);
+        assert_eq!(12, DshotDecoder::QUINTET_TO_NIBBLE[DshotBidirectionalFrame::NIBBLE_TO_QUINTET[12] as usize]);
+        assert_eq!(13, DshotDecoder::QUINTET_TO_NIBBLE[DshotBidirectionalFrame::NIBBLE_TO_QUINTET[13] as usize]);
+        assert_eq!(14, DshotDecoder::QUINTET_TO_NIBBLE[DshotBidirectionalFrame::NIBBLE_TO_QUINTET[14] as usize]);
+        assert_eq!(15, DshotDecoder::QUINTET_TO_NIBBLE[DshotBidirectionalFrame::NIBBLE_TO_QUINTET[15] as usize]);
     }
 
     /*#[test]

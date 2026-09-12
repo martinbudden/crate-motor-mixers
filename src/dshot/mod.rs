@@ -23,7 +23,7 @@ mod dshot_decoder;
 mod dshot_encoder;
 mod dshot_error;
 mod esc_dshot;
-mod frame;
+mod dshot_bidirectional_frame;
 mod protocol;
 mod telemetry_type;
 
@@ -35,6 +35,6 @@ pub use dshot_error::DshotError;
 #[allow(unused)]
 pub use esc_dshot::EscDshot;
 #[allow(unused)]
-pub use frame::DshotFrame;
+pub use dshot_bidirectional_frame::DshotBidirectionalFrame;
 pub use protocol::Protocol;
 pub use telemetry_type::TelemetryType;
