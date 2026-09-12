@@ -171,11 +171,11 @@ impl<'a, PIO: Instance> PioBidirectionalQuadDshot<'a, PIO> {
         pio_config.set_out_pins(&[&pin2]);
         pio_config.set_in_pins(&[&pin2]);
 
-        pio.sm1.set_config(&pio_config);
-        pio.sm1.set_pin_dirs(Direction::Out, &[&pin2]);
-        pio.sm1.restart();
-        pio.sm1.set_enable(true);
-        pio.sm1.set_clock_divider(clock_divider);
+        pio.sm2.set_config(&pio_config);
+        pio.sm2.set_pin_dirs(Direction::Out, &[&pin2]);
+        pio.sm2.restart();
+        pio.sm2.set_enable(true);
+        pio.sm2.set_clock_divider(clock_divider);
 
         // PIN 3
         pio_config.set_jmp_pin(&pin3);
@@ -183,75 +183,90 @@ impl<'a, PIO: Instance> PioBidirectionalQuadDshot<'a, PIO> {
         pio_config.set_out_pins(&[&pin3]);
         pio_config.set_in_pins(&[&pin3]);
 
-        pio.sm1.set_config(&pio_config);
-        pio.sm1.set_pin_dirs(Direction::Out, &[&pin3]);
-        pio.sm1.restart();
-        pio.sm1.set_enable(true);
-        pio.sm1.set_clock_divider(clock_divider);
+        pio.sm3.set_config(&pio_config);
+        pio.sm3.set_pin_dirs(Direction::Out, &[&pin3]);
+        pio.sm3.restart();
+        pio.sm3.set_enable(true);
+        pio.sm3.set_clock_divider(clock_divider);
         Self { pio_instance: pio, program_origin }
     }
 
-    /// Reset PIO to the pull-block position if it drifted (e.g. telemetry timeout).
-    fn sync_pc<const SM: usize>(sm: &mut StateMachine<'_, PIO, SM>, program_origin: u8) {
+    /// Reset PIO program counter to the pull-block address.
+    fn reset_program_counter<const SM: usize>(sm: &mut StateMachine<'_, PIO, SM>, program_origin: u8) {
         // program_origin + 0: push block     (pushes previous RX data)
         // program_origin + 1: set pindirs, 1 (pin as output)
         // program_origin + 2: pull block     (waits for TX frame — idle position)
-        let expected_pc = program_origin + 2;
-        let current_pc = sm.get_addr();
+        let pull_block_address = program_origin + 2;
 
-        if current_pc != expected_pc {
+        if sm.get_addr() != pull_block_address {
             // Clear ISR to discard any partial RX data from an interrupted frame.
             const MOV_ISR_NULL: u16 = 0b101_00000_110_00_011;
             unsafe { sm.exec_instr(MOV_ISR_NULL) };
 
             // Construct unconditional JMP instruction: opcode 000, no delay, condition 000
-            let jmp_instr = u16::from(program_origin + 1) & 0x1F;
-            unsafe { sm.exec_instr(jmp_instr) };
+            let jmp_instruction = u16::from(program_origin + 1) & 0x1F;
+            unsafe { sm.exec_instr(jmp_instruction) };
         }
     }
 
-    /// Send a frame, read raw RX value, and decode telemetry
+    /// Send a frame and return the raw rx value.
     /// wait_push timeout  → TxTimeout
     /// wait_pull timeout  → TelemetryTimeout
     /// rx_data == 0       → InvalidTelemetry
-    #[allow(unused)]
-    async fn send_and_receive<const SM: usize>(
+    /// # Errors
+    async fn send_frame_and_receive<const SM: usize>(
         sm: &mut StateMachine<'_, PIO, SM>,
         program_origin: u8,
         frame: u16,
     ) -> Result<u32, DshotError> {
+        // Clear any existing rx data
         while sm.rx().try_pull().is_some() {}
+        Self::reset_program_counter(sm, program_origin);
 
-        Self::sync_pc(sm, program_origin);
-
-        let tx_data = u32::from(!frame);
+        let frame_inverted = u32::from(!frame);
         // TODO: check 10ms timeout ins PIO `send_and_receive`.
-        with_timeout(Duration::from_millis(10), sm.tx().wait_push(tx_data)).await.map_err(|_| DshotError::TxTimeout)?;
+        with_timeout(Duration::from_millis(10), sm.tx().wait_push(frame_inverted)).await.map_err(|_| DshotError::TxTimeout)?;
 
         let rx_data = with_timeout(Duration::from_micros(500), sm.rx().wait_pull())
             .await
             .map_err(|_| DshotError::TelemetryTimeout)?;
-        if rx_data == 0 {
-            return Err(DshotError::InvalidTelemetryData);
-        }
 
         Ok(rx_data)
     }
 
     #[allow(unused)]
-    pub async fn send_and_receive_raw_sm0(&mut self, frame_raw: u16) -> Result<u32, DshotError> {
-        Self::send_and_receive(&mut self.pio_instance.sm0, self.program_origin, frame_raw).await
+    pub async fn send_frame<const SM: usize>(sm: &mut StateMachine<'_, PIO, SM>, program_origin: u8, frame: u16) {
+        while sm.rx().try_pull().is_some() {}
+        Self::reset_program_counter(sm, program_origin);
+
+        // bidirectional dshot inverts frame
+        let frame_inverted = u32::from(!frame);
+        sm.tx().wait_push(frame_inverted).await;
     }
+
     #[allow(unused)]
-    pub async fn send_and_receive_raw_sm1(&mut self, frame_raw: u16) -> Result<u32, DshotError> {
-        Self::send_and_receive(&mut self.pio_instance.sm1, self.program_origin, frame_raw).await
+    pub fn send_frame_blocking<const SM: usize>(sm: &mut StateMachine<'_, PIO, SM>, program_origin: u8, frame: u16) {
+        while sm.rx().try_pull().is_some() {}
+        Self::reset_program_counter(sm, program_origin);
+
+        // bidirectional dshot inverts frame
+        let frame_inverted = u32::from(!frame);
+        sm.tx().push(frame_inverted);
     }
-    #[allow(unused)]
-    pub async fn send_and_receive_raw_sm2(&mut self, frame_raw: u16) -> Result<u32, DshotError> {
-        Self::send_and_receive(&mut self.pio_instance.sm2, self.program_origin, frame_raw).await
+
+    pub async fn send_frame_and_receive_sm0(&mut self, frame: u16) -> Result<u32, DshotError> {
+        Self::send_frame_and_receive(&mut self.pio_instance.sm0, self.program_origin, frame).await
     }
-    #[allow(unused)]
-    pub async fn send_and_receive_raw_sm3(&mut self, frame_raw: u16) -> Result<u32, DshotError> {
-        Self::send_and_receive(&mut self.pio_instance.sm3, self.program_origin, frame_raw).await
+
+    pub async fn send_frame_and_receive_sm1(&mut self, frame: u16) -> Result<u32, DshotError> {
+        Self::send_frame_and_receive(&mut self.pio_instance.sm1, self.program_origin, frame).await
+    }
+
+    pub async fn send_frame_and_receive_sm2(&mut self, frame: u16) -> Result<u32, DshotError> {
+        Self::send_frame_and_receive(&mut self.pio_instance.sm2, self.program_origin, frame).await
+    }
+
+    pub async fn send_frame_and_receive_sm3(&mut self, frame: u16) -> Result<u32, DshotError> {
+        Self::send_frame_and_receive(&mut self.pio_instance.sm3, self.program_origin, frame).await
     }
 }

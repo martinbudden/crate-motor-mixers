@@ -5,7 +5,7 @@ use super::{
     mixer_common::{MotorFrequencies, MotorOutputs},
 };
 
-use crate::dshot::{DshotEncoder, Protocol};
+use crate::dshot::{DecodeError, DshotDecoder, DshotEncoder, DshotError, Protocol};
 use crate::dshot_rp::PioBidirectionalQuadDshot;
 
 use embassy_rp::pwm::{Config as PwmConfig, Pwm};
@@ -88,12 +88,36 @@ impl MotorDriverQuadDshot {
 }
 
 impl MotorDriverQuadDshot {
+     fn decode_gcr21_result(&self, result: Result<u32, DshotError>) -> Result<f32, DecodeError> {
+        let gcr21 = result.map_err(|_| DecodeError::GcrData)?;
+        let erpm = DshotDecoder::gcr21_decode(gcr21).map_err(|_| DecodeError::GcrData)?;
+        Ok(f32::from(erpm) * self.erpm_to_hz)
+    }
+
     pub async fn write_to_motors(&mut self, outputs: MotorOutputs) {
-        // outputs are in the range 0.0 - 1000.0
-        let pwm = DshotEncoder::pwm_to_dshot_clamped((outputs[0] + 1000.0) as u16);
-        let erpm = self.pio.send_and_receive_raw_sm0(pwm).await;
-        let erpm = erpm.unwrap_or_default();
-        self.motor_frequencies[0] = (erpm as f32) * self.erpm_to_hz;
+        let frame = DshotEncoder::throttle_to_frame(outputs[0]);
+        let gcr21_result = self.pio.send_frame_and_receive_sm0(frame).await;
+        if let Ok(frequency) = self.decode_gcr21_result(gcr21_result) {
+            self.motor_frequencies[0] = frequency;
+        }
+
+        let frame = DshotEncoder::throttle_to_frame(outputs[1]);
+        let gcr21_result = self.pio.send_frame_and_receive_sm1(frame).await;
+        if let Ok(frequency) = self.decode_gcr21_result(gcr21_result) {
+            self.motor_frequencies[1] = frequency;
+        }
+
+        let frame = DshotEncoder::throttle_to_frame(outputs[2]);
+        let gcr21_result = self.pio.send_frame_and_receive_sm2(frame).await;
+        if let Ok(frequency) = self.decode_gcr21_result(gcr21_result) {
+            self.motor_frequencies[2] = frequency;
+        }
+
+        let frame = DshotEncoder::throttle_to_frame(outputs[3]);
+        let gcr21_result = self.pio.send_frame_and_receive_sm3(frame).await;
+        if let Ok(frequency) = self.decode_gcr21_result(gcr21_result) {
+            self.motor_frequencies[3] = frequency;
+        }
     }
 
     pub fn motor_frequencies(&self) -> Option<MotorFrequencies> {

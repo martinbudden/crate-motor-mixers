@@ -29,6 +29,8 @@ mod telemetry_type;
 pub use command::Command;
 pub use dshot_codec::DshotEncoder;
 #[allow(unused)]
+pub use dshot_decoder::{DshotDecoder,DecodeError};
+#[allow(unused)]
 pub use dshot_error::DshotError;
 #[allow(unused)]
 pub use esc_dshot::EscDshot;
