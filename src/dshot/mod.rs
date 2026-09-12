@@ -19,20 +19,22 @@
 #![warn(clippy::doc_paragraphs_missing_punctuation)]
 
 mod command;
-mod dshot_encoder;
 mod dshot_decoder;
+mod dshot_encoder;
 mod dshot_error;
 mod esc_dshot;
+mod frame;
 mod protocol;
 mod telemetry_type;
 
 pub use command::Command;
-pub use dshot_encoder::DshotEncoder;
 #[allow(unused)]
-pub use dshot_decoder::{DshotDecoder,DecodeError};
+pub use dshot_decoder::{DecodeError, DshotDecoder};
 #[allow(unused)]
 pub use dshot_error::DshotError;
 #[allow(unused)]
 pub use esc_dshot::EscDshot;
+#[allow(unused)]
+pub use frame::DshotFrame;
 pub use protocol::Protocol;
 pub use telemetry_type::TelemetryType;

@@ -5,7 +5,7 @@ use super::{
     mixer_common::{MotorFrequencies, MotorOutputs},
 };
 
-use crate::dshot::{DecodeError, DshotDecoder, DshotEncoder, DshotError, Protocol};
+use crate::dshot::{DecodeError, DshotDecoder, DshotError, DshotFrame, Protocol};
 use crate::dshot_rp::PioBidirectionalQuadDshot;
 
 use embassy_rp::pwm::{Config as PwmConfig, Pwm};
@@ -89,32 +89,32 @@ impl MotorDriverQuadDshot {
 }
 
 impl MotorDriverQuadDshot {
-     fn decode_gcr21_result(&self, result: Result<u32, DshotError>) -> Result<f32, DecodeError> {
+    fn decode_gcr21_result(&self, result: Result<u32, DshotError>) -> Result<f32, DecodeError> {
         let gcr21 = result.map_err(|_| DecodeError::GcrData)?;
         let erpm = DshotDecoder::gcr21_decode(gcr21).map_err(|_| DecodeError::GcrData)?;
         Ok(f32::from(erpm) * self.erpm_to_hz)
     }
 
     pub async fn write_to_motors(&mut self, outputs: MotorOutputs) {
-        let frame = DshotEncoder::throttle_to_frame_bidirectional(outputs[0]);
+        let frame = DshotFrame::throttle_to_frame(outputs[0]);
         let gcr21_result = self.pio.send_frame_and_receive_sm0(frame).await;
         if let Ok(frequency) = self.decode_gcr21_result(gcr21_result) {
             self.motor_frequencies[0] = frequency;
         }
 
-        let frame = DshotEncoder::throttle_to_frame_bidirectional(outputs[1]);
+        let frame = DshotFrame::throttle_to_frame(outputs[1]);
         let gcr21_result = self.pio.send_frame_and_receive_sm1(frame).await;
         if let Ok(frequency) = self.decode_gcr21_result(gcr21_result) {
             self.motor_frequencies[1] = frequency;
         }
 
-        let frame = DshotEncoder::throttle_to_frame_bidirectional(outputs[2]);
+        let frame = DshotFrame::throttle_to_frame(outputs[2]);
         let gcr21_result = self.pio.send_frame_and_receive_sm2(frame).await;
         if let Ok(frequency) = self.decode_gcr21_result(gcr21_result) {
             self.motor_frequencies[2] = frequency;
         }
 
-        let frame = DshotEncoder::throttle_to_frame_bidirectional(outputs[3]);
+        let frame = DshotFrame::throttle_to_frame(outputs[3]);
         let gcr21_result = self.pio.send_frame_and_receive_sm3(frame).await;
         if let Ok(frequency) = self.decode_gcr21_result(gcr21_result) {
             self.motor_frequencies[3] = frequency;

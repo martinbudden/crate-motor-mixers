@@ -1,4 +1,4 @@
-use super::{DshotEncoder, Protocol, TelemetryType};
+use super::{Protocol, TelemetryType};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct EscDshot {
@@ -128,7 +128,7 @@ impl EscDshot {
         }
     }
 
-    pub fn write_bidirectional(&mut self, value: u16) {
+    /*pub fn write_bidirectional(&mut self, value: u16) {
         _ = self;
         let frame = DshotEncoder::encode_raw_bidirectional(value);
         //pio_sm_put(self.pio, _pioStateMachine, frame);
@@ -141,7 +141,7 @@ impl EscDshot {
 
     pub fn write_frame(&mut self, frame: u16) {
         self.dma_buffer = self.duty_cycles_u32(frame);
-    }
+    }*/
 
     /// Returns an array of duty cycles for use in PWM DMA.
     ///

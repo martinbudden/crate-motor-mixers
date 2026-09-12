@@ -17,7 +17,7 @@ use super::Command;
 ///    SSSS SSSS SSST CCCC
 /// ```
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
-pub struct DshotEncoder;
+struct DshotEncoder;
 
 #[allow(unused)]
 impl DshotEncoder {
@@ -226,24 +226,36 @@ mod tests {
     fn commands() {
         assert_eq!(0, DshotEncoder::encode_command_unidirectional(Command::MotorStop, DshotEncoder::NO_TELEMETRY));
         //            SSSS_SSSS_SSST_CCCC
-        assert_eq!(0b_0000_0000_0010_0010, DshotEncoder::encode_command_unidirectional(Command::Beep1, DshotEncoder::NO_TELEMETRY));
+        assert_eq!(
+            0b_0000_0000_0010_0010,
+            DshotEncoder::encode_command_unidirectional(Command::Beep1, DshotEncoder::NO_TELEMETRY)
+        );
         assert_eq!(
             0b_0000_0101_1100_1001,
             DshotEncoder::encode_command_unidirectional(Command::SignalLineERPMTelemetry, DshotEncoder::NO_TELEMETRY)
         );
         assert_eq!(
             0b_0000_0101_1110_1011,
-            DshotEncoder::encode_command_unidirectional(Command::SignalLineERPMPeriodTelemetry, DshotEncoder::NO_TELEMETRY)
+            DshotEncoder::encode_command_unidirectional(
+                Command::SignalLineERPMPeriodTelemetry,
+                DshotEncoder::NO_TELEMETRY
+            )
         );
         // bidirectional form is the same with the checksum bits inverted
-        assert_eq!(0b_0000_0000_0010_1101, DshotEncoder::encode_command_bidirectional(Command::Beep1, DshotEncoder::NO_TELEMETRY));
+        assert_eq!(
+            0b_0000_0000_0010_1101,
+            DshotEncoder::encode_command_bidirectional(Command::Beep1, DshotEncoder::NO_TELEMETRY)
+        );
         assert_eq!(
             0b_0000_0101_1100_0110,
             DshotEncoder::encode_command_bidirectional(Command::SignalLineERPMTelemetry, DshotEncoder::NO_TELEMETRY)
         );
         assert_eq!(
             0b_0000_0101_1110_0100,
-            DshotEncoder::encode_command_bidirectional(Command::SignalLineERPMPeriodTelemetry, DshotEncoder::NO_TELEMETRY)
+            DshotEncoder::encode_command_bidirectional(
+                Command::SignalLineERPMPeriodTelemetry,
+                DshotEncoder::NO_TELEMETRY
+            )
         );
     }
 }
