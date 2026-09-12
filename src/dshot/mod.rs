@@ -19,7 +19,7 @@
 #![warn(clippy::doc_paragraphs_missing_punctuation)]
 
 mod command;
-mod dshot_codec;
+mod dshot_encoder;
 mod dshot_decoder;
 mod dshot_error;
 mod esc_dshot;
@@ -27,7 +27,7 @@ mod protocol;
 mod telemetry_type;
 
 pub use command::Command;
-pub use dshot_codec::DshotEncoder;
+pub use dshot_encoder::DshotEncoder;
 #[allow(unused)]
 pub use dshot_decoder::{DshotDecoder,DecodeError};
 #[allow(unused)]
