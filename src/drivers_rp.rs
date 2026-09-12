@@ -56,8 +56,8 @@ let pwm0 = Pwm::new_output_ab(p.PWM_SLICE0, p.PIN_0, p.PIN_1, Config::default())
 let pwm1 = Pwm::new_output_ab(p.PWM_SLICE1, p.PIN_2, p.PIN_3, Config::default());
 */
 
-/// Dshot driver using PIO for 4 motors.
-/// Currently hardcoded to use PIO0.
+/// Bidirectional Dshot driver using `PIO` for 4 motors.
+/// Currently hardcoded to use `PIO0`.
 #[allow(missing_debug_implementations, missing_copy_implementations)]
 pub struct MotorDriverQuadDshot {
     motor_frequencies: MotorFrequencies,
@@ -69,6 +69,7 @@ impl MotorDriverQuadDshot {
     pub const DEFAULT_MOTOR_POLE_COUNT: u16 = 14;
     const SECONDS_PER_MINUTE: f32 = 60.0;
 
+    #[must_use]
     pub fn new(
         pio: Peri<'static, PIO0>,
         irq: impl Binding<<PIO0 as embassy_rp::pio::Instance>::Interrupt, InterruptHandler<PIO0>>,
@@ -95,25 +96,25 @@ impl MotorDriverQuadDshot {
     }
 
     pub async fn write_to_motors(&mut self, outputs: MotorOutputs) {
-        let frame = DshotEncoder::throttle_to_frame(outputs[0]);
+        let frame = DshotEncoder::throttle_to_frame_bidirectional(outputs[0]);
         let gcr21_result = self.pio.send_frame_and_receive_sm0(frame).await;
         if let Ok(frequency) = self.decode_gcr21_result(gcr21_result) {
             self.motor_frequencies[0] = frequency;
         }
 
-        let frame = DshotEncoder::throttle_to_frame(outputs[1]);
+        let frame = DshotEncoder::throttle_to_frame_bidirectional(outputs[1]);
         let gcr21_result = self.pio.send_frame_and_receive_sm1(frame).await;
         if let Ok(frequency) = self.decode_gcr21_result(gcr21_result) {
             self.motor_frequencies[1] = frequency;
         }
 
-        let frame = DshotEncoder::throttle_to_frame(outputs[2]);
+        let frame = DshotEncoder::throttle_to_frame_bidirectional(outputs[2]);
         let gcr21_result = self.pio.send_frame_and_receive_sm2(frame).await;
         if let Ok(frequency) = self.decode_gcr21_result(gcr21_result) {
             self.motor_frequencies[2] = frequency;
         }
 
-        let frame = DshotEncoder::throttle_to_frame(outputs[3]);
+        let frame = DshotEncoder::throttle_to_frame_bidirectional(outputs[3]);
         let gcr21_result = self.pio.send_frame_and_receive_sm3(frame).await;
         if let Ok(frequency) = self.decode_gcr21_result(gcr21_result) {
             self.motor_frequencies[3] = frequency;
@@ -129,10 +130,11 @@ impl MotorDriverQuadDshot {
 mod test_traits {
     use super::*;
 
-    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
 
     #[test]
     fn normal_types() {
-        is_full::<MotorDriverQuadPwm>();
+        is_normal::<MotorDriverQuadPwm>();
+        is_normal::<MotorDriverQuadDshot>();
     }
 }

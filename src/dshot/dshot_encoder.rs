@@ -24,6 +24,9 @@ impl DshotEncoder {
     const THROTTLE_OFFSET: u16 = 48;
     const THROTTLE_MIN: u16 = 48;
     const THROTTLE_MAX: u16 = 2047;
+    const TELEMETRY_BIT: u16 = 0x10;
+    pub const NO_TELEMETRY: bool = false;
+    pub const WITH_TELEMETRY: bool = true;
 
     pub(crate) const NIBBLE_TO_QUINTET: [u8; 16] =
         [0x19, 0x1B, 0x12, 0x13, 0x1D, 0x15, 0x16, 0x17, 0x1A, 0x09, 0x0A, 0x0B, 0x1E, 0x0D, 0x0E, 0x0F];
@@ -31,7 +34,7 @@ impl DshotEncoder {
     /// Convert PWM value (1000-2000) to Dshot value (48-2047).
     #[inline]
     #[must_use]
-    pub fn pwm_to_frame(pwm: u16) -> u16 {
+    pub fn pwm_to_dshot_raw(pwm: u16) -> u16 {
         ((pwm - 1000) * 2) + Self::THROTTLE_OFFSET
     }
 
@@ -39,11 +42,11 @@ impl DshotEncoder {
     /// clamping PWM value to (1000-2000).
     #[inline]
     #[must_use]
-    pub fn pwm_to_frame_clamped(pwm: u16) -> u16 {
+    pub fn pwm_clamped_to_dshot_raw(pwm: u16) -> u16 {
         if pwm >= 2000 {
             Self::THROTTLE_MAX
         } else if pwm >= 1000 {
-            Self::pwm_to_frame(pwm)
+            Self::pwm_to_dshot_raw(pwm)
         } else {
             Self::THROTTLE_MIN
         }
@@ -53,17 +56,19 @@ impl DshotEncoder {
     /// clamping PWM value to (1000-2000).
     #[inline]
     #[must_use]
-    pub fn throttle_to_frame(throttle: f32) -> u16 {
-        #[allow(clippy::cast_possible_truncation,clippy::cast_sign_loss)]
+    pub fn throttle_to_frame_bidirectional(throttle: f32) -> u16 {
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let pwm = ((throttle.abs() + 1.0) * 1000.0) as u16;
-        if pwm >= 2000 {
+        let dshot_raw = if pwm >= 2000 {
             Self::THROTTLE_MAX
         } else if pwm >= 1000 {
-            Self::pwm_to_frame(pwm)
+            Self::pwm_to_dshot_raw(pwm)
         } else {
             Self::THROTTLE_MIN
-        }
+        };
+        Self::encode_raw_bidirectional(dshot_raw)
     }
+
     /// Unidirectional (non-inverted) checksum.
     #[inline]
     #[must_use]
@@ -94,26 +99,28 @@ impl DshotEncoder {
 
     #[inline]
     #[must_use]
-    pub fn encode_command_unidirectional(command: Command) -> u16 {
-        Self::encode_raw_unidirectional(command as u16)
+    pub fn encode_command_unidirectional(command: Command, request_telemetry: bool) -> u16 {
+        let command = if request_telemetry { command as u16 | Self::TELEMETRY_BIT } else { command as u16 };
+        Self::encode_raw_unidirectional(command)
     }
 
     #[inline]
     #[must_use]
-    pub fn encode_command_bidirectional(command: Command) -> u16 {
-        Self::encode_raw_bidirectional(command as u16)
+    pub fn encode_command_bidirectional(command: Command, request_telemetry: bool) -> u16 {
+        let command = if request_telemetry { command as u16 | Self::TELEMETRY_BIT } else { command as u16 };
+        Self::encode_raw_bidirectional(command)
     }
 
     #[inline]
     #[must_use]
     pub fn encode_pwm_unidirectional(pwm: u16) -> u16 {
-        Self::encode_raw_unidirectional(Self::pwm_to_frame_clamped(pwm))
+        Self::encode_raw_unidirectional(Self::pwm_clamped_to_dshot_raw(pwm))
     }
 
     #[inline]
     #[must_use]
     pub fn encode_pwm_bidirectional(pwm: u16) -> u16 {
-        Self::encode_raw_bidirectional(Self::pwm_to_frame_clamped(pwm))
+        Self::encode_raw_bidirectional(Self::pwm_clamped_to_dshot_raw(pwm))
     }
 
     // see [DSHOT - the missing Handbook](https://brushlesswhoop.com/dshot-and-bidirectional-dshot/)
@@ -180,24 +187,24 @@ mod tests {
     }
     #[test]
     fn dshot_codec() {
-        assert_eq!(48, DshotEncoder::pwm_to_frame(1000));
-        assert_eq!(2048, DshotEncoder::pwm_to_frame(2000));
+        assert_eq!(48, DshotEncoder::pwm_to_dshot_raw(1000));
+        assert_eq!(2048, DshotEncoder::pwm_to_dshot_raw(2000));
 
-        assert_eq!(48, DshotEncoder::pwm_to_frame_clamped(0));
-        assert_eq!(48, DshotEncoder::pwm_to_frame_clamped(10));
-        assert_eq!(48, DshotEncoder::pwm_to_frame_clamped(999));
+        assert_eq!(48, DshotEncoder::pwm_clamped_to_dshot_raw(0));
+        assert_eq!(48, DshotEncoder::pwm_clamped_to_dshot_raw(10));
+        assert_eq!(48, DshotEncoder::pwm_clamped_to_dshot_raw(999));
 
-        assert_eq!(48, DshotEncoder::pwm_to_frame_clamped(1000)); // should this be 0 or 48 ?
+        assert_eq!(48, DshotEncoder::pwm_clamped_to_dshot_raw(1000)); // should this be 0 or 48 ?
         //assert_eq!(48, DshotCodec::pwm_to_dshot_clamped(1000)); // should this be 0 or 48 ?
-        assert_eq!(50, DshotEncoder::pwm_to_frame_clamped(1001));
-        assert_eq!(52, DshotEncoder::pwm_to_frame_clamped(1002));
-        assert_eq!(54, DshotEncoder::pwm_to_frame_clamped(1003));
-        assert_eq!(1048, DshotEncoder::pwm_to_frame_clamped(1500));
-        assert_eq!(2046, DshotEncoder::pwm_to_frame_clamped(1999));
-        assert_eq!(2047, DshotEncoder::pwm_to_frame_clamped(2000));
-        assert_eq!(2047, DshotEncoder::pwm_to_frame_clamped(2001));
-        assert_eq!(2047, DshotEncoder::pwm_to_frame_clamped(2002));
-        assert_eq!(2047, DshotEncoder::pwm_to_frame_clamped(4000));
+        assert_eq!(50, DshotEncoder::pwm_clamped_to_dshot_raw(1001));
+        assert_eq!(52, DshotEncoder::pwm_clamped_to_dshot_raw(1002));
+        assert_eq!(54, DshotEncoder::pwm_clamped_to_dshot_raw(1003));
+        assert_eq!(1048, DshotEncoder::pwm_clamped_to_dshot_raw(1500));
+        assert_eq!(2046, DshotEncoder::pwm_clamped_to_dshot_raw(1999));
+        assert_eq!(2047, DshotEncoder::pwm_clamped_to_dshot_raw(2000));
+        assert_eq!(2047, DshotEncoder::pwm_clamped_to_dshot_raw(2001));
+        assert_eq!(2047, DshotEncoder::pwm_clamped_to_dshot_raw(2002));
+        assert_eq!(2047, DshotEncoder::pwm_clamped_to_dshot_raw(4000));
 
         assert_eq!(1542, DshotEncoder::encode_raw_unidirectional(48)); //0x606
         assert_eq!(1572, DshotEncoder::encode_raw_unidirectional(49)); // 0x624
@@ -217,26 +224,26 @@ mod tests {
     }
     #[test]
     fn commands() {
-        assert_eq!(0, DshotEncoder::encode_command_unidirectional(Command::MotorStop));
+        assert_eq!(0, DshotEncoder::encode_command_unidirectional(Command::MotorStop, DshotEncoder::NO_TELEMETRY));
         //            SSSS_SSSS_SSST_CCCC
-        assert_eq!(0b_0000_0000_0010_0010, DshotEncoder::encode_command_unidirectional(Command::Beep1));
+        assert_eq!(0b_0000_0000_0010_0010, DshotEncoder::encode_command_unidirectional(Command::Beep1, DshotEncoder::NO_TELEMETRY));
         assert_eq!(
             0b_0000_0101_1100_1001,
-            DshotEncoder::encode_command_unidirectional(Command::SignalLineERPMTelemetry)
+            DshotEncoder::encode_command_unidirectional(Command::SignalLineERPMTelemetry, DshotEncoder::NO_TELEMETRY)
         );
         assert_eq!(
             0b_0000_0101_1110_1011,
-            DshotEncoder::encode_command_unidirectional(Command::SignalLineERPMPeriodTelemetry)
+            DshotEncoder::encode_command_unidirectional(Command::SignalLineERPMPeriodTelemetry, DshotEncoder::NO_TELEMETRY)
         );
         // bidirectional form is the same with the checksum bits inverted
-        assert_eq!(0b_0000_0000_0010_1101, DshotEncoder::encode_command_bidirectional(Command::Beep1));
+        assert_eq!(0b_0000_0000_0010_1101, DshotEncoder::encode_command_bidirectional(Command::Beep1, DshotEncoder::NO_TELEMETRY));
         assert_eq!(
             0b_0000_0101_1100_0110,
-            DshotEncoder::encode_command_bidirectional(Command::SignalLineERPMTelemetry)
+            DshotEncoder::encode_command_bidirectional(Command::SignalLineERPMTelemetry, DshotEncoder::NO_TELEMETRY)
         );
         assert_eq!(
             0b_0000_0101_1110_0100,
-            DshotEncoder::encode_command_bidirectional(Command::SignalLineERPMPeriodTelemetry)
+            DshotEncoder::encode_command_bidirectional(Command::SignalLineERPMPeriodTelemetry, DshotEncoder::NO_TELEMETRY)
         );
     }
 }
