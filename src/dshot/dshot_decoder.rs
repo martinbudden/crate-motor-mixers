@@ -1,4 +1,4 @@
-use super::DshotBidirectionalFrame;
+use super::{DshotBidirectionalFrame,Telemetry};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DecodeError {
@@ -10,24 +10,6 @@ pub enum DecodeError {
     _TelemetryType,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum TelemetryFrame {
-    Erpm(u32),
-    /// 1°C per unit.
-    Temperature(u8),
-    /// 250mV per unit.
-    Voltage(u32),
-    /// 1A (1000mA) per unit.
-    Current(u32),
-    Debug1(u8),
-    Debug2(u8),
-    Debug3(u8),
-    StateEvent(u8),
-    Unknown {
-        type_id: u16,
-        value: u8,
-    },
-}
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct DshotDecoder;
@@ -87,33 +69,33 @@ impl DshotDecoder {
         Ok((value & 0x00FF, TelemetryType::from_u16(type_val >> 1)))
     }*/
 
-    pub fn decode_telemetry_frame(raw_12: u16) -> TelemetryFrame {
+    pub fn decode_telemetry_frame(raw_12: u16) -> Telemetry {
         let exponent = (raw_12 >> 9) & 0x07;
         let bit8 = (raw_12 >> 8) & 1;
 
         if exponent == 0 || bit8 == 1 {
             const ONE_MINUTE_IN_MICROSECONDS: u32 = 60_000_000;
             if raw_12 == 0 || raw_12 == 0x0FFF {
-                return TelemetryFrame::Erpm(0);
+                return Telemetry::Erpm(0);
             }
             let mantissa = raw_12 & 0x1FF;
             let period_us = u32::from(mantissa) << u32::from(exponent);
             if period_us == 0 {
-                return TelemetryFrame::Erpm(0);
+                return Telemetry::Erpm(0);
             }
-            return TelemetryFrame::Erpm(ONE_MINUTE_IN_MICROSECONDS / period_us);
+            return Telemetry::Erpm(ONE_MINUTE_IN_MICROSECONDS / period_us);
         }
 
         let data = (raw_12 & 0xFF) as u8;
         match exponent {
-            1 => TelemetryFrame::Temperature(data),
-            2 => TelemetryFrame::Voltage(u32::from(data) * 250),
-            3 => TelemetryFrame::Current(u32::from(data) * 1000),
-            4 => TelemetryFrame::Debug1(data),
-            5 => TelemetryFrame::Debug2(data),
-            6 => TelemetryFrame::Debug3(data),
-            7 => TelemetryFrame::StateEvent(data),
-            _ => TelemetryFrame::Unknown { type_id: exponent, value: data },
+            1 => Telemetry::Temperature(data),
+            2 => Telemetry::Voltage(u32::from(data) * 250),
+            3 => Telemetry::Current(u32::from(data) * 1000),
+            4 => Telemetry::Debug1(data),
+            5 => Telemetry::Debug2(data),
+            6 => Telemetry::Debug3(data),
+            7 => Telemetry::StateEvent(data),
+            _ => Telemetry::Unknown { type_id: exponent, value: data },
         }
     }
 
@@ -121,7 +103,7 @@ impl DshotDecoder {
     ///
     /// Returns the value of the Extended Dshot Telemetry (EDT) frame (without the checksum).
     /// # Errors `DecodeError`
-    pub fn decode_samples(value: u64) -> Result<TelemetryFrame, DecodeError> {
+    pub fn decode_samples(value: u64) -> Result<Telemetry, DecodeError> {
         // telemetry data must start with a 0, so if the first bit is high, we don't have any data
         if (value & 0x8000_0000_0000_0000) != 0 {
             return Err(DecodeError::NoData);

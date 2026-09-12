@@ -25,7 +25,7 @@ mod dshot_error;
 mod esc_dshot;
 mod dshot_bidirectional_frame;
 mod protocol;
-mod telemetry_type;
+mod telemetry;
 
 pub use command::Command;
 #[allow(unused)]
@@ -37,4 +37,4 @@ pub use esc_dshot::EscDshot;
 #[allow(unused)]
 pub use dshot_bidirectional_frame::DshotBidirectionalFrame;
 pub use protocol::Protocol;
-pub use telemetry_type::TelemetryType;
+pub use telemetry::{TelemetryType,Telemetry};

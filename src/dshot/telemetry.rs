@@ -39,17 +39,38 @@ impl TelemetryType {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Telemetry {
+    Erpm(u32),
+    /// 1°C per unit.
+    Temperature(u8),
+    /// 250mV per unit.
+    Voltage(u32),
+    /// 1A (1000mA) per unit.
+    Current(u32),
+    Debug1(u8),
+    Debug2(u8),
+    Debug3(u8),
+    StateEvent(u8),
+    Unknown {
+        type_id: u16,
+        value: u8,
+    },
+}
+
 #[cfg(test)]
 mod test_traits {
     use super::*;
 
     //fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     fn is_full_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + Eq + PartialEq>() {}
+    fn is_full_eq_no_default<T: Sized + Send + Sync + Unpin + Copy + Clone + Eq + PartialEq>() {}
     //#[cfg(feature = "serde")]
     //fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
         is_full_eq::<TelemetryType>();
+        is_full_eq_no_default::<Telemetry>();
     }
 }
