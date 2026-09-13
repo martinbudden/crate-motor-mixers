@@ -18,9 +18,16 @@ rustflags = [
     "-C", "link-arg=-Tlink.x", 
 ]
 
+# Configuration for ESP32 S3
+[target.xtensa-esp32s3-none-elf]
+runner = "espflash flash --monitor"
+
 [build]
 # Optional: Set a default target so you don't have to pass --target to cargo every time
 # target = "thumbv8m.main-none-eabihf" 
+
+#[unstable]
+#build-std = ["core"]
 
 [alias]
 # Run using: 'cargo test-none'
@@ -63,3 +70,12 @@ check-stm32-t8 = [
     "--features",
     "stm32,stm32f405,motors_t8"
 ]
+
+check-esp32 = [
+    "check",
+    "--target", "xtensa-esp32s3-none-elf",
+    "--no-default-features",
+    "--features",
+    "esp32"
+]
+

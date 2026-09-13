@@ -1,5 +1,6 @@
 #![cfg(not(any(feature = "esp32", feature = "rp", feature = "stm32")))]
-use super::mixer_common::{MotorFrequencies, MotorOutputs};
+use super::{MotorCommands, MotorFrequencies, MotorOutputs};
+use crate::dshot::Command;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct MotorDriverQuadPwm;
@@ -10,6 +11,7 @@ impl MotorDriverQuadPwm {
         Self {}
     }
 
+    #[inline]
     pub fn write_to_motors(&mut self, _outputs: MotorOutputs) {
         _ = self;
     }
@@ -27,9 +29,16 @@ impl MotorDriverQuadDshot {
     }
 }
 
+#[allow(clippy::unused_async)]
 impl MotorDriverQuadDshot {
-    #[allow(clippy::unused_async)]
     pub async fn write_to_motors(&mut self, _outputs: MotorOutputs) {
+        _ = self;
+    }
+
+    pub async fn write_commands_to_motors(&mut self, _commands: MotorCommands) {
+        _ = self;
+    }
+    pub async fn write_command_to_all_motors(&mut self, _command: Command) {
         _ = self;
     }
 

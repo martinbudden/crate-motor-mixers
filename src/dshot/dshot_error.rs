@@ -6,11 +6,21 @@ pub enum DshotError {
     /// Throttle value out of range (must be 0-1999).
     InvalidThrottle,
     /// Telemetry CRC checksum mismatch.
-    InvalidTelemetryCrc,
+    InvalidTelemetryChecksum,
     InvalidTelemetryData,
-    TxTimeout,
+    PioTxTimeout,
     /// ESC did not respond to telemetry request in time.
-    TelemetryTimeout,
+    PioRxTimeout,
     /// Invalid GCR encoding in telemetry response.
     GcrDecodeError,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DecodeError {
+    NoData,
+    InvalidRunLength,
+    GcrData,
+    InvalidChecksum,
+    Erpm,
+    _TelemetryType,
 }

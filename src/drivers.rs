@@ -1,3 +1,5 @@
+use crate::dshot::Command;
+
 #[cfg(not(any(feature = "esp32", feature = "rp", feature = "stm32")))]
 use super::drivers_host::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 
@@ -10,7 +12,7 @@ use super::drivers_rp::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 #[cfg(feature = "stm32")]
 use super::drivers_stm32::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 
-use super::mixer_common::{MotorFrequencies, MotorOutputs};
+use super::{MotorCommands, MotorFrequencies, MotorOutputs};
 
 #[allow(missing_debug_implementations, missing_copy_implementations)]
 pub enum MotorDriver {
@@ -23,6 +25,20 @@ impl MotorDriver {
         match self {
             Self::QuadPwm(driver) => driver.write_to_motors(outputs),
             Self::QuadDshot(driver) => driver.write_to_motors(outputs).await,
+        }
+    }
+
+    pub async fn write_commands_to_motors(&mut self, commands: MotorCommands) {
+        match self {
+            Self::QuadPwm(_driver) => {}
+            Self::QuadDshot(driver) => driver.write_commands_to_motors(commands).await,
+        }
+    }
+
+    pub async fn write_command_to_all_motors(&mut self, command: Command) {
+        match self {
+            Self::QuadPwm(_driver) => {}
+            Self::QuadDshot(driver) => driver.write_command_to_all_motors(command).await,
         }
     }
 

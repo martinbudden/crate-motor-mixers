@@ -1,20 +1,12 @@
-use super::{Protocol, TelemetryType};
+use super::Protocol;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct EscDshot {
     protocol: Protocol,
-    motor_pole_count: u16,
-    erpm_to_hz: f32,
+    cpu_frequency: u32,
     data_high_pulse_width: u16,
     data_low_pulse_width: u16,
-    use_high_order_bits: bool,
-    /// Electronic RPM, ie not taking into account motor pole count.
-    erpm: i32,
-    telemetry_read_count: u32,
-    telemetry_error_count: u32,
-    cpu_frequency: u32,
     wrap_cycle_count: u16,
-    dma_buffer: [u32; Self::DMA_BUFFER_SIZE],
 }
 
 impl Default for EscDshot {
@@ -24,46 +16,29 @@ impl Default for EscDshot {
 }
 
 impl EscDshot {
-    const DEFAULT_MOTOR_POLE_COUNT: u16 = 14;
-    const ONE_MINUTE_IN_MICROSECONDS: i32 = 60_000_000;
-
+    pub const DEFAULT_CPU_FREQUENCY:u32 = 150_000_000;
     const DSHOT_BIT_COUNT: usize = 16;
     const DMA_BUFFER_SIZE: usize = Self::DSHOT_BIT_COUNT + 1;
 
     const DSHOT150_T0H: u32 = 2500;
     const DSHOT150_T1H: u32 = 5000;
     const DSHOT150_T: u32 = 6680;
+
     const W2818B_T0H: u32 = 400;
     const W2818B_T1H: u32 = 800;
     const W2818B_T: u32 = 1250;
 
     pub const fn new(protocol: Protocol) -> Self {
-        const SECONDS_PER_MINUTE: f32 = 60.0;
         let mut this = Self {
             protocol,
-            motor_pole_count: Self::DEFAULT_MOTOR_POLE_COUNT,
-            erpm_to_hz: 2.0 * (100.0 / SECONDS_PER_MINUTE) / (Self::DEFAULT_MOTOR_POLE_COUNT as f32),
+            cpu_frequency: Self::DEFAULT_CPU_FREQUENCY,
 
             data_high_pulse_width: 0,
             data_low_pulse_width: 0,
-            use_high_order_bits: false,
-            erpm: 0,
-            telemetry_read_count: 0,
-            telemetry_error_count: 0,
-            cpu_frequency: 150_000_000,
             wrap_cycle_count: 0,
-            dma_buffer: [0u32; Self::DMA_BUFFER_SIZE],
         };
         this.set_protocol(protocol);
         this
-    }
-
-    /// Set the `motor_pole_count` of a newly constructed `EscDshot`.
-    #[allow(unused)]
-    #[must_use]
-    pub const fn with_motor_pole_count(mut self, motor_pole_count: u16) -> Self {
-        self.motor_pole_count = motor_pole_count;
-        self
     }
 
     /// Set the `cpu_frequency` of a newly constructed `EscDshot`.
@@ -128,21 +103,6 @@ impl EscDshot {
         }
     }
 
-    /*pub fn write_bidirectional(&mut self, value: u16) {
-        _ = self;
-        let frame = DshotEncoder::encode_raw_bidirectional(value);
-        //pio_sm_put(self.pio, _pioStateMachine, frame);
-    }
-
-    pub fn write_unidirectional(&mut self, value: u16) {
-        let frame = DshotEncoder::encode_raw_unidirectional(value);
-        self.write_frame(frame);
-    }
-
-    pub fn write_frame(&mut self, frame: u16) {
-        self.dma_buffer = self.duty_cycles_u32(frame);
-    }*/
-
     /// Returns an array of duty cycles for use in PWM DMA.
     ///
     /// The array an extra element set to zero to ensure that PWM output gets pulled low at the end of the sequence.
@@ -163,11 +123,11 @@ impl EscDshot {
     /// Returns an array of duty cycles for use in PWM DMA.
     ///
     /// The array an extra element set to zero to ensure that PWM output gets pulled low at the end of the sequence.
-    pub fn duty_cycles_u32(&self, frame: u16) -> [u32; Self::DMA_BUFFER_SIZE] {
+    pub fn duty_cycles_u32(&self, frame: u16, use_high_order_bits:bool) -> [u32; Self::DMA_BUFFER_SIZE] {
         let mut ret = [0u32; Self::DMA_BUFFER_SIZE];
 
         let mut mask_bit = 1 << (Self::DSHOT_BIT_COUNT - 1);
-        if self.use_high_order_bits {
+        if use_high_order_bits {
             for item in &mut ret {
                 let byte = if frame & mask_bit == 0 {
                     u32::from(self.data_high_pulse_width)
@@ -191,25 +151,6 @@ impl EscDshot {
         // Set last value to zero, (DMA_BUFFER_SIZE = DSHOT_BIT_COUNT + 1).
         ret[Self::DMA_BUFFER_SIZE - 1] = 0;
         ret
-    }
-
-    pub fn read(&mut self) -> bool {
-        let telemetry_type = TelemetryType::Invalid;
-        let value = 0i32;
-        self.telemetry_read_count += 1;
-
-        match telemetry_type {
-            TelemetryType::Erpm => {
-                // value is eRPM period in microseconds
-                self.erpm = Self::ONE_MINUTE_IN_MICROSECONDS / value;
-            }
-            TelemetryType::Invalid => {
-                self.telemetry_error_count += 1;
-                return false;
-            }
-            _ => {}
-        }
-        true
     }
 }
 

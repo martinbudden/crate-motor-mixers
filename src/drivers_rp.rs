@@ -1,23 +1,26 @@
-#![cfg(feature = "rp")]
+use embassy_time::{Duration, Timer};
 
-use super::{
-    drivers::output_to_duty,
-    mixer_common::{MotorFrequencies, MotorOutputs},
+use super::{MotorFrequencies, MotorOutputs};
+use crate::{
+    MotorCommands,
+    dshot::{Command, DecodeError, DshotBidirectionalFrame, DshotError, ErpmTelemetryFrame, GcrFrame},
 };
 
-use crate::dshot::{DecodeError, DshotDecoder, DshotError, DshotFrame, Protocol};
-use crate::dshot_rp::PioBidirectionalQuadDshot;
-
-use embassy_rp::pwm::{Config as PwmConfig, Pwm};
-use embassy_rp::{
-    Peri,
-    interrupt::typelevel::Binding,
-    peripherals::PIO0,
-    pio::{InterruptHandler, PioPin},
+#[cfg(feature = "rp")]
+use {
+    crate::{dshot::Protocol, dshot_rp::PioBidirectionalQuadDshot},
+    embassy_rp::{
+        Peri,
+        interrupt::typelevel::Binding,
+        peripherals::PIO0,
+        pio::{InterruptHandler, PioPin},
+        pwm::{Config as PwmConfig, Pwm},
+    },
 };
 
 //type PwmType = SimplePwm<'static, embassy_rp::peripherals::PWM_SLICE0>;
 
+#[cfg(feature = "rp")]
 #[allow(missing_debug_implementations, missing_copy_implementations)]
 pub struct MotorDriverQuadPwm {
     pwm0: Pwm<'static>,
@@ -27,6 +30,7 @@ pub struct MotorDriverQuadPwm {
     _top: f32,
 }
 
+#[cfg(feature = "rp")]
 impl MotorDriverQuadPwm {
     #[must_use]
     pub fn new(pwm0: Pwm<'static>, pwm1: Pwm<'static>) -> Self {
@@ -40,6 +44,8 @@ impl MotorDriverQuadPwm {
     #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation)]
     #[inline]
     pub fn write_to_motors(&mut self, motor_outputs: MotorOutputs) {
+        use super::drivers::output_to_duty;
+
         let max_duty = 1000.0_f32;
         self.config0.compare_a = output_to_duty(motor_outputs[0], max_duty) as u16;
         self.config0.compare_b = output_to_duty(motor_outputs[1], max_duty) as u16;
@@ -61,14 +67,17 @@ let pwm1 = Pwm::new_output_ab(p.PWM_SLICE1, p.PIN_2, p.PIN_3, Config::default())
 #[allow(missing_debug_implementations, missing_copy_implementations)]
 pub struct MotorDriverQuadDshot {
     motor_frequencies: MotorFrequencies,
+    #[cfg(feature = "rp")]
     pio: PioBidirectionalQuadDshot<'static, PIO0>,
     erpm_to_hz: f32,
 }
 
+#[allow(unused)]
 impl MotorDriverQuadDshot {
     pub const DEFAULT_MOTOR_POLE_COUNT: u16 = 14;
     const SECONDS_PER_MINUTE: f32 = 60.0;
 
+    #[cfg(feature = "rp")]
     #[must_use]
     pub fn new(
         pio: Peri<'static, PIO0>,
@@ -89,38 +98,90 @@ impl MotorDriverQuadDshot {
 }
 
 impl MotorDriverQuadDshot {
-    fn decode_gcr21_result(&self, result: Result<u32, DshotError>) -> Result<f32, DecodeError> {
-        let gcr21 = result.map_err(|_| DecodeError::GcrData)?;
-        let erpm = DshotDecoder::gcr21_decode(gcr21).map_err(|_| DecodeError::GcrData)?;
-        Ok(f32::from(erpm) * self.erpm_to_hz)
+    #[allow(unused)]
+    fn decode_gcr_result(&self, result: Result<GcrFrame, DshotError>) -> Result<f32, DecodeError> {
+        let gcr_frame = result.map_err(|_| DecodeError::GcrData)?;
+        let erpm_raw = gcr_frame.decode()?;
+        let erpm_telemetry_frame = ErpmTelemetryFrame::from_raw(erpm_raw);
+        if erpm_telemetry_frame.checksum_is_ok() {
+            #[allow(clippy::cast_precision_loss)]
+            Ok((erpm_telemetry_frame.erpm() as f32) * self.erpm_to_hz)
+        } else {
+            Err(DecodeError::InvalidChecksum)
+        }
     }
 
+    async fn pio_send_frame_and_receive_gcr(
+        &mut self,
+        frame: DshotBidirectionalFrame,
+        index: usize,
+    ) -> Result<GcrFrame, DshotError> {
+        #[cfg(feature = "rp")]
+        match index {
+            1 => self.pio.send_frame_and_receive_gcr_sm1(frame).await,
+            2 => self.pio.send_frame_and_receive_gcr_sm2(frame).await,
+            3 => self.pio.send_frame_and_receive_gcr_sm3(frame).await,
+            _ => self.pio.send_frame_and_receive_gcr_sm0(frame).await,
+        }
+        #[cfg(not(feature = "rp"))]
+        {
+            core::future::ready(()).await;
+            _ = index;
+            Ok(GcrFrame::from_raw(u32::from(frame.raw())))
+        }
+    }
+
+    async fn pio_send_frame(&mut self, frame: DshotBidirectionalFrame, index: usize) {
+        #[cfg(feature = "rp")]
+        match index {
+            1 => self.pio.send_frame_sm1(frame).await,
+            2 => self.pio.send_frame_sm2(frame).await,
+            3 => self.pio.send_frame_sm3(frame).await,
+            _ => self.pio.send_frame_sm0(frame).await,
+        }
+        #[cfg(not(feature = "rp"))]
+        {
+            core::future::ready(()).await;
+            _ = frame;
+            _ = index;
+        }
+    }
+
+    #[allow(unused)]
     pub async fn write_to_motors(&mut self, outputs: MotorOutputs) {
-        let frame = DshotFrame::throttle_to_frame(outputs[0]);
-        let gcr21_result = self.pio.send_frame_and_receive_sm0(frame).await;
-        if let Ok(frequency) = self.decode_gcr21_result(gcr21_result) {
-            self.motor_frequencies[0] = frequency;
-        }
-
-        let frame = DshotFrame::throttle_to_frame(outputs[1]);
-        let gcr21_result = self.pio.send_frame_and_receive_sm1(frame).await;
-        if let Ok(frequency) = self.decode_gcr21_result(gcr21_result) {
-            self.motor_frequencies[1] = frequency;
-        }
-
-        let frame = DshotFrame::throttle_to_frame(outputs[2]);
-        let gcr21_result = self.pio.send_frame_and_receive_sm2(frame).await;
-        if let Ok(frequency) = self.decode_gcr21_result(gcr21_result) {
-            self.motor_frequencies[2] = frequency;
-        }
-
-        let frame = DshotFrame::throttle_to_frame(outputs[3]);
-        let gcr21_result = self.pio.send_frame_and_receive_sm3(frame).await;
-        if let Ok(frequency) = self.decode_gcr21_result(gcr21_result) {
-            self.motor_frequencies[3] = frequency;
+        for index in 0..4 {
+            let frame = DshotBidirectionalFrame::throttle_to_frame(outputs[index]);
+            let gcr_result = self.pio_send_frame_and_receive_gcr(frame, index).await;
+            if let Ok(frequency) = self.decode_gcr_result(gcr_result) {
+                self.motor_frequencies[index] = frequency;
+            }
         }
     }
 
+    #[allow(unused)]
+    pub async fn write_commands_to_motors(&mut self, commands: MotorCommands) {
+        for index in 0..4 {
+            let command = commands[index];
+            let frame = DshotBidirectionalFrame::from_command(command);
+            for _ in 0..command.repetitions_required() {
+                self.pio_send_frame(frame, 0).await;
+                Timer::after(Duration::from_micros(300)).await;
+            }
+        }
+    }
+
+    #[allow(unused)]
+    pub async fn write_command_to_all_motors(&mut self, command: Command) {
+        for index in 0..4 {
+            let frame = DshotBidirectionalFrame::from_command(command);
+            for _ in 0..command.repetitions_required() {
+                self.pio_send_frame(frame, 0).await;
+                Timer::after(Duration::from_micros(300)).await;
+            }
+        }
+    }
+
+    #[allow(unused, clippy::unnecessary_wraps)]
     pub fn motor_frequencies(&self) -> Option<MotorFrequencies> {
         Some(self.motor_frequencies)
     }
@@ -134,6 +195,7 @@ mod test_traits {
 
     #[test]
     fn normal_types() {
+        #[cfg(feature = "rp")]
         is_normal::<MotorDriverQuadPwm>();
         is_normal::<MotorDriverQuadDshot>();
     }

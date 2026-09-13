@@ -3,6 +3,7 @@ use core::ops::{Deref, DerefMut};
 use signal_filters::SlewRateLimiterf32;
 
 use super::{MixerConfig, MixerType, MotorConfig, MotorMixerParameters, MotorOutputRange};
+use crate::dshot::Command;
 
 #[cfg(feature = "eight_motors")]
 pub const MAX_SUPPORTED_MOTOR_COUNT: usize = 8;
@@ -160,6 +161,7 @@ impl Default for MotorOutputs {
 }
 
 impl MotorOutputs {
+    #[must_use]
     pub const fn new() -> Self {
         Self([0.0; MAX_SUPPORTED_MOTOR_COUNT])
     }
@@ -173,6 +175,36 @@ impl Deref for MotorOutputs {
 }
 
 impl DerefMut for MotorOutputs {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+/// Struct containing array of motor commands, one for each motor.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MotorCommands(pub [Command; MAX_SUPPORTED_MOTOR_COUNT]);
+
+impl Default for MotorCommands {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl MotorCommands {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self([Command::MotorStop; MAX_SUPPORTED_MOTOR_COUNT])
+    }
+}
+
+impl Deref for MotorCommands {
+    type Target = [Command; MAX_SUPPORTED_MOTOR_COUNT];
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for MotorCommands {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
@@ -212,6 +244,7 @@ impl DerefMut for MotorFrequencies {
 pub struct MotorOutputFilters(pub [SlewRateLimiterf32; MAX_SUPPORTED_MOTOR_COUNT]);
 
 impl MotorOutputFilters {
+    #[must_use]
     pub const fn new() -> Self {
         Self([SlewRateLimiterf32::new(); MAX_SUPPORTED_MOTOR_COUNT])
     }
@@ -246,6 +279,7 @@ mod test_traits {
     fn normal_types() {
         is_full::<MotorMixerCommon>();
         is_full::<MotorOutputs>();
+        is_full::<MotorCommands>();
         is_full::<MotorOutputFilters>();
     }
 }

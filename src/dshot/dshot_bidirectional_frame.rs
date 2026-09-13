@@ -50,47 +50,55 @@ impl DshotBidirectionalFrame {
     pub(crate) const NIBBLE_TO_QUINTET: [u8; 16] =
         [0x19, 0x1B, 0x12, 0x13, 0x1D, 0x15, 0x16, 0x17, 0x1A, 0x09, 0x0A, 0x0B, 0x1E, 0x0D, 0x0E, 0x0F];
 
-    pub fn new(value: u16) -> Self {
+    pub const fn new(value: u16) -> Self {
         Self::encode_raw(value, Self::NO_TELEMETRY)
     }
 
-    pub fn raw(self) -> u16 {
+    pub const fn from_raw(value: u16) -> Self {
+        Self(value)
+    }
+
+    pub const fn from_command(command: Command) -> Self {
+        Self::encode_raw(command as u16, Self::NO_TELEMETRY)
+    }
+
+    pub const fn from_command_telemetry(command: Command, with_telemetry: bool) -> Self {
+        Self::encode_raw(command as u16, with_telemetry)
+    }
+
+    pub const fn raw(self) -> u16 {
         self.0
     }
 
-    pub fn value(self) -> u16 {
+    pub const fn value(self) -> u16 {
         self.0 >> 5
     }
 
     /// Returns whether telemetry is enabled.
-    pub fn is_telemetry_enabled(self) -> bool {
+    pub const fn is_telemetry_enabled(self) -> bool {
         self.0 & Self::TELEMETRY_BIT != 0
     }
 
-    pub fn checksum(self) -> u16 {
+    pub const fn checksum(self) -> u16 {
         self.0 & Self::CHECKSUM_BITS
     }
 
-    pub fn calculate_checksum(frame_raw: u16) -> u16 {
+    pub const fn calculate_checksum(frame_raw: u16) -> u16 {
         (!(frame_raw ^ (frame_raw >> 4) ^ (frame_raw >> 8))) & 0x0F
     }
 
-    pub fn encode_raw(frame_raw: u16, with_telemetry: bool) -> DshotBidirectionalFrame {
+    pub const fn encode_raw(frame_raw: u16, with_telemetry: bool) -> Self {
         let frame_raw = if with_telemetry { frame_raw << 1 | 0x01 } else { frame_raw << 1 };
         Self((frame_raw << 4) | Self::calculate_checksum(frame_raw))
     }
 
-    pub fn encode_command(command: Command, with_telemetry: bool) -> DshotBidirectionalFrame {
-        Self::encode_raw(command as u16, with_telemetry)
-    }
-
-    fn pwm_to_dshot_raw(pwm: u16) -> u16 {
+    const fn pwm_to_dshot_raw(pwm: u16) -> u16 {
         ((pwm - 1000) * 2) + Self::THROTTLE_OFFSET
     }
 
     /// Convert PWM value (1000-2000) to Dshot value (48-2047),
     /// clamping PWM value to (1000-2000).
-    pub fn pwm_clamped_to_dshot_raw(pwm: u16) -> u16 {
+    pub const fn pwm_clamped_to_dshot_raw(pwm: u16) -> u16 {
         if pwm >= 2000 {
             Self::THROTTLE_MAX
         } else if pwm >= 1000 {
@@ -102,7 +110,7 @@ impl DshotBidirectionalFrame {
 
     /// Convert throttle value [0.0,1.0] to Dshot frame value [48,2047],
     /// clamping PWM value to (1000-2000).
-    pub fn throttle_to_frame(throttle: f32) -> DshotBidirectionalFrame {
+    pub const fn throttle_to_frame(throttle: f32) -> Self {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let pwm = ((throttle.abs() + 1.0) * 1000.0) as u16;
         Self::encode_raw(Self::pwm_clamped_to_dshot_raw(pwm), Self::WITH_TELEMETRY)
@@ -214,13 +222,13 @@ mod tests {
     #[rustfmt::skip]
     #[test]
     fn commands() {
-        assert_eq!(1, DshotBidirectionalFrame::encode_command(Command::Beep1, DshotBidirectionalFrame::NO_TELEMETRY).value());
-        assert_eq!(0b_0000_0000_0010_1101, DshotBidirectionalFrame::encode_command(Command::Beep1, DshotBidirectionalFrame::NO_TELEMETRY).raw());
-        assert_eq!(0b_0000_0000_0011_1100, DshotBidirectionalFrame::encode_command(Command::Beep1, DshotBidirectionalFrame::WITH_TELEMETRY).raw());
-        assert_eq!(0b_0000_0101_1100_0110, DshotBidirectionalFrame::encode_command(Command::SignalLineERPMTelemetry, DshotBidirectionalFrame::NO_TELEMETRY).raw());
-        assert_eq!(0b_0000_0101_1101_0111, DshotBidirectionalFrame::encode_command(Command::SignalLineERPMTelemetry, DshotBidirectionalFrame::WITH_TELEMETRY).raw());
-        assert_eq!(0b_0000_0101_1110_0100, DshotBidirectionalFrame::encode_command(Command::SignalLineERPMPeriodTelemetry, DshotBidirectionalFrame::NO_TELEMETRY).raw());
-        assert_eq!(0b_0000_0101_1111_0101, DshotBidirectionalFrame::encode_command(Command::SignalLineERPMPeriodTelemetry, DshotBidirectionalFrame::WITH_TELEMETRY).raw());
+        assert_eq!(1, DshotBidirectionalFrame::from_command_telemetry(Command::Beep1, DshotBidirectionalFrame::NO_TELEMETRY).value());
+        assert_eq!(0b_0000_0000_0010_1101, DshotBidirectionalFrame::from_command_telemetry(Command::Beep1, DshotBidirectionalFrame::NO_TELEMETRY).raw());
+        assert_eq!(0b_0000_0000_0011_1100, DshotBidirectionalFrame::from_command_telemetry(Command::Beep1, DshotBidirectionalFrame::WITH_TELEMETRY).raw());
+        assert_eq!(0b_0000_0101_1100_0110, DshotBidirectionalFrame::from_command_telemetry(Command::SignalLineERPMTelemetry, DshotBidirectionalFrame::NO_TELEMETRY).raw());
+        assert_eq!(0b_0000_0101_1101_0111, DshotBidirectionalFrame::from_command_telemetry(Command::SignalLineERPMTelemetry, DshotBidirectionalFrame::WITH_TELEMETRY).raw());
+        assert_eq!(0b_0000_0101_1110_0100, DshotBidirectionalFrame::from_command_telemetry(Command::SignalLineERPMPeriodTelemetry, DshotBidirectionalFrame::NO_TELEMETRY).raw());
+        assert_eq!(0b_0000_0101_1111_0101, DshotBidirectionalFrame::from_command_telemetry(Command::SignalLineERPMPeriodTelemetry, DshotBidirectionalFrame::WITH_TELEMETRY).raw());
     }
     #[test]
     fn test_dshot_checksum_values() {

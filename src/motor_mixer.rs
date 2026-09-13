@@ -1,7 +1,7 @@
 use super::{
     MixerConfig, MixerType, MotorConfig, MotorMixerCommands, MotorMixerMessage,
     drivers::MotorDriver,
-    mixer_common::{MotorFrequencies, MotorMixerCommon, MotorOutputs},
+    {MotorFrequencies, MotorMixerCommon, MotorOutputs},
 };
 
 /*

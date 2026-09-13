@@ -12,7 +12,7 @@ use embassy_rp::{
 use embassy_time::{Duration, with_timeout};
 
 use super::clock_divider::bidir_pio_clock_divider;
-use crate::dshot::{DshotError, DshotFrame, Protocol};
+use crate::dshot::{DshotBidirectionalFrame, DshotError, GcrFrame, Protocol};
 
 // Bidirectional Dshot PIO program based on pico-bidir-dshot reference.
 //
@@ -209,38 +209,42 @@ impl<'a, PIO: Instance> PioBidirectionalQuadDshot<'a, PIO> {
         }
     }
 
-    /// Send a frame and return the raw rx value.
+    /// Sends a `DshotBidirectionalFrame` and return an unvalidated `GcrFrame`.
+    /// It is the responsibility of the caller to check the `GcrFrame` is valid before using it.
+    ///
     /// wait_push timeout  → TxTimeout
     /// wait_pull timeout  → TelemetryTimeout
-    /// rx_data == 0       → InvalidTelemetry
-    /// # Errors
-    async fn send_frame_and_receive<const SM: usize>(
+    /// # Errors ` DshotError::PioTxTimeout`, ` DshotError::PioRxTimeout`
+    async fn send_frame_and_receive_gcr<const SM: usize>(
         sm: &mut StateMachine<'_, PIO, SM>,
         program_origin: u8,
-        frame: DshotFrame,
-    ) -> Result<u32, DshotError> {
+        frame: DshotBidirectionalFrame,
+    ) -> Result<GcrFrame, DshotError> {
         // Clear any existing rx data
         while sm.rx().try_pull().is_some() {}
         Self::reset_program_counter(sm, program_origin);
 
+        // bidirectional dshot inverts frame
         let frame_inverted = u32::from(!frame.raw());
         // TODO: check 10ms timeout ins PIO `send_and_receive`.
         with_timeout(Duration::from_millis(10), sm.tx().wait_push(frame_inverted))
             .await
-            .map_err(|_| DshotError::TxTimeout)?;
+            .map_err(|_| DshotError::PioTxTimeout)?;
 
         let rx_data = with_timeout(Duration::from_micros(500), sm.rx().wait_pull())
             .await
-            .map_err(|_| DshotError::TelemetryTimeout)?;
+            .map_err(|_| DshotError::PioRxTimeout)?;
 
-        Ok(rx_data)
+        Ok(GcrFrame::from_raw(rx_data))
     }
 
+    /// Sends a `DshotBidirectionalFrame`
+    /// Does not return any response.
     #[allow(unused)]
     pub async fn send_frame<const SM: usize>(
         sm: &mut StateMachine<'_, PIO, SM>,
         program_origin: u8,
-        frame: DshotFrame,
+        frame: DshotBidirectionalFrame,
     ) {
         while sm.rx().try_pull().is_some() {}
         Self::reset_program_counter(sm, program_origin);
@@ -250,11 +254,13 @@ impl<'a, PIO: Instance> PioBidirectionalQuadDshot<'a, PIO> {
         sm.tx().wait_push(frame_inverted).await;
     }
 
+    /// Synchronously sends a `DshotBidirectionalFrame`
+    /// Does not return any response.
     #[allow(unused)]
     pub fn send_frame_blocking<const SM: usize>(
         sm: &mut StateMachine<'_, PIO, SM>,
         program_origin: u8,
-        frame: DshotFrame,
+        frame: DshotBidirectionalFrame,
     ) {
         while sm.rx().try_pull().is_some() {}
         Self::reset_program_counter(sm, program_origin);
@@ -263,20 +269,52 @@ impl<'a, PIO: Instance> PioBidirectionalQuadDshot<'a, PIO> {
         let frame_inverted = u32::from(!frame.raw());
         sm.tx().push(frame_inverted);
     }
+}
 
-    pub async fn send_frame_and_receive_sm0(&mut self, frame: DshotFrame) -> Result<u32, DshotError> {
-        Self::send_frame_and_receive(&mut self.pio_instance.sm0, self.program_origin, frame).await
+impl<'a, PIO: Instance> PioBidirectionalQuadDshot<'a, PIO> {
+    pub async fn send_frame_and_receive_gcr_sm0(
+        &mut self,
+        frame: DshotBidirectionalFrame,
+    ) -> Result<GcrFrame, DshotError> {
+        Self::send_frame_and_receive_gcr(&mut self.pio_instance.sm0, self.program_origin, frame).await
     }
 
-    pub async fn send_frame_and_receive_sm1(&mut self, frame: DshotFrame) -> Result<u32, DshotError> {
-        Self::send_frame_and_receive(&mut self.pio_instance.sm1, self.program_origin, frame).await
+    pub async fn send_frame_and_receive_gcr_sm1(
+        &mut self,
+        frame: DshotBidirectionalFrame,
+    ) -> Result<GcrFrame, DshotError> {
+        Self::send_frame_and_receive_gcr(&mut self.pio_instance.sm1, self.program_origin, frame).await
     }
 
-    pub async fn send_frame_and_receive_sm2(&mut self, frame: DshotFrame) -> Result<u32, DshotError> {
-        Self::send_frame_and_receive(&mut self.pio_instance.sm2, self.program_origin, frame).await
+    pub async fn send_frame_and_receive_gcr_sm2(
+        &mut self,
+        frame: DshotBidirectionalFrame,
+    ) -> Result<GcrFrame, DshotError> {
+        Self::send_frame_and_receive_gcr(&mut self.pio_instance.sm2, self.program_origin, frame).await
     }
 
-    pub async fn send_frame_and_receive_sm3(&mut self, frame: DshotFrame) -> Result<u32, DshotError> {
-        Self::send_frame_and_receive(&mut self.pio_instance.sm3, self.program_origin, frame).await
+    pub async fn send_frame_and_receive_gcr_sm3(
+        &mut self,
+        frame: DshotBidirectionalFrame,
+    ) -> Result<GcrFrame, DshotError> {
+        Self::send_frame_and_receive_gcr(&mut self.pio_instance.sm3, self.program_origin, frame).await
+    }
+}
+
+impl<'a, PIO: Instance> PioBidirectionalQuadDshot<'a, PIO> {
+    pub async fn send_frame_sm0(&mut self, frame: DshotBidirectionalFrame) {
+        Self::send_frame(&mut self.pio_instance.sm0, self.program_origin, frame).await
+    }
+
+    pub async fn send_frame_sm1(&mut self, frame: DshotBidirectionalFrame) {
+        Self::send_frame(&mut self.pio_instance.sm1, self.program_origin, frame).await
+    }
+
+    pub async fn send_frame_sm2(&mut self, frame: DshotBidirectionalFrame) {
+        Self::send_frame(&mut self.pio_instance.sm2, self.program_origin, frame).await
+    }
+
+    pub async fn send_frame_sm3(&mut self, frame: DshotBidirectionalFrame) {
+        Self::send_frame(&mut self.pio_instance.sm3, self.program_origin, frame).await
     }
 }

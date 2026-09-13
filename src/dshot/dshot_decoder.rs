@@ -1,18 +1,8 @@
 use super::{DshotBidirectionalFrame,Telemetry};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DecodeError {
-    NoData,
-    InvalidRunLength,
-    GcrData,
-    Crc,
-    Erpm,
-    _TelemetryType,
-}
-
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
-pub struct DshotDecoder;
+struct DshotDecoder;
 
 /// Dshot Decoder.
 /// ```text

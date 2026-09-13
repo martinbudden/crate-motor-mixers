@@ -64,7 +64,10 @@ pub use drivers_host::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 pub use mixer_calculations::mix_hex_x;
 pub use mixer_calculations::{mix_airplane, mix_bicopter, mix_quad_x, mix_tricopter, mix_wing};
 
-pub use mixer_common::MotorMixerCommon;
+pub use mixer_common::{
+    MAX_SUPPORTED_MOTOR_COUNT, MotorCommands, MotorFrequencies, MotorMixerCommon, MotorOutputFilters, MotorOutputs,
+};
+
 pub use motor_mixer::MotorMixer;
 
 pub use rpm_notch_filters::{RpmNotchFilterBank, RpmNotchFilterBankConfig, RpmNotchFilterFrequencies, RpmNotchFilters};
