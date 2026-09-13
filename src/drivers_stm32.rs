@@ -46,7 +46,9 @@ where
     }
 
     #[inline]
-    pub fn write_to_motors(&mut self, motor_outputs: MotorOutputs) {
+    pub async fn write_to_motors(&mut self, motor_outputs: MotorOutputs) {
+        core::future::ready(()).await;
+
         let max_duty = 1000.0_f32;
         self.ch0.set_duty_cycle(output_to_duty(motor_outputs[0], max_duty));
         self.ch1.set_duty_cycle(output_to_duty(motor_outputs[1], max_duty));
@@ -85,7 +87,9 @@ where
     }
 
     #[inline]
-    pub fn write_to_motors(&mut self, motor_outputs: MotorOutputs) {
+    pub async fn write_to_motors(&mut self, motor_outputs: MotorOutputs) {
+        core::future::ready(()).await;
+
         let max_duty = 1000.0_f32;
         self.ch0.set_duty_cycle(output_to_duty(motor_outputs[0], max_duty));
         self.ch1.set_duty_cycle(output_to_duty(motor_outputs[1], max_duty));

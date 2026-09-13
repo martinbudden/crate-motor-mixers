@@ -50,26 +50,31 @@ impl ErpmTelemetryFrame {
     const ONE_MINUTE_IN_MICROSECONDS: u32 = 60_000_000;
 
     #[inline]
+    #[must_use]
     pub const fn from_raw(value: u16) -> Self {
         Self(value)
     }
 
     #[inline]
+    #[must_use]
     pub const fn from_exponent_mantissa(exponent: u16, mantissa: u16) -> Self {
         let raw_12 = (exponent << 9) | (mantissa & 0x1FFF);
         Self((raw_12 << 4) | Self::calculate_checksum(raw_12))
     }
 
     #[inline]
+    #[must_use]
     pub const fn raw(self) -> u16 {
         self.0
     }
 
+    #[must_use]
     pub const fn calculate_checksum(raw_12: u16) -> u16 {
         (!(raw_12 ^ (raw_12 >> 4) ^ (raw_12 >> 8))) & 0x0F
     }
 
     #[inline]
+    #[must_use]
     pub const fn checksum(self) -> u16 {
         self.0 & Self::CHECKSUM_BITS
     }
@@ -91,21 +96,25 @@ impl ErpmTelemetryFrame {
     }
 
     #[inline]
+    #[must_use]
     pub const fn mantissa(self) -> u16 {
         self.0 & Self::MANTISSA_BITS >> 4
     }
 
     #[inline]
+    #[must_use]
     pub const fn exponent(self) -> u16 {
         self.0 & Self::EXPONENT_BITS >> 13
     }
 
     #[inline]
+    #[must_use]
     fn period_us(self) -> u32 {
         u32::from(self.mantissa()) << self.exponent()
     }
 
     #[inline]
+    #[must_use]
     pub fn erpm(self) -> u32 {
         Self::ONE_MINUTE_IN_MICROSECONDS.checked_div(self.period_us()).unwrap_or_default()
     }
@@ -137,6 +146,7 @@ impl ErpmTelemetryFrame {
         Ok((value & 0x00FF, TelemetryType::from_u16(type_val >> 1)))
     }*/
 
+    #[must_use]
     pub fn decode_telemetry(self) -> Telemetry {
         let raw_12 = self.0 >> 4;
         let exponent = (raw_12 >> 9) & 0x07;

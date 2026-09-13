@@ -48,6 +48,7 @@ pub use mixer_config::{
 };
 
 pub use drivers::MotorDriver;
+
 #[cfg(feature = "esp32")]
 pub use drivers_esp32::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 

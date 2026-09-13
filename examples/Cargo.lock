@@ -1341,6 +1341,7 @@ dependencies = [
  "embassy-stm32",
  "embassy-time",
  "esp-hal",
+ "fixed",
  "motor-mixers",
  "panic-probe",
  "rustc_version 0.4.1",

@@ -24,7 +24,7 @@ rustc_version = "0.4.1"
 
 [features]
 #default = ["std", "serde"]
-default = ["rp235xa"]
+#default = ["rp235xa"]
 #default = ["stm32", "motors_t4_t3"]
 #default = ["esp32"]
 #default = ["serde"]

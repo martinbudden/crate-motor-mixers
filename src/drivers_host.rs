@@ -12,7 +12,9 @@ impl MotorDriverQuadPwm {
     }
 
     #[inline]
-    pub fn write_to_motors(&mut self, _outputs: MotorOutputs) {
+    pub async fn write_to_motors(&mut self, _outputs: MotorOutputs) {
+        core::future::ready(()).await;
+
         _ = self;
     }
 }

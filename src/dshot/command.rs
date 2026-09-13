@@ -134,6 +134,7 @@ impl Command {
 
 impl Command {
     #[allow(unused)]
+    #[must_use]
     pub const fn repetitions_required(self) -> u8 {
         match self {
             // Protocol docs often stat 6 repeats for these commands.
@@ -156,6 +157,7 @@ impl Command {
     }
 
     #[allow(unused)]
+    #[must_use]
     pub const fn delay_required_us(self) -> u32 {
         match self {
             Self::Beep1 | Self::Beep2 | Self::Beep3 | Self::Beep4 | Self::Beep5 => 260_000,

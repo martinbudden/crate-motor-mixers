@@ -50,43 +50,53 @@ impl DshotBidirectionalFrame {
     pub(crate) const NIBBLE_TO_QUINTET: [u8; 16] =
         [0x19, 0x1B, 0x12, 0x13, 0x1D, 0x15, 0x16, 0x17, 0x1A, 0x09, 0x0A, 0x0B, 0x1E, 0x0D, 0x0E, 0x0F];
 
+    #[must_use]
     pub const fn new(value: u16) -> Self {
         Self::encode_raw(value, Self::NO_TELEMETRY)
     }
 
+    #[must_use]
     pub const fn from_raw(value: u16) -> Self {
         Self(value)
     }
 
+    #[must_use]
     pub const fn from_command(command: Command) -> Self {
         Self::encode_raw(command as u16, Self::NO_TELEMETRY)
     }
 
+    #[must_use]
     pub const fn from_command_telemetry(command: Command, with_telemetry: bool) -> Self {
         Self::encode_raw(command as u16, with_telemetry)
     }
 
+    #[must_use]
     pub const fn raw(self) -> u16 {
         self.0
     }
 
+    #[must_use]
     pub const fn value(self) -> u16 {
         self.0 >> 5
     }
 
     /// Returns whether telemetry is enabled.
+    #[must_use]
     pub const fn is_telemetry_enabled(self) -> bool {
         self.0 & Self::TELEMETRY_BIT != 0
     }
 
+    #[must_use]
     pub const fn checksum(self) -> u16 {
         self.0 & Self::CHECKSUM_BITS
     }
 
+    #[must_use]
     pub const fn calculate_checksum(frame_raw: u16) -> u16 {
         (!(frame_raw ^ (frame_raw >> 4) ^ (frame_raw >> 8))) & 0x0F
     }
 
+    #[must_use]
     pub const fn encode_raw(frame_raw: u16, with_telemetry: bool) -> Self {
         let frame_raw = if with_telemetry { frame_raw << 1 | 0x01 } else { frame_raw << 1 };
         Self((frame_raw << 4) | Self::calculate_checksum(frame_raw))
@@ -98,6 +108,7 @@ impl DshotBidirectionalFrame {
 
     /// Convert PWM value (1000-2000) to Dshot value (48-2047),
     /// clamping PWM value to (1000-2000).
+    #[must_use]
     pub const fn pwm_clamped_to_dshot_raw(pwm: u16) -> u16 {
         if pwm >= 2000 {
             Self::THROTTLE_MAX
@@ -110,6 +121,7 @@ impl DshotBidirectionalFrame {
 
     /// Convert throttle value [0.0,1.0] to Dshot frame value [48,2047],
     /// clamping PWM value to (1000-2000).
+    #[must_use]
     pub const fn throttle_to_frame(throttle: f32) -> Self {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let pwm = ((throttle.abs() + 1.0) * 1000.0) as u16;
@@ -148,6 +160,7 @@ impl DshotBidirectionalFrame {
         ret
     }
 
+    #[must_use]
     pub fn gcr_encode(self) -> u32 {
         let gcr20 = self.to_gcr20();
         Self::gcr20_to_gcr21(gcr20)

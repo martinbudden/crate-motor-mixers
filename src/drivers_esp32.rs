@@ -33,7 +33,9 @@ impl MotorDriverQuadPwm {
     }
 
     #[inline]
-    pub fn write_to_motors(&mut self, motor_outputs: MotorOutputs) {
+    pub async fn write_to_motors(&mut self, motor_outputs: MotorOutputs) {
+        core::future::ready(()).await;
+
         let max_duty = self.driver.get_max_duty() as f32;
 
         self.driver.set_duty(Channel::CH0, output_to_duty(motor_outputs[0]), max_duty);

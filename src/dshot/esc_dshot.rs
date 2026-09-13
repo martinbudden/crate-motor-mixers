@@ -16,7 +16,7 @@ impl Default for EscDshot {
 }
 
 impl EscDshot {
-    pub const DEFAULT_CPU_FREQUENCY:u32 = 150_000_000;
+    pub const DEFAULT_CPU_FREQUENCY: u32 = 150_000_000;
     const DSHOT_BIT_COUNT: usize = 16;
     const DMA_BUFFER_SIZE: usize = Self::DSHOT_BIT_COUNT + 1;
 
@@ -28,6 +28,7 @@ impl EscDshot {
     const W2818B_T1H: u32 = 800;
     const W2818B_T: u32 = 1250;
 
+    #[must_use]
     pub const fn new(protocol: Protocol) -> Self {
         let mut this = Self {
             protocol,
@@ -52,6 +53,7 @@ impl EscDshot {
 
 #[allow(unused)]
 impl EscDshot {
+    #[must_use]
     pub const fn nano_seconds_to_cycles(self, nano_seconds: u32) -> u16 {
         // note: the k values cancel out, but give greater precision in the calculation
         const K: u64 = 128;
@@ -106,6 +108,7 @@ impl EscDshot {
     /// Returns an array of duty cycles for use in PWM DMA.
     ///
     /// The array an extra element set to zero to ensure that PWM output gets pulled low at the end of the sequence.
+    #[must_use]
     pub fn duty_cycles_u16(&self, frame: u16) -> [u16; Self::DMA_BUFFER_SIZE] {
         let mut ret = [0u16; Self::DMA_BUFFER_SIZE];
 
@@ -123,7 +126,8 @@ impl EscDshot {
     /// Returns an array of duty cycles for use in PWM DMA.
     ///
     /// The array an extra element set to zero to ensure that PWM output gets pulled low at the end of the sequence.
-    pub fn duty_cycles_u32(&self, frame: u16, use_high_order_bits:bool) -> [u32; Self::DMA_BUFFER_SIZE] {
+    #[must_use]
+    pub fn duty_cycles_u32(&self, frame: u16, use_high_order_bits: bool) -> [u32; Self::DMA_BUFFER_SIZE] {
         let mut ret = [0u32; Self::DMA_BUFFER_SIZE];
 
         let mut mask_bit = 1 << (Self::DSHOT_BIT_COUNT - 1);

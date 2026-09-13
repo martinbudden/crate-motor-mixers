@@ -21,6 +21,7 @@ eight_motors = ["motor-mixers/eight_motors"]
 motors_t8 = [ "motor-mixers/motors_t8"]
 motors_t4_t3 = [ "motor-mixers/motors_t4_t3"]
 motors_t3_t2 = [ "motor-mixers/motors_t3_t2"]
+
 rp = ["dep:embassy-rp"] # combined feature for all rp variants
 rp2040 = [
     "rp",
@@ -64,8 +65,7 @@ esp32 = [
 ]
 
 [dependencies]
-#embassy-executor = { version = "0.10.0", features = ["platform-cortex-m", "executor-thread"] }
-#embassy-time = { version = "0.5.1", features = ["tick-hz-1_000_000"] }
+motor-mixers = { path = "..", default-features = false}
 
 # Core Embassy executor and concurrency primitives
 embassy-executor = { version = "0.10.0", default-features = false, features = ["executor-thread"] }
@@ -74,17 +74,30 @@ embassy-time = { version = "0.5.1", default-features = false }
 embassy-rp = { version = "0.10.0", default-features = false, optional = true }
 embassy-stm32 = { version = "0.6.0", default-features = false, optional = true }
 esp-hal = { version = "1.2.1", default-features = false, optional = true }
+cortex-m = { version = "0.7.9", features = ["critical-section-single-core"] }
+cortex-m-rt = { version = "0.7.6" , optional = true }
+
+fixed = "1.31.0"
 defmt = { version = "1.0.1" }
 defmt-rtt = "1.3.0"
 defmt-test = "0.5.0"
 panic-probe = { version = "1.0.0", features = ["print-defmt"] }
-cortex-m = { version = "0.7.9", features = ["critical-section-single-core"] }
-cortex-m-rt = { version = "0.7.6" , optional = true }
-motor-mixers = { path = "..", default-features = false}
 
 [[bin]]
 name = "bidirectional_pio"
 path = "src/bidirectional_pio.rs"
+
+[[bin]]
+name = "motor_driver_rp_quad_dshot"
+path = "src/motor_driver_rp_quad_dshot.rs"
+
+[[bin]]
+name = "motor_driver_rp_quad_pwm"
+path = "src/motor_driver_rp_quad_pwm.rs"
+
+[[bin]]
+name = "motor_mixer_rp"
+path = "src/motor_mixer_rp.rs"
 
 [profile.release]
 debug = 2

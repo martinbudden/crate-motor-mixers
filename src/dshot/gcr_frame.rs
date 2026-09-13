@@ -31,22 +31,26 @@ impl GcrFrame {
     ];
 
     #[inline]
+    #[must_use]
     pub const fn from_raw(value: u32) -> Self {
         Self(value)
     }
 
     #[inline]
+    #[must_use]
     pub const fn raw(self) -> u32 {
         self.0
     }
     /// Check if checksum is ok (XOR of all 4 nibbles must equal 0x0F).
     #[inline]
+    #[must_use]
     pub const fn is_valid(self) -> bool {
         let value = self.0;
         let checksum = (value ^ (value >> 4) ^ (value >> 8) ^ (value >> 12)) & 0x0F;
         checksum == 0x0F
     }
 
+    /// # Errors
     #[inline]
     pub const fn decode(self) -> Result<u16, DecodeError> {
         let gcr = self.0 & 0x000F_FFFF;
@@ -54,6 +58,7 @@ impl GcrFrame {
         Self::gcr20_to_erpm(gcr20)
     }
 
+    /// # Errors
     pub const fn gcr20_to_erpm(gcr20: u32) -> Result<u16, DecodeError> {
         let nibble0 = Self::QUINTET_TO_NIBBLE[(gcr20 & 0x1F) as usize];
         let nibble1 = Self::QUINTET_TO_NIBBLE[((gcr20 >> 5) & 0x1F) as usize];

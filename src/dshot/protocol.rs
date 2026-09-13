@@ -11,6 +11,7 @@ pub enum Protocol {
 
 impl Protocol {
     #[allow(unused)]
+    #[must_use]
     pub const fn baud_rate(self) -> u32 {
         match self {
             Self::Dshot150 => 150_000,
