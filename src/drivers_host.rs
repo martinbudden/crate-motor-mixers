@@ -38,7 +38,12 @@ impl MotorDriverQuadDshot {
     pub async fn write_commands_to_motors(&mut self, _commands: MotorCommands) {
         _ = self;
     }
+
     pub async fn write_command_to_all_motors(&mut self, _command: Command) {
+        _ = self;
+    }
+
+    pub async fn reverse_all_motors(&mut self, _command: Command) {
         _ = self;
     }
 

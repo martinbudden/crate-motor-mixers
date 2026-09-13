@@ -19,7 +19,9 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::doc_paragraphs_missing_punctuation)]
 
-mod dshot;
+pub mod dshot; // will eventually be a separate crate
+pub mod dshot_rp; // will eventually be a separate crate
+
 mod dynamic_idle_controller;
 
 mod commands;
@@ -29,8 +31,6 @@ mod drivers_esp32;
 mod drivers_host;
 mod drivers_rp;
 mod drivers_stm32;
-
-mod dshot_rp;
 
 mod mixer_calculations;
 mod mixer_common;
@@ -52,7 +52,10 @@ pub use drivers::MotorDriver;
 pub use drivers_esp32::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 
 #[cfg(feature = "rp")]
-pub use drivers_rp::{MotorDriverQuadDshot, MotorDriverQuadPwm};
+pub use {
+    drivers_rp::{MotorDriverQuadDshot, MotorDriverQuadPwm},
+    dshot_rp::PioBidirectionalQuadDshot,
+};
 
 #[cfg(feature = "stm32")]
 pub use drivers_stm32::{MotorDriverQuadDshot, MotorDriverQuadPwm};

@@ -1,4 +1,7 @@
+use embassy_time::{Duration, Timer};
 use crate::dshot::Command;
+
+use super::{MotorCommands, MotorFrequencies, MotorOutputs};
 
 #[cfg(not(any(feature = "esp32", feature = "rp", feature = "stm32")))]
 use super::drivers_host::{MotorDriverQuadDshot, MotorDriverQuadPwm};
@@ -11,8 +14,6 @@ use super::drivers_rp::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 
 #[cfg(feature = "stm32")]
 use super::drivers_stm32::{MotorDriverQuadDshot, MotorDriverQuadPwm};
-
-use super::{MotorCommands, MotorFrequencies, MotorOutputs};
 
 #[allow(missing_debug_implementations, missing_copy_implementations)]
 pub enum MotorDriver {
@@ -39,6 +40,15 @@ impl MotorDriver {
         match self {
             Self::QuadPwm(_driver) => {}
             Self::QuadDshot(driver) => driver.write_command_to_all_motors(command).await,
+        }
+    }
+
+    /// Arm all ESCs by sending `MotorStop` at 1kHz for the given duration.
+    pub async fn arm_all_motors(&mut self, duration: Duration) {
+        let iterations = duration.as_millis();
+        for _ in 0..iterations {
+            self.write_command_to_all_motors(Command::MotorStop).await;
+            Timer::after(Duration::from_millis(1)).await;
         }
     }
 

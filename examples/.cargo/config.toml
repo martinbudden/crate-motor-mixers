@@ -1,0 +1,60 @@
+# Note the RP2350 uses thumbv8m and the RP2040 uses thumbv6m.
+# RP2350: thumbv8m.main-none-eabihf (Cortex-M33, ARMv8-M, Hard Float)
+# RP2040: thumbv6m-none-eabi (Cortex-M0+, ARMv6-M, Soft Float)
+
+# Default target: RP2350 (Pico 2)
+# For RP2040: cargo build --features rp2040 --target thumbv6m-none-eabi
+
+# Configuration for RP2040 (e.g., original Raspberry Pi Pico)
+[target.thumbv6m-none-eabi]
+runner = "probe-rs run --chip RP2040"
+rustflags = [
+    "-C",
+    "link-arg=-Tlink.x",
+]
+
+# Configuration for RP2350 (e.g., Raspberry Pi Pico 2 ARM Core)
+[target.thumbv8m.main-none-eabihf]
+runner = "probe-rs run --chip RP235x"
+
+# Configuration for ESP32 S3
+[target.xtensa-esp32s3-none-elf]
+runner = "espflash flash --monitor"
+
+[build]
+target = "thumbv8m.main-none-eabihf"
+
+[env]
+DEFMT_LOG = "debug"
+[alias]
+check-rp2040 = [
+    "check",
+    "--target", "thumbv6m-none-eabi",
+    "--no-default-features",
+    "--features",
+    "rp2040"
+]
+
+build-rp2040 = [
+    "build",
+    "--target", "thumbv6m-none-eabi",
+    "--no-default-features",
+    "--features",
+    "rp2040"
+]
+
+check-rp235xa = [
+    "check",
+    "--target", "thumbv8m.main-none-eabihf",
+    "--no-default-features",
+    "--features",
+    "rp235xa"
+]
+build-rp235xa = [
+    "build",
+    "--target", "thumbv8m.main-none-eabihf",
+    "--no-default-features",
+    "--features",
+    "rp235xa"
+]
+
