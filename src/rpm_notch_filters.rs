@@ -1,13 +1,13 @@
 use signal_filters::{BiquadFilterVector3f32, Pt1Filterf32};
 use vqm::Vector3f32;
 
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
     serde::{Deserialize, Serialize},
 };
-#[cfg(feature = "storage")]
-use sequential_storage::map::PostcardValue;
 
 //use defmt::debug;
 //use embassy_time::{Instant, Timer};
@@ -273,7 +273,7 @@ mod test_traits {
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     #[cfg(feature = "serde")]
-    fn is_serde<T: Serialize + MaxSize + for<'a> Deserialize<'a> >() {}
+    fn is_serde<T: Serialize + MaxSize + for<'a> Deserialize<'a>>() {}
     #[cfg(feature = "storage")]
     fn is_storage<T: for<'a> PostcardValue<'a>>() {}
 

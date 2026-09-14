@@ -54,7 +54,7 @@ stm32 = [
     "embassy-executor/platform-cortex-m",   # <-- Explicitly satisfies the executor's platform check
     "embassy-executor/executor-thread",
 ]
-stm32f405 = ["embassy-stm32/stm32f405rg"]
+stm32f405 = ["stm32", "embassy-stm32/stm32f405rg"]
 esp32 = ["dep:esp-hal", "esp-hal/esp32s3"]
 
 [dependencies]

@@ -5,6 +5,7 @@
 
 #![no_std]
 #![no_main]
+#![cfg(feature = "rp")]
 
 use defmt::info;
 use embassy_executor::Spawner;
@@ -30,8 +31,7 @@ fn pwm_config_400hz() -> PwmConfig {
     config
 }
 
-#[embassy_executor::main]
-async fn main(_spawner: Spawner) {
+fn driver_rp() -> MotorDriverQuadPwm {
     let p = embassy_rp::init(Default::default());
 
     // Print system clock for verification
@@ -47,7 +47,12 @@ async fn main(_spawner: Spawner) {
     let pwm0 = Pwm::new_output_ab(p.PWM_SLICE5, p.PIN_10, p.PIN_11, config0);
     let pwm1 = Pwm::new_output_ab(p.PWM_SLICE6, p.PIN_12, p.PIN_13, config1);
 
-    let mut driver = MotorDriverQuadPwm::new(pwm0, pwm1, frequency_hz);
+    MotorDriverQuadPwm::new(pwm0, pwm1, frequency_hz)
+}
+
+#[embassy_executor::main]
+async fn main(_spawner: Spawner) {
+    let mut driver = driver_rp();
 
     let motor_outputs = MotorOutputs::new();
 

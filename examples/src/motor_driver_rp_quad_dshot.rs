@@ -5,6 +5,7 @@
 
 #![no_std]
 #![no_main]
+#![cfg(feature = "rp")]
 
 use defmt::info;
 use embassy_executor::Spawner;

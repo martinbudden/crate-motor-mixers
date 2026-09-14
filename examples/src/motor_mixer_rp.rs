@@ -8,7 +8,6 @@
 
 use defmt::info;
 use embassy_executor::Spawner;
-use embassy_rp::{bind_interrupts, clocks::clk_sys_freq, peripherals::PIO0, pio::InterruptHandler};
 use embassy_time::{Duration, Timer};
 use {defmt_rtt as _, panic_probe as _};
 
@@ -16,10 +15,18 @@ use motor_mixers::{
     MixerConfig, MotorConfig, MotorDriver, MotorDriverQuadDshot, MotorMixer, MotorMixerMessage, dshot::Protocol,
 };
 
+#[cfg(feature = "rp")]
+use embassy_rp::{bind_interrupts, clocks::clk_sys_freq, peripherals::PIO0, pio::InterruptHandler};
+#[cfg(feature = "rp")]
 bind_interrupts!(struct Irqs {
     PIO0_IRQ_0 => InterruptHandler<PIO0>;
 });
 
+#[cfg(not(feature = "rp"))]
+#[embassy_executor::main]
+async fn main(_spawner: Spawner) {}
+
+#[cfg(feature = "rp")]
 #[embassy_executor::main]
 async fn main(_spawner: Spawner) {
     let p = embassy_rp::init(Default::default());
