@@ -33,6 +33,7 @@ runner = "espflash flash --monitor"
 # Run using: 'cargo test-none'
 test-none = [ "test", "--no-default-features"]
 test-serde = "test --features serde"
+test-storage = "test --features storage"
 test-8 = [ "test", "--no-default-features", "--features", "eight_motors"]
 
 test-rp235xa = [
@@ -46,6 +47,7 @@ test-rp235xa = [
 check-none = [ "check", "--no-default-features"]
 check-8 = [ "check", "--no-default-features", "--features", "eight_motors"]
 check-serde = [ "check", "--no-default-features", "--features", "serde"]
+check-storage = [ "check", "--no-default-features", "--features", "storage"]
 
 check-rp235xa = [
     "check",

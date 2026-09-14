@@ -36,7 +36,8 @@ motors_t4_t3 = []
 eight_motors = []
 
 # Core backend features declared explicitly
-serde = ["dep:serde", "postcard", "sequential-storage"]
+serde = ["dep:serde", "postcard", "vqm/serde", "signal-filters/serde", "pidsk-controller/serde"]
+storage = ["dep:sequential-storage", "serde", "vqm/storage", "signal-filters/storage", "pidsk-controller/storage"]
 align = ["vqm/align", "signal-filters/align"]
 simd = ["vqm/simd", "signal-filters/simd"]
 
@@ -78,14 +79,14 @@ defmt = { version = "1.0.1", optional = true }
 fixed = "1.31"
 #paste = "1.0.15"
 
-vqm = { version = "0.1.16" }
-#vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix" }
+#vqm = { version = "0.1.16" }
+vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix" }
 #vqm = { path = "../vqm"  }
-signal-filters = "0.1.12"
-#signal-filters = { git = "https://github.com/martinbudden/crate-signal-filters" }
+#signal-filters = "0.1.12"
+signal-filters = { git = "https://github.com/martinbudden/crate-signal-filters" }
 #signal-filters = { path = "../signal-filters" }
-pidsk-controller = "0.1.9"
-#pidsk-controller = { git = "https://github.com/martinbudden/crate-pid-controller" }
+#pidsk-controller = "0.1.9"
+pidsk-controller = { git = "https://github.com/martinbudden/crate-pid-controller" }
 #pidsk-controller = { path = "../pidsk-controller" }
 
 # Use embedded-hal for I2C/SPI traits

@@ -65,8 +65,6 @@ mod test_traits {
     //fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     fn is_full_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + Eq + PartialEq>() {}
     fn is_full_eq_no_default<T: Sized + Send + Sync + Unpin + Copy + Clone + Eq + PartialEq>() {}
-    //#[cfg(feature = "serde")]
-    //fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {

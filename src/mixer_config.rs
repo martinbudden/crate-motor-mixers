@@ -1,9 +1,10 @@
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
-    sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
 };
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 
 // parameters to mix function
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -17,7 +18,7 @@ pub struct MotorOutputRange {
     pub max: f32,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for MotorOutputRange {}
 
 impl Default for MotorOutputRange {
@@ -49,7 +50,7 @@ pub struct MotorMixerParameters {
     pub overshoot: f32,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for MotorMixerParameters {}
 
 impl Default for MotorMixerParameters {
@@ -157,7 +158,7 @@ pub struct MixerConfig {
     pub yaw_motors_reversed: u8,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for MixerConfig {}
 
 impl Default for MixerConfig {
@@ -248,7 +249,7 @@ pub struct MotorDeviceConfig {
     pub use_dshot_edt: u8,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for MotorDeviceConfig {}
 
 impl Default for MotorDeviceConfig {
@@ -291,7 +292,7 @@ pub struct MotorConfig {
     pub motor_pole_count: u8,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for MotorConfig {}
 
 impl Default for MotorConfig {
@@ -324,7 +325,7 @@ pub struct ServoDeviceConfig {
     pub servo_pwm_rate: u16,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for ServoDeviceConfig {}
 
 impl Default for ServoDeviceConfig {
@@ -351,7 +352,7 @@ pub struct ServoConfig {
     pub channel_forwarding_start_channel: u8,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for ServoConfig {}
 
 impl Default for ServoConfig {
@@ -378,7 +379,9 @@ mod test_traits {
 
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     #[cfg(feature = "serde")]
-    fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
+    fn is_serde<T: Serialize + MaxSize + for<'a> Deserialize<'a> >() {}
+    #[cfg(feature = "storage")]
+    fn is_storage<T: for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
@@ -391,13 +394,23 @@ mod test_traits {
     }
     #[cfg(feature = "serde")]
     #[test]
-    fn config_types() {
-        is_config::<MotorMixerParameters>();
-        is_config::<MixerConfig>();
-        is_config::<MotorDeviceConfig>();
-        is_config::<MotorConfig>();
-        is_config::<ServoDeviceConfig>();
-        is_config::<ServoConfig>();
+    fn serde_types() {
+        is_serde::<MotorMixerParameters>();
+        is_serde::<MixerConfig>();
+        is_serde::<MotorDeviceConfig>();
+        is_serde::<MotorConfig>();
+        is_serde::<ServoDeviceConfig>();
+        is_serde::<ServoConfig>();
+    }
+    #[cfg(feature = "storage")]
+    #[test]
+    fn storage_types() {
+        is_storage::<MotorMixerParameters>();
+        is_storage::<MixerConfig>();
+        is_storage::<MotorDeviceConfig>();
+        is_storage::<MotorConfig>();
+        is_storage::<ServoDeviceConfig>();
+        is_storage::<ServoConfig>();
     }
 }
 

@@ -4,9 +4,10 @@ use vqm::Vector3f32;
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
-    sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
 };
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 
 //use defmt::debug;
 //use embassy_time::{Instant, Timer};
@@ -33,7 +34,7 @@ pub struct RpmNotchFilterBankConfig {
     pub motor_count: u8,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for RpmNotchFilterBankConfig {}
 
 impl Default for RpmNotchFilterBankConfig {
@@ -272,14 +273,17 @@ mod test_traits {
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     #[cfg(feature = "serde")]
-    #[cfg(feature = "serde")]
-    fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
+    fn is_serde<T: Serialize + MaxSize + for<'a> Deserialize<'a> >() {}
+    #[cfg(feature = "storage")]
+    fn is_storage<T: for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
         is_full::<RpmNotchFilterBankConfig>();
         #[cfg(feature = "serde")]
-        is_config::<RpmNotchFilterBankConfig>();
+        is_serde::<RpmNotchFilterBankConfig>();
+        #[cfg(feature = "storage")]
+        is_storage::<RpmNotchFilterBankConfig>();
         is_full::<RpmNotchFilterFrequencies>();
         is_full::<RpmNotchFilterBankContext>();
         is_full::<RpmNotchFilterBank>();

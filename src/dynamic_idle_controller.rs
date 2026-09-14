@@ -1,9 +1,10 @@
 #[cfg(feature = "serde")]
 use {
     postcard::experimental::max_size::MaxSize,
-    sequential_storage::map::PostcardValue,
     serde::{Deserialize, Serialize},
 };
+#[cfg(feature = "storage")]
+use sequential_storage::map::PostcardValue;
 
 pub use pidsk_controller::{PidControllerf32, PidGainsf32};
 pub use signal_filters::{Pt1Filterf32, SignalFilter};
@@ -38,7 +39,7 @@ pub struct DynamicIdleControllerConfig {
     pub dyn_idle_max_increase: u8,
 }
 
-#[cfg(feature = "serde")]
+#[cfg(feature = "storage")]
 impl PostcardValue<'_> for DynamicIdleControllerConfig {}
 
 impl Default for DynamicIdleControllerConfig {
@@ -176,13 +177,17 @@ mod test_traits {
     fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     #[cfg(feature = "serde")]
-    fn is_config<T: Serialize + MaxSize + for<'a> Deserialize<'a> + for<'a> PostcardValue<'a>>() {}
+    fn is_serde<T: Serialize + MaxSize + for<'a> Deserialize<'a> >() {}
+    #[cfg(feature = "storage")]
+    fn is_storage<T: for<'a> PostcardValue<'a>>() {}
 
     #[test]
     fn normal_types() {
         is_full::<DynamicIdleControllerConfig>();
         #[cfg(feature = "serde")]
-        is_config::<DynamicIdleControllerConfig>();
+        is_serde::<DynamicIdleControllerConfig>();
+        #[cfg(feature = "storage")]
+        is_storage::<DynamicIdleControllerConfig>();
         is_full::<DynamicIdleController>();
     }
 }
