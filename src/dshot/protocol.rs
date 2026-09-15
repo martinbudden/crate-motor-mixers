@@ -1,5 +1,5 @@
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
-pub enum Protocol {
+pub enum DshotProtocol {
     #[default]
     Dshot150 = 0,
     Dshot300 = 1,
@@ -9,7 +9,7 @@ pub enum Protocol {
     W2818B = 255,
 }
 
-impl Protocol {
+impl DshotProtocol {
     #[allow(unused)]
     #[must_use]
     pub const fn baud_rate(self) -> u32 {
@@ -24,7 +24,7 @@ impl Protocol {
     }
 }
 
-impl TryFrom<u8> for Protocol {
+impl TryFrom<u8> for DshotProtocol {
     type Error = ();
 
     /// Validating conversion from `u8` to `Protocol`. Invalid values return error.
@@ -39,7 +39,7 @@ impl TryFrom<u8> for Protocol {
     }
 }
 
-impl Protocol {
+impl DshotProtocol {
     /// Forgiving conversion from `u8` to `Protocol`, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
@@ -63,6 +63,6 @@ mod test_traits {
 
     #[test]
     fn normal_types() {
-        is_full_eq::<Protocol>();
+        is_full_eq::<DshotProtocol>();
     }
 }

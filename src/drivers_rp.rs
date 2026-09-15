@@ -8,7 +8,7 @@ use crate::{
 
 #[cfg(feature = "rp")]
 use {
-    crate::{dshot::Protocol, dshot_rp::BidirectionalQuadDshotPio},
+    crate::{dshot::DshotProtocol, dshot_rp::BidirectionalQuadDshotPio},
     embassy_rp::{
         Peri,
         interrupt::typelevel::Binding,
@@ -107,7 +107,7 @@ impl MotorDriverQuadDshot {
         pin1: Peri<'static, impl PioPin + 'static>,
         pin2: Peri<'static, impl PioPin + 'static>,
         pin3: Peri<'static, impl PioPin + 'static>,
-        protocol: Protocol,
+        protocol: DshotProtocol,
         motor_pole_count: u16,
     ) -> Self {
         Self {

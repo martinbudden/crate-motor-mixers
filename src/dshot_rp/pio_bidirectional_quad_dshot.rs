@@ -9,7 +9,7 @@ use embassy_rp::{
 use embassy_time::{Duration, with_timeout};
 
 use super::clock_divider::bidir_pio_clock_divider;
-use crate::dshot::{DshotBidirectionalFrame, DshotError, GcrFrame, Protocol};
+use crate::dshot::{DshotBidirectionalFrame, DshotError, DshotProtocol, GcrFrame};
 
 // Bidirectional Dshot PIO program based on pico-bidir-dshot reference.
 //
@@ -108,9 +108,12 @@ impl<'a, PIO: Instance> BidirectionalQuadDshotPio<'a, PIO> {
         pin1: Peri<'a, impl PioPin + 'a>,
         pin2: Peri<'a, impl PioPin + 'a>,
         pin3: Peri<'a, impl PioPin + 'a>,
-        dshot_protocol: Protocol,
+        dshot_protocol: DshotProtocol,
     ) -> Self {
-        assert!(!matches!(dshot_protocol, Protocol::Dshot1200), "Dshot1200 is not supported in bidirectional mode");
+        assert!(
+            !matches!(dshot_protocol, DshotProtocol::Dshot1200),
+            "Dshot1200 is not supported in bidirectional mode"
+        );
 
         let mut pio = Pio::new(pio, irq);
 
@@ -179,7 +182,7 @@ impl<'a, PIO: Instance, const SM: usize> BidirectionalDshotSm<'a, PIO, SM> {
         mut sm: StateMachine<'a, PIO, SM>,
         pin: Peri<'a, impl PioPin + 'a>,
         pio_common: &mut PioCommon<'a, PIO>,
-        dshot_protocol: Protocol,
+        dshot_protocol: DshotProtocol,
     ) -> Self {
         let mut pin = pio_common.make_pio_pin(pin);
         pin.set_pull(Pull::Up);

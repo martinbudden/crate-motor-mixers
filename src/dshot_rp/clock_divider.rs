@@ -1,16 +1,16 @@
 use fixed::{FixedU32, types::extra::U8};
 
-use crate::dshot::Protocol;
+use crate::dshot::DshotProtocol;
 
 #[allow(unused)]
-pub fn tx_pio_clock_divider(protocol: Protocol, sys_clock_frequency: u32) -> FixedU32<U8> {
+pub fn tx_pio_clock_divider(protocol: DshotProtocol, sys_clock_frequency: u32) -> FixedU32<U8> {
     let sys_clock = u64::from(sys_clock_frequency);
     #[allow(clippy::cast_possible_truncation)]
     FixedU32::<U8>::from_bits(((sys_clock << 8) / (8 * u64::from(protocol.baud_rate()))) as u32)
 }
 
 #[allow(unused)]
-pub fn bidir_pio_clock_divider(protocol: Protocol, sys_clock_frequency: u32) -> FixedU32<U8> {
+pub fn bidir_pio_clock_divider(protocol: DshotProtocol, sys_clock_frequency: u32) -> FixedU32<U8> {
     // pio clock divider = system_clock / (40 × protocol_baud_rate) encoded as FixedU32<U8>
 
     let sys_clock = u64::from(sys_clock_frequency);
@@ -28,7 +28,7 @@ mod tests {
         // Dshot600: target = 12MHz * 600/300 = 24MHz
         // At 125MHz: divider = 125/24 = 5.2083...
         const SYS_CLOCK: u32 = 125_000_000;
-        let divider = bidir_pio_clock_divider(Protocol::Dshot600, SYS_CLOCK);
+        let divider = bidir_pio_clock_divider(DshotProtocol::Dshot600, SYS_CLOCK);
         let bits = (125 << 8) / 24;
         assert_eq!(1333, bits);
         let expected: FixedU32<U8> = FixedU32::from_bits(bits);

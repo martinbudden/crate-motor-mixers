@@ -1,8 +1,8 @@
-use super::Protocol;
+use super::DshotProtocol;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct EscDshot {
-    protocol: Protocol,
+    protocol: DshotProtocol,
     cpu_frequency: u32,
     data_high_pulse_width: u16,
     data_low_pulse_width: u16,
@@ -11,7 +11,7 @@ pub struct EscDshot {
 
 impl Default for EscDshot {
     fn default() -> Self {
-        Self::new(Protocol::Dshot150)
+        Self::new(DshotProtocol::Dshot150)
     }
 }
 
@@ -29,7 +29,7 @@ impl EscDshot {
     const W2818B_T: u32 = 1250;
 
     #[must_use]
-    pub const fn new(protocol: Protocol) -> Self {
+    pub const fn new(protocol: DshotProtocol) -> Self {
         let mut this = Self {
             protocol,
             cpu_frequency: Self::DEFAULT_CPU_FREQUENCY,
@@ -69,7 +69,7 @@ impl EscDshot {
         self.set_protocol(self.protocol);
     }
 
-    pub const fn set_protocol(&mut self, protocol: Protocol) {
+    pub const fn set_protocol(&mut self, protocol: DshotProtocol) {
         self.protocol = protocol;
 
         // data_low_pulse_width and data_high_pulse_width are in processor cycles
@@ -79,25 +79,25 @@ impl EscDshot {
         self.wrap_cycle_count = self.nano_seconds_to_cycles(Self::DSHOT150_T); // = 1002 = 6680 * 0.15GHz
 
         match protocol {
-            Protocol::Dshot150 => {
+            DshotProtocol::Dshot150 => {
                 _ = protocol;
             }
-            Protocol::Dshot300 => {
+            DshotProtocol::Dshot300 => {
                 self.data_low_pulse_width /= 2;
                 self.data_high_pulse_width /= 2;
                 self.wrap_cycle_count /= 2;
             }
-            Protocol::Dshot600 | Protocol::Proshot => {
+            DshotProtocol::Dshot600 | DshotProtocol::Proshot => {
                 self.data_low_pulse_width /= 4;
                 self.data_high_pulse_width /= 4;
                 self.wrap_cycle_count /= 4;
             }
-            Protocol::Dshot1200 | Protocol::Proshot => {
+            DshotProtocol::Dshot1200 | DshotProtocol::Proshot => {
                 self.data_low_pulse_width /= 8;
                 self.data_high_pulse_width /= 8;
                 self.wrap_cycle_count /= 8;
             }
-            Protocol::W2818B => {
+            DshotProtocol::W2818B => {
                 self.data_low_pulse_width = self.nano_seconds_to_cycles(Self::W2818B_T0H); // =  60 =  400 * 0.15GHz
                 self.data_high_pulse_width = self.nano_seconds_to_cycles(Self::W2818B_T1H); // = 120 =  800 * 0.15GHz
                 self.wrap_cycle_count = self.nano_seconds_to_cycles(Self::W2818B_T); // = 188 = 1250 * 0.15GHz
@@ -177,7 +177,7 @@ mod test {
 
     #[test]
     fn nano_seconds_to_cycles() {
-        let esc = EscDshot::new(Protocol::Dshot150);
+        let esc = EscDshot::new(DshotProtocol::Dshot150);
         assert_eq!(126, esc.nano_seconds_to_cycles(840));
         assert_eq!(187, esc.nano_seconds_to_cycles(1250));
         assert_eq!(313, esc.nano_seconds_to_cycles(2090));
@@ -191,15 +191,15 @@ mod test {
     }
     #[test]
     fn pulse_widths() {
-        let esc150 = EscDshot::new(Protocol::Dshot150);
+        let esc150 = EscDshot::new(DshotProtocol::Dshot150);
         assert_eq!(750, esc150.data_high_pulse_width);
         assert_eq!(375, esc150.data_low_pulse_width);
 
-        let esc300 = EscDshot::new(Protocol::Dshot300);
+        let esc300 = EscDshot::new(DshotProtocol::Dshot300);
         assert_eq!(375, esc300.data_high_pulse_width);
         assert_eq!(187, esc300.data_low_pulse_width);
 
-        let esc600 = EscDshot::new(Protocol::Dshot600);
+        let esc600 = EscDshot::new(DshotProtocol::Dshot600);
         assert_eq!(187, esc600.data_high_pulse_width);
         assert_eq!(93, esc600.data_low_pulse_width);
     }

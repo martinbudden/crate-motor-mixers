@@ -35,6 +35,6 @@ pub use dshot_bidirectional_frame::DshotBidirectionalFrame;
 pub use dshot_error::{DecodeError, DshotError};
 pub use erpm_telemetry_frame::ErpmTelemetryFrame;
 pub use gcr_frame::GcrFrame;
-pub use protocol::Protocol;
+pub use protocol::DshotProtocol;
 #[allow(unused)]
 pub use telemetry::{Telemetry, TelemetryType};
