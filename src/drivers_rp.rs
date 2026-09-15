@@ -3,7 +3,7 @@ use embassy_time::{Duration, Timer};
 use super::{MotorFrequencies, MotorOutputs};
 use crate::{
     MotorCommands,
-    dshot::{Command, DecodeError, DshotBidirectionalFrame, DshotError, ErpmTelemetryFrame, GcrFrame},
+    dshot::{Command, DshotBidirectionalFrame, DshotError, ErpmTelemetryFrame, GcrFrame},
 };
 
 #[cfg(feature = "rp")]
@@ -120,15 +120,15 @@ impl MotorDriverQuadDshot {
 
 impl MotorDriverQuadDshot {
     #[allow(unused)]
-    fn decode_gcr_result(&self, result: Result<GcrFrame, DshotError>) -> Result<f32, DecodeError> {
-        let gcr_frame = result.map_err(|_| DecodeError::GcrData)?;
+    fn decode_gcr_result(&self, result: Result<GcrFrame, DshotError>) -> Result<f32, DshotError> {
+        let gcr_frame = result?;
         let erpm_raw = gcr_frame.decode()?;
         let erpm_telemetry_frame = ErpmTelemetryFrame::from_raw(erpm_raw);
         if erpm_telemetry_frame.checksum_is_ok() {
             #[allow(clippy::cast_precision_loss)]
             Ok((erpm_telemetry_frame.erpm() as f32) * self.erpm_to_hz)
         } else {
-            Err(DecodeError::InvalidChecksum)
+            Err(DshotError::InvalidChecksum)
         }
     }
 

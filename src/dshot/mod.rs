@@ -27,14 +27,12 @@ mod gcr_frame;
 mod protocol;
 mod telemetry;
 
-#[allow(unused)]
 pub use esc_dshot::EscDshot;
 
 pub use command::Command;
 pub use dshot_bidirectional_frame::DshotBidirectionalFrame;
-pub use dshot_error::{DecodeError, DshotError};
+pub use dshot_error::DshotError;
 pub use erpm_telemetry_frame::ErpmTelemetryFrame;
 pub use gcr_frame::GcrFrame;
 pub use protocol::DshotProtocol;
-#[allow(unused)]
 pub use telemetry::{Telemetry, TelemetryType};

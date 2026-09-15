@@ -1,6 +1,6 @@
 use core::ops::Deref;
 
-use super::{DecodeError, ErpmTelemetryFrame, Telemetry};
+use super::{DshotError, ErpmTelemetryFrame, Telemetry};
 
 #[derive(Debug, Copy, Clone, Default, Eq, PartialEq, PartialOrd, Ord)]
 pub struct GcrFrame(u32);
@@ -52,21 +52,21 @@ impl GcrFrame {
 
     /// # Errors
     #[inline]
-    pub const fn decode(self) -> Result<u16, DecodeError> {
+    pub const fn decode(self) -> Result<u16, DshotError> {
         let gcr = self.0 & 0x000F_FFFF;
         let gcr20 = gcr ^ (gcr >> 1);
         Self::gcr20_to_erpm(gcr20)
     }
 
     /// # Errors
-    pub const fn gcr20_to_erpm(gcr20: u32) -> Result<u16, DecodeError> {
+    pub const fn gcr20_to_erpm(gcr20: u32) -> Result<u16, DshotError> {
         let nibble0 = Self::QUINTET_TO_NIBBLE[(gcr20 & 0x1F) as usize];
         let nibble1 = Self::QUINTET_TO_NIBBLE[((gcr20 >> 5) & 0x1F) as usize];
         let nibble2 = Self::QUINTET_TO_NIBBLE[((gcr20 >> 10) & 0x1F) as usize];
         let nibble3 = Self::QUINTET_TO_NIBBLE[((gcr20 >> 15) & 0x1F) as usize];
 
         if nibble0 == 0xFF || nibble1 == 0xFF || nibble2 == 0xFF || nibble3 == 0xFF {
-            return Err(DecodeError::GcrData);
+            return Err(DshotError::InvalidGcr20Data);
         }
 
         let ret = nibble0 | (nibble1 << 4) | (nibble2 << 8) | (nibble3 << 12);
@@ -84,11 +84,11 @@ impl GcrFrame {
     /// Decode samples returned by Raspberry Pi PIO implementation.
     ///
     /// Returns the value of the Extended Dshot Telemetry (EDT) frame (without the checksum).
-    /// # Errors `DecodeError`
-    pub fn decode_samples(value: u64) -> Result<Telemetry, DecodeError> {
+    /// # Errors `DshotError`
+    pub fn decode_samples(value: u64) -> Result<Telemetry, DshotError> {
         // telemetry data must start with a 0, so if the first bit is high, we don't have any data
         if (value & 0x8000_0000_0000_0000) != 0 {
-            return Err(DecodeError::NoData);
+            return Err(DshotError::NoDecodeData);
         }
 
         let mut consecutive_bit_count: usize = 1; // we always start with the MSB
@@ -119,7 +119,7 @@ impl GcrFrame {
                 consecutive_bit_count += 1;
                 if consecutive_bit_count > 16 {
                     // invalid run length at the current sample rate (outside of GCR_BIT_LENGTHS table)
-                    return Err(DecodeError::InvalidRunLength);
+                    return Err(DshotError::InvalidRunLength);
                 }
             }
             mask >>= 1;
@@ -137,7 +137,7 @@ impl GcrFrame {
 
         // GCR data should be 21 bits
         if bit_count < 21 {
-            return Err(DecodeError::GcrData);
+            return Err(DshotError::InvalidGcr20Data);
         }
 
         // chop the GCR data down to just the 21 most significant bits
@@ -148,7 +148,7 @@ impl GcrFrame {
 
         let result: u16 = Self::gcr20_to_erpm(gcr20)?;
 
-        let erpm_telemetry_frame = ErpmTelemetryFrame::try_from(result).map_err(|_| DecodeError::InvalidChecksum)?;
+        let erpm_telemetry_frame = ErpmTelemetryFrame::try_from(result).map_err(|_| DshotError::InvalidChecksum)?;
 
         Ok(erpm_telemetry_frame.decode_telemetry())
     }
@@ -173,8 +173,8 @@ mod tests {
     #[test]
     fn gcr_decode_rejects_invalid_input() {
         // All zeros and all ones should fail
-        assert_eq!(Err(DecodeError::GcrData), GcrFrame::from_raw(0).decode());
-        assert_eq!(Err(DecodeError::GcrData), GcrFrame::from_raw(0x1FFFF).decode());
+        assert_eq!(Err(DshotError::InvalidGcr20Data), GcrFrame::from_raw(0).decode());
+        assert_eq!(Err(DshotError::InvalidGcr20Data), GcrFrame::from_raw(0x1FFFF).decode());
     }
     #[test]
     fn valid() {

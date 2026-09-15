@@ -1,6 +1,6 @@
 use core::ops::Deref;
 
-use super::{DecodeError, Telemetry};
+use super::{DshotError, Telemetry};
 
 /// `ErpmTelemetryFrame` : returned from ESC after setting the output in bidirectional mode.
 /// ```text
@@ -121,7 +121,7 @@ impl ErpmTelemetryFrame {
 
     /// Decode `erpm`.
     /// # Errors `DecodeError`
-    pub const fn decode_erpm(self) -> Result<u16, DecodeError> {
+    pub const fn decode_erpm(self) -> Result<u16, DshotError> {
         let value = self.0 >> 4;
         if value == 0x0FFF {
             return Ok(0);
@@ -130,7 +130,7 @@ impl ErpmTelemetryFrame {
         let exponent: u16 = (value & 0xFE00) >> 9;
         let result = mantissa << exponent;
         if result == 0 {
-            return Err(DecodeError::Erpm);
+            return Err(DshotError::InvalidErpm);
         }
         Ok(result)
     }

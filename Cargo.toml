@@ -2,7 +2,7 @@
 name = "motor-mixers"
 version = "0.1.6"
 edition = "2024"
-rust-version = "1.93"
+rust-version = "1.93" # required for fixed@1.31.0
 authors = ["Martin Budden"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
