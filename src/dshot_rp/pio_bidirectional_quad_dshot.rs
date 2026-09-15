@@ -4,10 +4,7 @@ use embassy_rp::{
     Peri, clocks,
     gpio::Pull,
     interrupt::typelevel::Binding,
-    pio::{
-        Config as PioConfig, Direction, FifoJoin, Instance, InterruptHandler, Pio, PioPin, ShiftConfig, ShiftDirection,
-        StateMachine, program::pio_asm,
-    },
+    pio::{self, Common as PioCommon, Config as PioConfig, Instance, Pio, PioPin, StateMachine, program::pio_asm},
 };
 use embassy_time::{Duration, with_timeout};
 
@@ -21,14 +18,14 @@ use crate::dshot::{DshotBidirectionalFrame, DshotError, GcrFrame, Protocol};
 //   program_origin + 1: set pindirs, 1 (pin as output)
 //   program_origin + 2: pull block     (waits for TX frame — idle position)
 //
-// TX Phase (32 cycles per bit):
+// TX Phase (40 cycles per bit):
 //   14 cycles LOW, 14 cycles data bit (inverted), 11 cycles HIGH, 1 jmp
 //
 // RX Phase (pulse-width measurement):
 //   Wait for falling edge, measure pulse widths using counting loops.
-//   21 GCR-encoded bits decoded to 16-bit telemetry + CRC.
+//   21 GCR-encoded bits which are subsequently decoded to 16-bit telemetry + checksum.
 //   Tight 2-cycle wait loop matches reference implementation.
-macro_rules! dshot_bidirectional {
+macro_rules! dshot_bidirectional_program {
 () => { pio_asm!(
     ".wrap_target"
         "push block"                    // Push any pending RX data
@@ -86,152 +83,175 @@ macro_rules! dshot_bidirectional {
         ".wrap"
     )};
 }
-/// Bidirectional `Dshot` PIO driver for 4 ESCs with telemetry.
+/// Bidirectional Dshot PIO driver for 4 ESCs with telemetry.
 ///
-/// Supports `Dshot150`, `Dshot300`, `Dshot600`. `Dshot1200` is not supported
-/// (panics at construction).
+/// Uses 4 state machines, one for each ESC.
+///
+/// Supports `Dshot150`, `Dshot300`, `Dshot600`.
+/// `Dshot1200` is not supported.
 #[allow(unused)]
 #[allow(missing_debug_implementations, missing_copy_implementations)]
-pub struct PioBidirectionalQuadDshot<'a, PIO: Instance> {
-    pio_instance: Pio<'a, PIO>,
-    // _pin: Pin<'a, PIO>,
-    program_origin: u8,
+pub struct BidirectionalQuadDshotPio<'a, PIO: Instance> {
+    sm0: BidirectionalDshotSm<'a, PIO, 0>,
+    sm1: BidirectionalDshotSm<'a, PIO, 1>,
+    sm2: BidirectionalDshotSm<'a, PIO, 2>,
+    sm3: BidirectionalDshotSm<'a, PIO, 3>,
 }
 
-impl<'a, PIO: Instance> PioBidirectionalQuadDshot<'a, PIO> {
-    /// # Panics
-    ///
-    /// Panics if `speed` is `Protocol::Dshot1200`.
+impl<'a, PIO: Instance> BidirectionalQuadDshotPio<'a, PIO> {
+    /// # Panics if `dshot_protocol` is `Dshot1200`.
     #[allow(unused)]
     pub fn new(
         pio: Peri<'a, PIO>,
-        irq: impl Binding<PIO::Interrupt, InterruptHandler<PIO>>,
+        irq: impl Binding<PIO::Interrupt, pio::InterruptHandler<PIO>>,
         pin0: Peri<'a, impl PioPin + 'a>,
         pin1: Peri<'a, impl PioPin + 'a>,
         pin2: Peri<'a, impl PioPin + 'a>,
         pin3: Peri<'a, impl PioPin + 'a>,
-        protocol: Protocol,
+        dshot_protocol: Protocol,
     ) -> Self {
-        assert!(!matches!(protocol, Protocol::Dshot1200), "Dshot1200 is not supported for bidirectional mode");
+        assert!(!matches!(dshot_protocol, Protocol::Dshot1200), "Dshot1200 is not supported in bidirectional mode");
 
         let mut pio = Pio::new(pio, irq);
 
-        let mut pin0 = pio.common.make_pio_pin(pin0);
-        pin0.set_pull(Pull::Up);
-        let mut pin1 = pio.common.make_pio_pin(pin1);
-        pin1.set_pull(Pull::Up);
-        let mut pin2 = pio.common.make_pio_pin(pin2);
-        pin2.set_pull(Pull::Up);
-        let mut pin3 = pio.common.make_pio_pin(pin3);
-        pin3.set_pull(Pull::Up);
+        let sm0 = BidirectionalDshotSm::new(pio.sm0, pin0, &mut pio.common, dshot_protocol);
+        let sm1 = BidirectionalDshotSm::new(pio.sm1, pin1, &mut pio.common, dshot_protocol);
+        let sm2 = BidirectionalDshotSm::new(pio.sm2, pin2, &mut pio.common, dshot_protocol);
+        let sm3 = BidirectionalDshotSm::new(pio.sm3, pin3, &mut pio.common, dshot_protocol);
 
-        let prg = dshot_bidirectional!();
-
-        let program = pio.common.load_program(&prg.program);
-        let program_origin = program.origin;
-        let clock_divider = bidir_pio_clock_divider(protocol, clocks::clk_sys_freq());
-
-        let mut pio_config = PioConfig::default();
-        pio_config.use_program(&program, &[]);
-
-        pio_config.clock_divider = clock_divider;
-
-        pio_config.shift_out = ShiftConfig { auto_fill: false, direction: ShiftDirection::Left, threshold: 32 };
-        pio_config.shift_in = ShiftConfig { auto_fill: false, direction: ShiftDirection::Left, threshold: 32 };
-
-        pio_config.fifo_join = FifoJoin::Duplex;
-
-        // PIN 0
-        pio_config.set_jmp_pin(&pin0);
-        pio_config.set_set_pins(&[&pin0]);
-        pio_config.set_out_pins(&[&pin0]);
-        pio_config.set_in_pins(&[&pin0]);
-
-        pio.sm0.set_config(&pio_config);
-        pio.sm0.set_pin_dirs(Direction::Out, &[&pin0]);
-        pio.sm0.restart();
-        pio.sm0.set_enable(true);
-        pio.sm0.set_clock_divider(clock_divider);
-
-        // PIN 1
-        pio_config.set_jmp_pin(&pin1);
-        pio_config.set_set_pins(&[&pin1]);
-        pio_config.set_out_pins(&[&pin1]);
-        pio_config.set_in_pins(&[&pin1]);
-
-        pio.sm1.set_config(&pio_config);
-        pio.sm1.set_pin_dirs(Direction::Out, &[&pin1]);
-        pio.sm1.restart();
-        pio.sm1.set_enable(true);
-        pio.sm1.set_clock_divider(clock_divider);
-
-        // PIN 2
-        pio_config.set_jmp_pin(&pin2);
-        pio_config.set_set_pins(&[&pin2]);
-        pio_config.set_out_pins(&[&pin2]);
-        pio_config.set_in_pins(&[&pin2]);
-
-        pio.sm2.set_config(&pio_config);
-        pio.sm2.set_pin_dirs(Direction::Out, &[&pin2]);
-        pio.sm2.restart();
-        pio.sm2.set_enable(true);
-        pio.sm2.set_clock_divider(clock_divider);
-
-        // PIN 3
-        pio_config.set_jmp_pin(&pin3);
-        pio_config.set_set_pins(&[&pin3]);
-        pio_config.set_out_pins(&[&pin3]);
-        pio_config.set_in_pins(&[&pin3]);
-
-        pio.sm3.set_config(&pio_config);
-        pio.sm3.set_pin_dirs(Direction::Out, &[&pin3]);
-        pio.sm3.restart();
-        pio.sm3.set_enable(true);
-        pio.sm3.set_clock_divider(clock_divider);
-        Self { pio_instance: pio, program_origin }
+        Self { sm0, sm1, sm2, sm3 }
     }
+}
 
-    /// Reset PIO program counter to the pull-block address.
-    fn reset_program_counter<const SM: usize>(sm: &mut StateMachine<'_, PIO, SM>, program_origin: u8) {
-        // program_origin + 0: push block     (pushes previous RX data)
-        // program_origin + 1: set pindirs, 1 (pin as output)
-        // program_origin + 2: pull block     (waits for TX frame — idle position)
-        let pull_block_address = program_origin + 2;
-
-        if sm.get_addr() != pull_block_address {
-            // Clear ISR to discard any partial RX data from an interrupted frame.
-            const MOV_ISR_NULL: u16 = 0b101_00000_110_00_011;
-            unsafe { sm.exec_instr(MOV_ISR_NULL) };
-
-            // Construct unconditional JMP instruction: opcode 000, no delay, condition 000
-            let jmp_instruction = u16::from(program_origin + 1) & 0x1F;
-            unsafe { sm.exec_instr(jmp_instruction) };
+impl<'a, PIO: Instance> BidirectionalQuadDshotPio<'a, PIO> {
+    #[inline]
+    pub async fn send_frame_and_receive_gcr(
+        &mut self,
+        frame: DshotBidirectionalFrame,
+        sm_index: usize,
+    ) -> Result<GcrFrame, DshotError> {
+        match sm_index {
+            1 => self.sm1.send_frame_and_receive_gcr(frame).await,
+            2 => self.sm2.send_frame_and_receive_gcr(frame).await,
+            3 => self.sm3.send_frame_and_receive_gcr(frame).await,
+            _ => self.sm0.send_frame_and_receive_gcr(frame).await,
         }
     }
 
-    /// Sends a `DshotBidirectionalFrame` and return an unvalidated `GcrFrame`.
+    /// Sends a `DshotBidirectionalFrame`
+    /// Does not return any response.
+    #[allow(unused)]
+    #[inline]
+    pub async fn send_frame(&mut self, frame: DshotBidirectionalFrame, sm_index: usize) {
+        match sm_index {
+            1 => self.sm1.send_frame(frame).await,
+            2 => self.sm2.send_frame(frame).await,
+            3 => self.sm3.send_frame(frame).await,
+            _ => self.sm0.send_frame(frame).await,
+        }
+    }
+    /// Synchronously sends a `DshotBidirectionalFrame`
+    /// Does not return any response.
+    #[allow(unused)]
+    #[inline]
+    pub fn send_frame_blocking(&mut self, frame: DshotBidirectionalFrame, sm_index: usize) {
+        match sm_index {
+            1 => self.sm1.send_frame_blocking(frame),
+            2 => self.sm2.send_frame_blocking(frame),
+            3 => self.sm3.send_frame_blocking(frame),
+            _ => self.sm0.send_frame_blocking(frame),
+        }
+    }
+}
+
+/// Bidirectional `Dshot` State Machine driver for 1 ESC with telemetry.
+///
+/// Supports `Dshot150`, `Dshot300`, `Dshot600`. `Dshot1200` is not supported.
+#[allow(unused)]
+#[allow(missing_debug_implementations, missing_copy_implementations)]
+pub struct BidirectionalDshotSm<'a, PIO: Instance, const SM: usize> {
+    sm: StateMachine<'a, PIO, SM>,
+    program_origin: u8,
+}
+
+impl<'a, PIO: Instance, const SM: usize> BidirectionalDshotSm<'a, PIO, SM> {
+    pub fn new(
+        mut sm: StateMachine<'a, PIO, SM>,
+        pin: Peri<'a, impl PioPin + 'a>,
+        pio_common: &mut PioCommon<'a, PIO>,
+        dshot_protocol: Protocol,
+    ) -> Self {
+        let mut pin = pio_common.make_pio_pin(pin);
+        pin.set_pull(Pull::Up);
+
+        let mut config = PioConfig::default();
+
+        let prg = dshot_bidirectional_program!();
+        let program = pio_common.load_program(&prg.program);
+
+        config.use_program(&program, &[]);
+
+        config.clock_divider = bidir_pio_clock_divider(dshot_protocol, clocks::clk_sys_freq());
+
+        config.shift_out = pio::ShiftConfig { auto_fill: false, direction: pio::ShiftDirection::Left, threshold: 32 };
+        config.shift_in = pio::ShiftConfig { auto_fill: false, direction: pio::ShiftDirection::Left, threshold: 32 };
+
+        config.fifo_join = pio::FifoJoin::Duplex;
+
+        config.set_jmp_pin(&pin);
+        config.set_set_pins(&[&pin]);
+        config.set_out_pins(&[&pin]);
+        config.set_in_pins(&[&pin]);
+
+        sm.set_config(&config);
+        sm.set_pin_dirs(pio::Direction::Out, &[&pin]);
+        sm.restart();
+        sm.set_enable(true);
+        sm.set_clock_divider(config.clock_divider);
+
+        Self { sm, program_origin: program.origin }
+    }
+}
+
+impl<'a, PIO: Instance, const SM: usize> BidirectionalDshotSm<'a, PIO, SM> {
+    /// Reset PIO program counter to the pull-block address.
+    fn reset_program_counter(&mut self) {
+        // program_origin + 0: push block     (pushes previous RX data)
+        // program_origin + 1: set pindirs, 1 (pin as output)
+        // program_origin + 2: pull block     (waits for TX frame — idle position)
+        let pull_block_address = self.program_origin + 2;
+
+        if self.sm.get_addr() != pull_block_address {
+            // Clear ISR to discard any partial RX data from an interrupted frame.
+            const MOV_ISR_NULL: u16 = 0b101_00000_110_00_011;
+            unsafe { self.sm.exec_instr(MOV_ISR_NULL) };
+
+            // Construct unconditional JMP instruction: opcode 000, no delay, condition 000
+            let jmp_instruction = u16::from(self.program_origin + 1) & 0x1F;
+            unsafe { self.sm.exec_instr(jmp_instruction) };
+        }
+    }
+
+    /// Sends a `DshotBidirectionalFrame` and returns an unvalidated `GcrFrame`.
     /// It is the responsibility of the caller to check the `GcrFrame` is valid before using it.
     ///
-    /// wait_push timeout  → TxTimeout
-    /// wait_pull timeout  → TelemetryTimeout
+    /// wait_push timeout  → PioTxTimeout
+    /// wait_pull timeout  → PioRxTimeout
+    ///
     /// # Errors ` DshotError::PioTxTimeout`, ` DshotError::PioRxTimeout`
-    async fn send_frame_and_receive_gcr<const SM: usize>(
-        sm: &mut StateMachine<'_, PIO, SM>,
-        program_origin: u8,
-        frame: DshotBidirectionalFrame,
-    ) -> Result<GcrFrame, DshotError> {
+    async fn send_frame_and_receive_gcr(&mut self, frame: DshotBidirectionalFrame) -> Result<GcrFrame, DshotError> {
         // Clear any existing rx data
-        while sm.rx().try_pull().is_some() {}
-        Self::reset_program_counter(sm, program_origin);
+        while self.sm.rx().try_pull().is_some() {}
+        self.reset_program_counter();
 
         // bidirectional dshot inverts frame
         let frame_inverted = u32::from(!frame.raw());
         // TODO: check 10ms timeout ins PIO `send_and_receive`.
-        with_timeout(Duration::from_millis(10), sm.tx().wait_push(frame_inverted))
+        with_timeout(Duration::from_millis(10), self.sm.tx().wait_push(frame_inverted))
             .await
             .map_err(|_| DshotError::PioTxTimeout)?;
 
-        let rx_data = with_timeout(Duration::from_micros(500), sm.rx().wait_pull())
+        let rx_data = with_timeout(Duration::from_micros(500), self.sm.rx().wait_pull())
             .await
             .map_err(|_| DshotError::PioRxTimeout)?;
 
@@ -241,80 +261,24 @@ impl<'a, PIO: Instance> PioBidirectionalQuadDshot<'a, PIO> {
     /// Sends a `DshotBidirectionalFrame`
     /// Does not return any response.
     #[allow(unused)]
-    pub async fn send_frame<const SM: usize>(
-        sm: &mut StateMachine<'_, PIO, SM>,
-        program_origin: u8,
-        frame: DshotBidirectionalFrame,
-    ) {
-        while sm.rx().try_pull().is_some() {}
-        Self::reset_program_counter(sm, program_origin);
+    pub async fn send_frame(&mut self, frame: DshotBidirectionalFrame) {
+        while self.sm.rx().try_pull().is_some() {}
+        self.reset_program_counter();
 
         // bidirectional dshot inverts frame
         let frame_inverted = u32::from(!frame.raw());
-        sm.tx().wait_push(frame_inverted).await;
+        self.sm.tx().wait_push(frame_inverted).await;
     }
 
     /// Synchronously sends a `DshotBidirectionalFrame`
     /// Does not return any response.
     #[allow(unused)]
-    pub fn send_frame_blocking<const SM: usize>(
-        sm: &mut StateMachine<'_, PIO, SM>,
-        program_origin: u8,
-        frame: DshotBidirectionalFrame,
-    ) {
-        while sm.rx().try_pull().is_some() {}
-        Self::reset_program_counter(sm, program_origin);
+    pub fn send_frame_blocking(&mut self, frame: DshotBidirectionalFrame) {
+        while self.sm.rx().try_pull().is_some() {}
+        self.reset_program_counter();
 
         // bidirectional dshot inverts frame
         let frame_inverted = u32::from(!frame.raw());
-        sm.tx().push(frame_inverted);
-    }
-}
-
-impl<'a, PIO: Instance> PioBidirectionalQuadDshot<'a, PIO> {
-    pub async fn send_frame_and_receive_gcr_sm0(
-        &mut self,
-        frame: DshotBidirectionalFrame,
-    ) -> Result<GcrFrame, DshotError> {
-        Self::send_frame_and_receive_gcr(&mut self.pio_instance.sm0, self.program_origin, frame).await
-    }
-
-    pub async fn send_frame_and_receive_gcr_sm1(
-        &mut self,
-        frame: DshotBidirectionalFrame,
-    ) -> Result<GcrFrame, DshotError> {
-        Self::send_frame_and_receive_gcr(&mut self.pio_instance.sm1, self.program_origin, frame).await
-    }
-
-    pub async fn send_frame_and_receive_gcr_sm2(
-        &mut self,
-        frame: DshotBidirectionalFrame,
-    ) -> Result<GcrFrame, DshotError> {
-        Self::send_frame_and_receive_gcr(&mut self.pio_instance.sm2, self.program_origin, frame).await
-    }
-
-    pub async fn send_frame_and_receive_gcr_sm3(
-        &mut self,
-        frame: DshotBidirectionalFrame,
-    ) -> Result<GcrFrame, DshotError> {
-        Self::send_frame_and_receive_gcr(&mut self.pio_instance.sm3, self.program_origin, frame).await
-    }
-}
-
-impl<'a, PIO: Instance> PioBidirectionalQuadDshot<'a, PIO> {
-    pub async fn send_frame_sm0(&mut self, frame: DshotBidirectionalFrame) {
-        Self::send_frame(&mut self.pio_instance.sm0, self.program_origin, frame).await
-    }
-
-    pub async fn send_frame_sm1(&mut self, frame: DshotBidirectionalFrame) {
-        Self::send_frame(&mut self.pio_instance.sm1, self.program_origin, frame).await
-    }
-
-    pub async fn send_frame_sm2(&mut self, frame: DshotBidirectionalFrame) {
-        Self::send_frame(&mut self.pio_instance.sm2, self.program_origin, frame).await
-    }
-
-    pub async fn send_frame_sm3(&mut self, frame: DshotBidirectionalFrame) {
-        Self::send_frame(&mut self.pio_instance.sm3, self.program_origin, frame).await
+        self.sm.tx().push(frame_inverted);
     }
 }

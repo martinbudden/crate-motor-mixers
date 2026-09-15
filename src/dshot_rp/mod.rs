@@ -22,4 +22,4 @@ mod clock_divider;
 mod pio_bidirectional_quad_dshot;
 
 #[cfg(feature = "rp")]
-pub use pio_bidirectional_quad_dshot::PioBidirectionalQuadDshot;
+pub use pio_bidirectional_quad_dshot::BidirectionalQuadDshotPio;

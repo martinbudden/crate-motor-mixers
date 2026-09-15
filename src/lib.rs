@@ -55,7 +55,7 @@ pub use drivers_esp32::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 #[cfg(feature = "rp")]
 pub use {
     drivers_rp::{MotorDriverQuadDshot, MotorDriverQuadPwm},
-    dshot_rp::PioBidirectionalQuadDshot,
+    dshot_rp::BidirectionalQuadDshotPio,
 };
 
 #[cfg(feature = "stm32")]

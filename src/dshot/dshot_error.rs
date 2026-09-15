@@ -5,7 +5,7 @@
 pub enum DshotError {
     /// Throttle value out of range (must be 0-1999).
     InvalidThrottle,
-    /// Telemetry CRC checksum mismatch.
+    /// Telemetry checksum mismatch.
     InvalidTelemetryChecksum,
     InvalidTelemetryData,
     PioTxTimeout,

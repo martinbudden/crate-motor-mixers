@@ -8,7 +8,7 @@ use crate::{
 
 #[cfg(feature = "rp")]
 use {
-    crate::{dshot::Protocol, dshot_rp::PioBidirectionalQuadDshot},
+    crate::{dshot::Protocol, dshot_rp::BidirectionalQuadDshotPio},
     embassy_rp::{
         Peri,
         interrupt::typelevel::Binding,
@@ -89,7 +89,7 @@ let pwm1 = Pwm::new_output_ab(p.PWM_SLICE1, p.PIN_2, p.PIN_3, Config::default())
 pub struct MotorDriverQuadDshot {
     motor_frequencies: MotorFrequencies,
     #[cfg(feature = "rp")]
-    pio: PioBidirectionalQuadDshot<'static, PIO0>,
+    pio: BidirectionalQuadDshotPio<'static, PIO0>,
     erpm_to_hz: f32,
 }
 
@@ -112,7 +112,7 @@ impl MotorDriverQuadDshot {
     ) -> Self {
         Self {
             motor_frequencies: MotorFrequencies::new(),
-            pio: PioBidirectionalQuadDshot::new(pio, irq, pin0, pin1, pin2, pin3, protocol),
+            pio: BidirectionalQuadDshotPio::new(pio, irq, pin0, pin1, pin2, pin3, protocol),
             erpm_to_hz: 2.0 * (100.0 / Self::SECONDS_PER_MINUTE) / (motor_pole_count as f32),
         }
     }
@@ -132,17 +132,14 @@ impl MotorDriverQuadDshot {
         }
     }
 
-    pub async fn pio_send_frame_and_receive_gcr(
+    pub async fn send_frame_and_receive_gcr(
         &mut self,
         frame: DshotBidirectionalFrame,
         index: usize,
     ) -> Result<GcrFrame, DshotError> {
         #[cfg(feature = "rp")]
-        match index {
-            1 => self.pio.send_frame_and_receive_gcr_sm1(frame).await,
-            2 => self.pio.send_frame_and_receive_gcr_sm2(frame).await,
-            3 => self.pio.send_frame_and_receive_gcr_sm3(frame).await,
-            _ => self.pio.send_frame_and_receive_gcr_sm0(frame).await,
+        {
+            self.pio.send_frame_and_receive_gcr(frame, index).await
         }
         #[cfg(not(feature = "rp"))]
         {
@@ -152,14 +149,9 @@ impl MotorDriverQuadDshot {
         }
     }
 
-    pub async fn pio_send_frame(&mut self, frame: DshotBidirectionalFrame, index: usize) {
+    pub async fn send_frame(&mut self, frame: DshotBidirectionalFrame, index: usize) {
         #[cfg(feature = "rp")]
-        match index {
-            1 => self.pio.send_frame_sm1(frame).await,
-            2 => self.pio.send_frame_sm2(frame).await,
-            3 => self.pio.send_frame_sm3(frame).await,
-            _ => self.pio.send_frame_sm0(frame).await,
-        }
+        self.pio.send_frame(frame, index).await;
         #[cfg(not(feature = "rp"))]
         {
             core::future::ready(()).await;
@@ -172,7 +164,7 @@ impl MotorDriverQuadDshot {
     pub async fn write_to_motors(&mut self, outputs: MotorOutputs) {
         for index in 0..4 {
             let frame = DshotBidirectionalFrame::throttle_to_frame(outputs[index]);
-            let gcr_result = self.pio_send_frame_and_receive_gcr(frame, index).await;
+            let gcr_result = self.send_frame_and_receive_gcr(frame, index).await;
             if let Ok(frequency) = self.decode_gcr_result(gcr_result) {
                 self.motor_frequencies[index] = frequency;
             }
@@ -185,7 +177,7 @@ impl MotorDriverQuadDshot {
             let command = commands[index];
             let frame = DshotBidirectionalFrame::from_command(command);
             for _ in 0..command.repetitions_required() {
-                self.pio_send_frame(frame, 0).await;
+                self.send_frame(frame, 0).await;
                 Timer::after(Duration::from_micros(300)).await;
             }
         }
@@ -196,7 +188,7 @@ impl MotorDriverQuadDshot {
         for index in 0..4 {
             let frame = DshotBidirectionalFrame::from_command(command);
             for _ in 0..command.repetitions_required() {
-                self.pio_send_frame(frame, 0).await;
+                self.send_frame(frame, 0).await;
                 Timer::after(Duration::from_micros(300)).await;
             }
         }
