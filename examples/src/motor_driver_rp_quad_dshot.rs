@@ -15,7 +15,7 @@ use {defmt_rtt as _, panic_probe as _};
 
 use motor_mixers::{
     MotorDriverQuadDshot,
-    dshot::{Command, DshotBidirectionalFrame, Protocol},
+    dshot::{Command as DshotCommand, DshotBidirectionalFrame, DshotProtocol},
 };
 
 bind_interrupts!(struct Irqs {
@@ -39,15 +39,15 @@ async fn main(_spawner: Spawner) {
         p.PIN_12,
         p.PIN_14,
         p.PIN_15,
-        Protocol::Dshot300,
+        DshotProtocol::Dshot300,
         MotorDriverQuadDshot::DEFAULT_MOTOR_POLE_COUNT,
     );
 
     // Arm ESC with MotorStop (value 0) for 2 seconds
     info!("Sending MotorStop for 2 seconds");
-    let frame = DshotBidirectionalFrame::from_command(Command::MotorStop);
+    let frame = DshotBidirectionalFrame::from_command(DshotCommand::MotorStop);
     for _ in 0..2000 {
-        driver.pio_send_frame(frame, 0).await;
+        driver.send_frame(frame, 0).await;
         Timer::after(Duration::from_millis(1)).await;
     }
 
@@ -55,7 +55,7 @@ async fn main(_spawner: Spawner) {
     info!("Sending MotorStop for indefinitely");
     let mut count: u32 = 0;
     loop {
-        driver.pio_send_frame(frame, 0).await;
+        driver.send_frame(frame, 0).await;
         Timer::after(Duration::from_millis(1)).await;
         count = count.wrapping_add(1);
         if count.is_multiple_of(1000) {

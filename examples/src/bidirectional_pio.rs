@@ -20,8 +20,8 @@ use embassy_time::{Duration, Timer};
 use {defmt_rtt as _, panic_probe as _};
 
 use motor_mixers::{
-    dshot::{Command, DshotBidirectionalFrame, Protocol},
-    dshot_rp::PioBidirectionalQuadDshot,
+    dshot::{Command as DshotCommand, DshotBidirectionalFrame, DshotProtocol},
+    dshot_rp::BidirectionalQuadDshotPio,
 };
 
 bind_interrupts!(struct Irqs {
@@ -39,7 +39,7 @@ async fn main(_spawner: Spawner) {
 
     // Initialize DShot150 on pins 11-14
     let mut dshot =
-        PioBidirectionalQuadDshot::new(p.PIO0, Irqs, p.PIN_11, p.PIN_12, p.PIN_14, p.PIN_15, Protocol::Dshot300);
+        BidirectionalQuadDshotPio::new(p.PIO0, Irqs, p.PIN_11, p.PIN_12, p.PIN_14, p.PIN_15, DshotProtocol::Dshot300);
 
     info!("DShot300 initialized on PIN_11");
     info!("Expected DShot300 timing:");
@@ -50,9 +50,9 @@ async fn main(_spawner: Spawner) {
     // Arm ESC with MotorStop (value 0) for 2 seconds
     info!("Sending MotorStop for 2 seconds (arming sequence)...");
     info!("(ESC should produce startup tones)");
-    let frame = DshotBidirectionalFrame::from_command(Command::MotorStop);
+    let frame = DshotBidirectionalFrame::from_command(DshotCommand::MotorStop);
     for _ in 0..2000 {
-        dshot.send_frame_sm0(frame).await;
+        dshot.send_frame(frame, 0).await;
         Timer::after(Duration::from_millis(1)).await;
     }
 
@@ -61,7 +61,7 @@ async fn main(_spawner: Spawner) {
     info!("ESC should stay armed (no motor spin)");
     let mut count: u32 = 0;
     loop {
-        dshot.send_frame_sm0(frame).await;
+        dshot.send_frame(frame, 0).await;
         Timer::after(Duration::from_millis(1)).await;
         count = count.wrapping_add(1);
         if count.is_multiple_of(1000) {
