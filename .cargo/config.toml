@@ -81,3 +81,7 @@ check-esp32 = [
     "esp32"
 ]
 
+# Continuous Integration
+ci = "run --package xtask --bin xtask"
+# MSRV
+check-msrv = "run --package xtask --bin xtask -- check-msrv"

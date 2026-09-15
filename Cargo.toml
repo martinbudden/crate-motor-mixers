@@ -2,6 +2,7 @@
 name = "motor-mixers"
 version = "0.1.6"
 edition = "2024"
+rust-version = "1.93"
 authors = ["Martin Budden"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
@@ -156,3 +157,9 @@ rpath = false
 [profile.release-lto]
 inherits = "release"
 lto = true
+
+[workspace]
+members = [
+    ".",
+    "xtask",
+]

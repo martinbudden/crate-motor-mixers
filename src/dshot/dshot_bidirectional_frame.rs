@@ -119,7 +119,7 @@ impl DshotBidirectionalFrame {
         }
     }
 
-    /// Convert throttle value [0.0,1.0] to Dshot frame value [48,2047],
+    /// Convert throttle value `[0.0, 1.0]` to Dshot frame value `[48, 2047]`,
     /// clamping PWM value to (1000-2000).
     #[must_use]
     pub const fn throttle_to_frame(throttle: f32) -> Self {
