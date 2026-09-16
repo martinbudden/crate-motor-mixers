@@ -119,36 +119,7 @@ impl MotorDriverQuadDshot {
 }
 
 impl MotorDriverQuadDshot {
-    #[allow(unused)]
-    fn decode_gcr_result(&self, result: Result<GcrFrame, DshotError>) -> Result<f32, DshotError> {
-        let gcr_frame = result?;
-        let erpm_raw = gcr_frame.decode()?;
-        let erpm_telemetry_frame = ErpmTelemetryFrame::from_raw(erpm_raw);
-        if erpm_telemetry_frame.checksum_is_ok() {
-            #[allow(clippy::cast_precision_loss)]
-            Ok((erpm_telemetry_frame.erpm() as f32) * self.erpm_to_hz)
-        } else {
-            Err(DshotError::InvalidChecksum)
-        }
-    }
-
-    pub async fn send_frame_and_receive_gcr(
-        &mut self,
-        frame: DshotBidirectionalFrame,
-        index: usize,
-    ) -> Result<GcrFrame, DshotError> {
-        #[cfg(feature = "rp")]
-        {
-            self.pio.send_frame_and_receive_gcr(frame, index).await
-        }
-        #[cfg(not(feature = "rp"))]
-        {
-            core::future::ready(()).await;
-            _ = index;
-            Ok(GcrFrame::from_raw(u32::from(frame.raw())))
-        }
-    }
-
+    #[inline]
     pub async fn send_frame(&mut self, frame: DshotBidirectionalFrame, index: usize) {
         #[cfg(feature = "rp")]
         self.pio.send_frame(frame, index).await;
@@ -160,13 +131,45 @@ impl MotorDriverQuadDshot {
         }
     }
 
+    #[inline]
+    pub async fn send_frame_and_receive_gcr21(
+        &mut self,
+        frame: DshotBidirectionalFrame,
+        index: usize,
+    ) -> Result<GcrFrame, DshotError> {
+        #[cfg(feature = "rp")]
+        {
+            let gcr_frame = self.pio.send_frame_and_receive_gcr21(frame, index).await?;
+            Ok(gcr_frame)
+        }
+        #[cfg(not(feature = "rp"))]
+        {
+            core::future::ready(()).await;
+            _ = frame;
+            _ = index;
+            let gcr_frame = GcrFrame::default();
+            Ok(gcr_frame)
+        }
+    }
+
+    #[inline]
+    pub async fn write_to_motor(
+        &mut self,
+        frame: DshotBidirectionalFrame,
+        index: usize,
+    ) -> Result<ErpmTelemetryFrame, DshotError> {
+        let gcr_frame = self.send_frame_and_receive_gcr21(frame, index).await?;
+        let erpm_frame = gcr_frame.try_decode()?;
+        Ok(erpm_frame)
+    }
+
     #[allow(unused)]
     pub async fn write_to_motors(&mut self, outputs: MotorOutputs) {
         for index in 0..4 {
-            let frame = DshotBidirectionalFrame::throttle_to_frame(outputs[index]);
-            let gcr_result = self.send_frame_and_receive_gcr(frame, index).await;
-            if let Ok(frequency) = self.decode_gcr_result(gcr_result) {
-                self.motor_frequencies[index] = frequency;
+            let frame = DshotBidirectionalFrame::from_throttle(outputs[index]);
+            let result = self.write_to_motor(frame, index).await;
+            if let Ok(erpm_telemetry_frame) = result {
+                self.motor_frequencies[index] = erpm_telemetry_frame.erpm_f32() * self.erpm_to_hz;
             }
         }
     }

@@ -2,7 +2,8 @@ use core::ops::Deref;
 
 use super::{DshotError, Telemetry};
 
-/// `ErpmTelemetryFrame` : returned from ESC after setting the output in bidirectional mode.
+/// In bidirectional Dshot, the ESC sends a GCR21 frame to the Flight Controller.
+/// The is then decoded into an `ErpmTelemetryFrame`
 /// ```text
 /// eRPM Telemetry Frame Structure.
 ///
@@ -11,24 +12,32 @@ use super::{DshotError, Telemetry};
 ///     eeem mmmm mmmm cccc
 ///
 /// where m is the 9-bit mantissa and e is the 3 bit exponent and cccc the checksum.
-/// The resultant value is the mantissa shifted left by the exponent.
+/// The 9 bit value M is shifted left E times to get the period in micro seconds.
+/// This gives a range of 1 us to 65408 us.
+/// Which translates to a minimum e-frequency of 15.29 hz (for 14 pole motors that is 3.82 hz).
 /// ```
-#[derive(Debug, Copy, Clone, Default, Eq, PartialEq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd, Ord)]
 pub struct ErpmTelemetryFrame(u16);
 
+impl Default for ErpmTelemetryFrame {
+    fn default() -> Self {
+        Self::from_raw_12(0)
+    }
+}
+
 impl TryFrom<u16> for ErpmTelemetryFrame {
-    type Error = u16;
+    type Error = DshotError;
 
     #[inline]
-    fn try_from(value: u16) -> Result<Self, u16> {
-        if ErpmTelemetryFrame::is_checksum_ok(value) { Ok(ErpmTelemetryFrame::from_raw(value)) } else { Err(value) }
+    fn try_from(raw_16: u16) -> Result<Self, DshotError> {
+        ErpmTelemetryFrame::try_from_raw_16(raw_16)
     }
 }
 
 impl From<ErpmTelemetryFrame> for u16 {
     #[inline]
     fn from(frame: ErpmTelemetryFrame) -> Self {
-        frame.raw()
+        frame.raw_16()
     }
 }
 
@@ -51,20 +60,17 @@ impl ErpmTelemetryFrame {
 
     #[inline]
     #[must_use]
-    pub const fn from_raw(value: u16) -> Self {
-        Self(value)
-    }
-
-    #[inline]
-    #[must_use]
-    pub const fn from_exponent_mantissa(exponent: u16, mantissa: u16) -> Self {
-        let raw_12 = (exponent << 9) | (mantissa & 0x1FFF);
+    pub const fn from_raw_12(raw_12: u16) -> Self {
         Self((raw_12 << 4) | Self::calculate_checksum(raw_12))
     }
 
+    pub fn try_from_raw_16(raw_16: u16) -> Result<Self, DshotError> {
+        if Self::is_checksum_ok(raw_16) { Ok(Self(raw_16)) } else { Err(DshotError::InvalidChecksum) }
+    }
+
     #[inline]
     #[must_use]
-    pub const fn raw(self) -> u16 {
+    pub const fn raw_16(self) -> u16 {
         self.0
     }
 
@@ -97,6 +103,13 @@ impl ErpmTelemetryFrame {
 
     #[inline]
     #[must_use]
+    pub const fn from_exponent_mantissa(exponent: u16, mantissa: u16) -> Self {
+        let raw_12 = (exponent << 9) | (mantissa & 0x1FFF);
+        Self::from_raw_12(raw_12)
+    }
+
+    #[inline]
+    #[must_use]
     pub const fn mantissa(self) -> u16 {
         self.0 & Self::MANTISSA_BITS >> 4
     }
@@ -118,16 +131,22 @@ impl ErpmTelemetryFrame {
     pub fn erpm(self) -> u32 {
         Self::ONE_MINUTE_IN_MICROSECONDS.checked_div(self.period_us()).unwrap_or_default()
     }
+    #[inline]
+    #[must_use]
+    pub fn erpm_f32(self) -> f32 {
+        //#[allow(clippy::cast_precision_loss)]
+        self.erpm() as f32
+    }
 
     /// Decode `erpm`.
     /// # Errors `DecodeError`
     pub const fn decode_erpm(self) -> Result<u16, DshotError> {
-        let value = self.0 >> 4;
-        if value == 0x0FFF {
+        let e3m9 = self.0 >> 4;
+        if e3m9 == 0x0FFF {
             return Ok(0);
         }
-        let mantissa: u16 = value & 0x01FF;
-        let exponent: u16 = (value & 0xFE00) >> 9;
+        let mantissa: u16 = e3m9 & 0x01FF;
+        let exponent: u16 = (e3m9 & 0xFE00) >> 9;
         let result = mantissa << exponent;
         if result == 0 {
             return Err(DshotError::InvalidErpm);

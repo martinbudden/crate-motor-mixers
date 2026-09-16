@@ -122,7 +122,7 @@ impl DshotBidirectionalFrame {
     /// Convert throttle value `[0.0, 1.0]` to Dshot frame value `[48, 2047]`,
     /// clamping PWM value to (1000-2000).
     #[must_use]
-    pub const fn throttle_to_frame(throttle: f32) -> Self {
+    pub const fn from_throttle(throttle: f32) -> Self {
         #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let pwm = ((throttle.abs() + 1.0) * 1000.0) as u16;
         Self::encode_raw(Self::pwm_clamped_to_dshot_raw(pwm), Self::WITH_TELEMETRY)
@@ -210,11 +210,11 @@ mod tests {
         assert_eq!(2047, DshotBidirectionalFrame::pwm_clamped_to_dshot_raw(2002));
         assert_eq!(2047, DshotBidirectionalFrame::pwm_clamped_to_dshot_raw(4000));
 
-        assert_eq!(48, DshotBidirectionalFrame::throttle_to_frame(0.0).value());
-        assert_eq!(548, DshotBidirectionalFrame::throttle_to_frame(0.25).value());
-        assert_eq!(1048, DshotBidirectionalFrame::throttle_to_frame(0.5).value());
-        assert_eq!(1548, DshotBidirectionalFrame::throttle_to_frame(0.75).value());
-        assert_eq!(2047, DshotBidirectionalFrame::throttle_to_frame(1.0).value());
+        assert_eq!(48, DshotBidirectionalFrame::from_throttle(0.0).value());
+        assert_eq!(548, DshotBidirectionalFrame::from_throttle(0.25).value());
+        assert_eq!(1048, DshotBidirectionalFrame::from_throttle(0.5).value());
+        assert_eq!(1548, DshotBidirectionalFrame::from_throttle(0.75).value());
+        assert_eq!(2047, DshotBidirectionalFrame::from_throttle(1.0).value());
 
         //assert_eq!(1542, DshotFrame::encode_raw(48).as_u16()); //0x606
         /*assert_eq!(1572, DshotFrame::encode_raw_unidirectional(49)); // 0x624
@@ -238,10 +238,10 @@ mod tests {
         assert_eq!(1, DshotBidirectionalFrame::from_command_telemetry(Command::Beep1, DshotBidirectionalFrame::NO_TELEMETRY).value());
         assert_eq!(0b_0000_0000_0010_1101, DshotBidirectionalFrame::from_command_telemetry(Command::Beep1, DshotBidirectionalFrame::NO_TELEMETRY).raw());
         assert_eq!(0b_0000_0000_0011_1100, DshotBidirectionalFrame::from_command_telemetry(Command::Beep1, DshotBidirectionalFrame::WITH_TELEMETRY).raw());
-        assert_eq!(0b_0000_0101_1100_0110, DshotBidirectionalFrame::from_command_telemetry(Command::SignalLineERPMTelemetry, DshotBidirectionalFrame::NO_TELEMETRY).raw());
-        assert_eq!(0b_0000_0101_1101_0111, DshotBidirectionalFrame::from_command_telemetry(Command::SignalLineERPMTelemetry, DshotBidirectionalFrame::WITH_TELEMETRY).raw());
-        assert_eq!(0b_0000_0101_1110_0100, DshotBidirectionalFrame::from_command_telemetry(Command::SignalLineERPMPeriodTelemetry, DshotBidirectionalFrame::NO_TELEMETRY).raw());
-        assert_eq!(0b_0000_0101_1111_0101, DshotBidirectionalFrame::from_command_telemetry(Command::SignalLineERPMPeriodTelemetry, DshotBidirectionalFrame::WITH_TELEMETRY).raw());
+        assert_eq!(0b_0000_0101_1100_0110, DshotBidirectionalFrame::from_command_telemetry(Command::SignalLineErpmTelemetry, DshotBidirectionalFrame::NO_TELEMETRY).raw());
+        assert_eq!(0b_0000_0101_1101_0111, DshotBidirectionalFrame::from_command_telemetry(Command::SignalLineErpmTelemetry, DshotBidirectionalFrame::WITH_TELEMETRY).raw());
+        assert_eq!(0b_0000_0101_1110_0100, DshotBidirectionalFrame::from_command_telemetry(Command::SignalLineErpmPeriodTelemetry, DshotBidirectionalFrame::NO_TELEMETRY).raw());
+        assert_eq!(0b_0000_0101_1111_0101, DshotBidirectionalFrame::from_command_telemetry(Command::SignalLineErpmPeriodTelemetry, DshotBidirectionalFrame::WITH_TELEMETRY).raw());
     }
     #[test]
     fn test_dshot_checksum_values() {

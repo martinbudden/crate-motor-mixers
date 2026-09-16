@@ -24,7 +24,8 @@ runner = "espflash flash --monitor"
 
 [build]
 # Optional: Set a default target so you don't have to pass --target to cargo every time
-# target = "thumbv8m.main-none-eabihf" 
+#target = "thumbv8m.main-none-eabihf" 
+target = "x86_64-unknown-linux-gnu"
 
 #[unstable]
 #build-std = ["core"]
@@ -48,6 +49,14 @@ check-none = [ "check", "--no-default-features"]
 check-8 = [ "check", "--no-default-features", "--features", "eight_motors"]
 check-serde = [ "check", "--no-default-features", "--features", "serde"]
 check-storage = [ "check", "--no-default-features", "--features", "storage"]
+
+check-rp2040 = [
+    "check",
+    "--target", "thumbv6m-none-eabi",
+    "--no-default-features",
+    "--features",
+    "rp2040"
+]
 
 check-rp235xa = [
     "check",

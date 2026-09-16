@@ -135,16 +135,16 @@ impl<'a, PIO: Instance> BidirectionalQuadDshotPio<'a, PIO> {
 #[cfg(feature = "rp")]
 impl<'a, PIO: Instance> BidirectionalQuadDshotPio<'a, PIO> {
     #[inline]
-    pub async fn send_frame_and_receive_gcr(
+    pub async fn send_frame_and_receive_gcr21(
         &mut self,
         frame: DshotBidirectionalFrame,
         sm_index: usize,
     ) -> Result<GcrFrame, DshotError> {
         match sm_index {
-            1 => self.sm1.send_frame_and_receive_gcr(frame).await,
-            2 => self.sm2.send_frame_and_receive_gcr(frame).await,
-            3 => self.sm3.send_frame_and_receive_gcr(frame).await,
-            _ => self.sm0.send_frame_and_receive_gcr(frame).await,
+            1 => self.sm1.send_frame_and_receive_gcr21(frame).await,
+            2 => self.sm2.send_frame_and_receive_gcr21(frame).await,
+            3 => self.sm3.send_frame_and_receive_gcr21(frame).await,
+            _ => self.sm0.send_frame_and_receive_gcr21(frame).await,
         }
     }
 
@@ -245,14 +245,14 @@ impl<'a, PIO: Instance, const SM: usize> BidirectionalDshotSm<'a, PIO, SM> {
         }
     }
 
-    /// Sends a `DshotBidirectionalFrame` and returns an unvalidated `GcrFrame`.
-    /// It is the responsibility of the caller to check the `GcrFrame` is valid before using it.
+    /// Sends a `DshotBidirectionalFrame` and returns a GcrFrame.
+    /// It is the responsibility of the caller to check this frame is valid and decode it.
     ///
     /// wait_push timeout  → PioTxTimeout
     /// wait_pull timeout  → PioRxTimeout
     ///
     /// # Errors ` DshotError::PioTxTimeout`, ` DshotError::PioRxTimeout`
-    async fn send_frame_and_receive_gcr(&mut self, frame: DshotBidirectionalFrame) -> Result<GcrFrame, DshotError> {
+    async fn send_frame_and_receive_gcr21(&mut self, frame: DshotBidirectionalFrame) -> Result<GcrFrame, DshotError> {
         // Clear any existing rx data
         while self.sm.rx().try_pull().is_some() {}
         self.reset_program_counter();
@@ -264,11 +264,12 @@ impl<'a, PIO: Instance, const SM: usize> BidirectionalDshotSm<'a, PIO, SM> {
             .await
             .map_err(|_| DshotError::TxTimeout)?;
 
-        let rx_data = with_timeout(Duration::from_micros(500), self.sm.rx().wait_pull())
+        let gcr21_raw = with_timeout(Duration::from_micros(500), self.sm.rx().wait_pull())
             .await
             .map_err(|_| DshotError::RxTimeout)?;
 
-        Ok(GcrFrame::from_raw(rx_data))
+        let gcr_frame = GcrFrame::from_raw_21(gcr21_raw);
+        Ok(gcr_frame)
     }
 
     /// Sends a `DshotBidirectionalFrame`

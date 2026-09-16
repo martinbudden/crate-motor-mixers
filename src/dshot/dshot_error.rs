@@ -4,9 +4,9 @@ pub enum DshotError {
     TxTimeout,
     /// ESC did not respond to telemetry request in time.
     RxTimeout,
-    NoDecodeData,
+    NoGcrData,
     InvalidRunLength,
-    InvalidGcr20Data,
+    InvalidGcrData,
     InvalidChecksum,
     InvalidErpm,
 }

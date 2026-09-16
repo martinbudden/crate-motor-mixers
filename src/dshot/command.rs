@@ -50,23 +50,23 @@ pub enum Command {
     /// Needs 6 transmissions. Disables individual signal line commands.
     SignalLineTelemetryDisable,
     /// Needs 6 transmissions. Enables individual signal line commands.
-    SignalLineContinuousERPMTelemetry,
+    SignalLineContinuousErpmTelemetry,
     /// Needs 6 transmissions. Enables individual signal line commands.
-    SignalLineContinuousERPMPeriodTelemetry,
+    SignalLineContinuousErpmPeriodTelemetry,
 
     // 36-41 are unassigned.
-    /// 1ºC per LSB.
+    /// Temperature: 1ºC per LSB.
     SignalLineTemperatureTelemetry = 42,
-    /// 10mV per LSB, 40.95V max.
+    /// Voltage: 10mV per LSB, 40.95V max.
     SignalLineVoltageTelemetry,
-    /// 100mA per LSB, 409.5A max.
+    /// Current: 100mA per LSB, 409.5A max.
     SignalLineCurrentTelemetry,
-    /// 10mAh per LSB, 40.95Ah max.
+    /// Power: 10mAh per LSB, 40.95Ah max.
     SignalLineConsumptionTelemetry,
-    /// 100erpm per LSB, 409500erpm max.
-    SignalLineERPMTelemetry,
+    /// erpm: 100erpm per LSB, 409500erpm max.
+    SignalLineErpmTelemetry,
     /// 16us per LSB, 65520us max.
-    SignalLineERPMPeriodTelemetry,
+    SignalLineErpmPeriodTelemetry,
 }
 
 impl TryFrom<u8> for Command {
@@ -118,15 +118,15 @@ impl Command {
             31 => Self::SilentModeToggle,
             32 => Self::SignalLineTelemetryEnable,
             33 => Self::SignalLineTelemetryDisable,
-            34 => Self::SignalLineContinuousERPMTelemetry,
-            35 => Self::SignalLineContinuousERPMPeriodTelemetry,
+            34 => Self::SignalLineContinuousErpmTelemetry,
+            35 => Self::SignalLineContinuousErpmPeriodTelemetry,
             // 36-41 are unassigned.
             42 => Self::SignalLineTemperatureTelemetry,
             43 => Self::SignalLineVoltageTelemetry,
             44 => Self::SignalLineCurrentTelemetry,
             45 => Self::SignalLineConsumptionTelemetry,
-            46 => Self::SignalLineERPMTelemetry,
-            47 => Self::SignalLineERPMPeriodTelemetry,
+            46 => Self::SignalLineErpmTelemetry,
+            47 => Self::SignalLineErpmPeriodTelemetry,
             _ => Self::default(),
         }
     }
@@ -150,8 +150,8 @@ impl Command {
             | Self::SpinDirectionReversed
             | Self::SignalLineTelemetryEnable
             | Self::SignalLineTelemetryDisable
-            | Self::SignalLineContinuousERPMTelemetry
-            | Self::SignalLineContinuousERPMPeriodTelemetry => 10,
+            | Self::SignalLineContinuousErpmTelemetry
+            | Self::SignalLineContinuousErpmPeriodTelemetry => 10,
             _ => 1,
         }
     }
@@ -188,7 +188,7 @@ mod tests {
     fn u8_to_command() {
         assert_eq!(Command::from_u8(0), Command::MotorStop);
         assert_eq!(Command::from_u8(1), Command::Beep1);
-        assert_eq!(Command::from_u8(35), Command::SignalLineContinuousERPMPeriodTelemetry);
+        assert_eq!(Command::from_u8(35), Command::SignalLineContinuousErpmPeriodTelemetry);
         assert_eq!(Command::from_u8(36), Command::MotorStop);
         assert_eq!(Command::from_u8(37), Command::MotorStop);
         assert_eq!(Command::from_u8(38), Command::MotorStop);
@@ -196,14 +196,14 @@ mod tests {
         assert_eq!(Command::from_u8(40), Command::MotorStop);
         assert_eq!(Command::from_u8(41), Command::MotorStop);
         assert_eq!(Command::from_u8(42), Command::SignalLineTemperatureTelemetry);
-        assert_eq!(Command::from_u8(47), Command::SignalLineERPMPeriodTelemetry);
+        assert_eq!(Command::from_u8(47), Command::SignalLineErpmPeriodTelemetry);
         assert_eq!(Command::from_u8(48), Command::MotorStop);
         assert_eq!(Command::from_u8(49), Command::MotorStop);
         assert_eq!(Command::from_u8(50), Command::MotorStop);
 
         assert_eq!(Command::try_from(0), Ok(Command::MotorStop));
         assert_eq!(Command::try_from(1), Ok(Command::Beep1));
-        assert_eq!(Command::try_from(35), Ok(Command::SignalLineContinuousERPMPeriodTelemetry));
+        assert_eq!(Command::try_from(35), Ok(Command::SignalLineContinuousErpmPeriodTelemetry));
         assert_eq!(Command::try_from(36), Err(()));
         assert_eq!(Command::try_from(37), Err(()));
         assert_eq!(Command::try_from(38), Err(()));
@@ -211,7 +211,7 @@ mod tests {
         assert_eq!(Command::try_from(40), Err(()));
         assert_eq!(Command::try_from(41), Err(()));
         assert_eq!(Command::try_from(42), Ok(Command::SignalLineTemperatureTelemetry));
-        assert_eq!(Command::try_from(47), Ok(Command::SignalLineERPMPeriodTelemetry));
+        assert_eq!(Command::try_from(47), Ok(Command::SignalLineErpmPeriodTelemetry));
         assert_eq!(Command::try_from(48), Err(()));
         assert_eq!(Command::try_from(49), Err(()));
         assert_eq!(Command::try_from(50), Err(()));

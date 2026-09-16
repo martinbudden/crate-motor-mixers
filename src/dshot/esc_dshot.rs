@@ -24,10 +24,6 @@ impl EscDshot {
     const DSHOT150_T1H: u32 = 5000;
     const DSHOT150_T: u32 = 6680;
 
-    const W2818B_T0H: u32 = 400;
-    const W2818B_T1H: u32 = 800;
-    const W2818B_T: u32 = 1250;
-
     #[must_use]
     pub const fn new(protocol: DshotProtocol) -> Self {
         let mut this = Self {
@@ -87,20 +83,15 @@ impl EscDshot {
                 self.data_high_pulse_width /= 2;
                 self.wrap_cycle_count /= 2;
             }
-            DshotProtocol::Dshot600 | DshotProtocol::Proshot => {
+            DshotProtocol::Dshot600 => {
                 self.data_low_pulse_width /= 4;
                 self.data_high_pulse_width /= 4;
                 self.wrap_cycle_count /= 4;
             }
-            DshotProtocol::Dshot1200 | DshotProtocol::Proshot => {
+            DshotProtocol::Dshot1200 => {
                 self.data_low_pulse_width /= 8;
                 self.data_high_pulse_width /= 8;
                 self.wrap_cycle_count /= 8;
-            }
-            DshotProtocol::W2818B => {
-                self.data_low_pulse_width = self.nano_seconds_to_cycles(Self::W2818B_T0H); // =  60 =  400 * 0.15GHz
-                self.data_high_pulse_width = self.nano_seconds_to_cycles(Self::W2818B_T1H); // = 120 =  800 * 0.15GHz
-                self.wrap_cycle_count = self.nano_seconds_to_cycles(Self::W2818B_T); // = 188 = 1250 * 0.15GHz
             }
         }
     }
