@@ -1,5 +1,4 @@
 #![cfg(feature = "stm32")]
-#![allow(unused)]
 
 use embassy_stm32::timer::{
     GeneralInstance4Channel,
@@ -110,39 +109,6 @@ let ch2 = PwmPin::new_ch2(p.PA9);
 let pwm = SimplePwm::new(p.TIM1, Some(ch1), Some(ch2), None, None, khz(1));
 let mut driver = MotorDriverQuadPwm::new(pwm);
 */
-
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct MotorDriverQuadDshot {
-    motor_frequencies: MotorFrequencies,
-}
-
-impl MotorDriverQuadDshot {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self { motor_frequencies: MotorFrequencies::new() }
-    }
-}
-
-#[allow(clippy::unused_async)]
-impl MotorDriverQuadDshot {
-    pub async fn write_to_motors(&mut self, _outputs: MotorOutputs) {
-        _ = self;
-    }
-
-    pub async fn write_commands_to_motors(&mut self, _commands: MotorCommands) {
-        _ = self;
-    }
-    pub async fn write_command_to_all_motors(&mut self, _command: Command) {
-        _ = self;
-    }
-
-    #[allow(clippy::unnecessary_wraps)]
-    #[must_use]
-    pub fn motor_frequencies(&self) -> Option<MotorFrequencies> {
-        _ = self;
-        Some(self.motor_frequencies)
-    }
-}
 
 #[cfg(test)]
 mod test_traits {

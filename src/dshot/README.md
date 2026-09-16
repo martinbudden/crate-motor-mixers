@@ -3,7 +3,7 @@
 The [Dshot](https://blck.mn/2016/11/dshot-the-new-kid-on-the-block/) protocol
 is based on [W2812B](https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf) (`NeoPixel`) protocol.
 
-See also: [DSHOT - the missing Handbook](https://brushlesswhoop.com/dshot-and-bidirectional-dshot/)
+See also: [DSHOT - the missing Handbook](https://brushlesswhoop.com/dshot-and-bidirectional-dshot/).
 
 See <https://en.wikipedia.org/wiki/Run-length_limited#GCR:_(0,2)_RLL> for details of the GCR encoding.
 

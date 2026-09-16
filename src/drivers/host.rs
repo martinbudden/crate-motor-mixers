@@ -1,6 +1,6 @@
 #![cfg(not(any(feature = "esp32", feature = "rp", feature = "stm32")))]
-use super::{MotorCommands, MotorFrequencies, MotorOutputs};
 use crate::dshot::Command;
+use crate::{MotorCommands, MotorFrequencies, MotorOutputs};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct MotorDriverQuadPwm;

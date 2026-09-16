@@ -64,6 +64,7 @@ impl ErpmTelemetryFrame {
         Self((raw_12 << 4) | Self::calculate_checksum(raw_12))
     }
 
+    /// # Errors
     pub fn try_from_raw_16(raw_16: u16) -> Result<Self, DshotError> {
         if Self::is_checksum_ok(raw_16) { Ok(Self(raw_16)) } else { Err(DshotError::InvalidChecksum) }
     }
@@ -134,8 +135,10 @@ impl ErpmTelemetryFrame {
     #[inline]
     #[must_use]
     pub fn erpm_f32(self) -> f32 {
-        //#[allow(clippy::cast_precision_loss)]
-        self.erpm() as f32
+        #[allow(clippy::cast_precision_loss)]
+        {
+            self.erpm() as f32
+        }
     }
 
     /// Decode `erpm`.

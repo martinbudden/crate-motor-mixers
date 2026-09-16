@@ -19,18 +19,15 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::doc_paragraphs_missing_punctuation)]
 
+mod drivers;
 pub mod dshot; // will eventually be a separate crate
 pub mod dshot_rp; // will eventually be a separate crate
 
 mod dynamic_idle_controller;
 
-mod commands;
+mod mixer_commands;
 
-mod drivers;
-mod drivers_esp32;
-mod drivers_host;
-mod drivers_rp;
-mod drivers_stm32;
+mod motor_driver;
 
 mod mixer_calculations;
 mod mixer_common;
@@ -40,29 +37,16 @@ mod motor_mixer;
 mod rpm_notch_filters;
 mod rpm_notch_filters_state_machine;
 
-pub use commands::{MotorMixerCommands, MotorMixerMessage};
+pub use mixer_commands::{MotorMixerCommands, MotorMixerMessage};
 
 pub use mixer_config::{
     MixerConfig, MixerType, MotorConfig, MotorDeviceConfig, MotorMixerParameters, MotorOutputRange, MotorProtocol,
     ProtocolFamily, ServoConfig, ServoDeviceConfig,
 };
 
-pub use drivers::MotorDriver;
+pub use motor_driver::MotorDriver;
 
-#[cfg(feature = "esp32")]
-pub use drivers_esp32::{MotorDriverQuadDshot, MotorDriverQuadPwm};
-
-#[cfg(feature = "rp")]
-pub use {
-    drivers_rp::{MotorDriverQuadDshot, MotorDriverQuadPwm},
-    dshot_rp::BidirectionalQuadDshotPio,
-};
-
-#[cfg(feature = "stm32")]
-pub use drivers_stm32::{MotorDriverQuadDshot, MotorDriverQuadPwm};
-
-#[cfg(not(any(feature = "esp32", feature = "rp", feature = "stm32")))]
-pub use drivers_host::{MotorDriverQuadDshot, MotorDriverQuadPwm};
+pub use drivers::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 
 #[cfg(feature = "eight_motors")]
 pub use mixer_calculations::mix_hex_x;

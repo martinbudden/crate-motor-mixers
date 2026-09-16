@@ -2,7 +2,7 @@ use core::ops::Deref;
 
 use super::{DshotError, ErpmTelemetryFrame, Telemetry};
 
-/// 21-bit edge transition GCR
+/// 21-bit edge transition GCR.
 // See https://en.wikipedia.org/wiki/Run-length_limited#GCR:_(0,2)_RLL for details of the GCR encoding.
 #[derive(Debug, Copy, Clone, Default, Eq, PartialEq, PartialOrd, Ord)]
 pub struct GcrFrame(u32);
@@ -23,7 +23,7 @@ impl Deref for GcrFrame {
     }
 }
 
-/// 21-bit edge transition GCR
+/// 21-bit edge transition GCR.
 #[allow(unused)]
 impl GcrFrame {
     const GCR_BIT_LENGTHS: [u32; 17] = [0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 5, 5, 5];
@@ -185,8 +185,8 @@ mod tests {
     #[test]
     fn gcr_decode_rejects_invalid_input() {
         // All zeros and all ones should fail
-        assert_eq!(Err(DshotError::InvalidGcrData), GcrFrame::from_raw_21(0).decode());
-        assert_eq!(Err(DshotError::InvalidGcrData), GcrFrame::from_raw_21(0x1FFFF).decode());
+        assert_eq!(Err(DshotError::InvalidGcrData), GcrFrame::from_raw_21(0).try_decode());
+        assert_eq!(Err(DshotError::InvalidGcrData), GcrFrame::from_raw_21(0x1FFFF).try_decode());
     }
     #[test]
     fn valid() {

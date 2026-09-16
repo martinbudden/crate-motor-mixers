@@ -162,5 +162,5 @@ lto = true
 members = [
     ".",
     "xtask",
-    "examples",
+    #"examples",
 ]

@@ -13,7 +13,7 @@ rustc_version = "0.4.1"
 
 [features]
 
-default = ["rp235xa"]
+default = []
 
 eight_motors = ["motor-mixers/eight_motors"]
 
