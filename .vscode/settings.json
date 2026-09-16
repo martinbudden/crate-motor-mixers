@@ -1,4 +1,9 @@
 {
+    // Explicitly configure how targets are discovered per-crate
+    "rust-analyzer.cargo.allTargets": false,
+    
+    // Set the fallback architecture for embedded files
+    "rust-analyzer.cargo.target": "thumbv6m-none-eabi",
     "cSpell.words": [
         "AHRS",
         "arrayvec",

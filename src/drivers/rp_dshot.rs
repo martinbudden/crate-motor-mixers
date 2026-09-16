@@ -31,6 +31,7 @@ impl MotorDriverQuadDshot {
     const SECONDS_PER_MINUTE: f32 = 60.0;
 
     #[cfg(rp)]
+    #[allow(clippy::too_many_arguments)]
     #[must_use]
     pub fn new(
         pio: Peri<'static, PIO0>,
@@ -45,7 +46,7 @@ impl MotorDriverQuadDshot {
         Self {
             motor_frequencies: MotorFrequencies::new(),
             pio: BidirectionalQuadDshotPio::new(pio, irq, pin0, pin1, pin2, pin3, protocol),
-            erpm_to_hz: 2.0 * (100.0 / Self::SECONDS_PER_MINUTE) / (motor_pole_count as f32),
+            erpm_to_hz: 2.0 * (100.0 / Self::SECONDS_PER_MINUTE) / f32::from(motor_pole_count),
         }
     }
 }
@@ -63,6 +64,7 @@ impl MotorDriverQuadDshot {
         }
     }
 
+    /// # Errors
     #[inline]
     pub async fn send_frame_and_receive_gcr21(
         &mut self,
@@ -84,6 +86,7 @@ impl MotorDriverQuadDshot {
         }
     }
 
+    /// # Errors
     #[inline]
     pub async fn write_to_motor(
         &mut self,
@@ -130,6 +133,7 @@ impl MotorDriverQuadDshot {
     }
 
     #[allow(unused, clippy::unnecessary_wraps)]
+    #[must_use]
     pub fn motor_frequencies(&self) -> Option<MotorFrequencies> {
         Some(self.motor_frequencies)
     }

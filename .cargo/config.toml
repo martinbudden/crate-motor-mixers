@@ -22,10 +22,11 @@ rustflags = [
 [target.xtensa-esp32s3-none-elf]
 runner = "espflash flash --monitor"
 
-[build]
+# DO NOT set [build] here, since it interferes with xtask.
+#[build]
 # Optional: Set a default target so you don't have to pass --target to cargo every time
 #target = "thumbv8m.main-none-eabihf" 
-target = "x86_64-unknown-linux-gnu"
+#target = "x86_64-unknown-linux-gnu"
 
 #[unstable]
 #build-std = ["core"]
@@ -91,6 +92,9 @@ check-esp32 = [
 ]
 
 # Continuous Integration
-ci = "run --package xtask --bin xtask"
+# ci = "run --package xtask --bin xtask"
+ci = "run --manifest-path xtask/Cargo.toml"
+
 # MSRV
-check-msrv = "run --package xtask --bin xtask -- check-msrv"
+#check-msrv = "run --package xtask --bin xtask -- check-msrv"
+check-msrv = "run --manifest-path xtask/Cargo.toml -- check-msrv"

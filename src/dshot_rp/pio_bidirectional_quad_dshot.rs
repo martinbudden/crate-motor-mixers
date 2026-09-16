@@ -105,7 +105,8 @@ pub struct BidirectionalQuadDshotPio<'a, PIO: Instance> {
 
 #[cfg(rp)]
 impl<'a, PIO: Instance> BidirectionalQuadDshotPio<'a, PIO> {
-    /// # Panics if `dshot_protocol` is `Dshot1200`.
+    /// # Panics
+    ///  if `dshot_protocol` is `Dshot1200`.
     #[allow(unused)]
     pub fn new(
         pio: Peri<'a, PIO>,
@@ -133,7 +134,8 @@ impl<'a, PIO: Instance> BidirectionalQuadDshotPio<'a, PIO> {
 }
 
 #[cfg(rp)]
-impl<'a, PIO: Instance> BidirectionalQuadDshotPio<'a, PIO> {
+impl<PIO: Instance> BidirectionalQuadDshotPio<'_, PIO> {
+    /// # Errors
     #[inline]
     pub async fn send_frame_and_receive_gcr21(
         &mut self,
@@ -226,7 +228,7 @@ impl<'a, PIO: Instance, const SM: usize> BidirectionalDshotSm<'a, PIO, SM> {
 }
 
 #[cfg(rp)]
-impl<'a, PIO: Instance, const SM: usize> BidirectionalDshotSm<'a, PIO, SM> {
+impl<PIO: Instance, const SM: usize> BidirectionalDshotSm<'_, PIO, SM> {
     /// Reset PIO program counter to the pull-block address.
     fn reset_program_counter(&mut self) {
         // program_origin + 0: push block     (pushes previous RX data)
@@ -236,6 +238,7 @@ impl<'a, PIO: Instance, const SM: usize> BidirectionalDshotSm<'a, PIO, SM> {
 
         if self.sm.get_addr() != pull_block_address {
             // Clear ISR to discard any partial RX data from an interrupted frame.
+            #[allow(clippy::unusual_byte_groupings)]
             const MOV_ISR_NULL: u16 = 0b101_00000_110_00_011;
             unsafe { self.sm.exec_instr(MOV_ISR_NULL) };
 
@@ -245,11 +248,11 @@ impl<'a, PIO: Instance, const SM: usize> BidirectionalDshotSm<'a, PIO, SM> {
         }
     }
 
-    /// Sends a `DshotBidirectionalFrame` and returns a GcrFrame.
+    /// Sends a `DshotBidirectionalFrame` and returns a `GcrFrame`.
     /// It is the responsibility of the caller to check this frame is valid and decode it.
     ///
-    /// wait_push timeout  → PioTxTimeout
-    /// wait_pull timeout  → PioRxTimeout
+    /// `wait_push` timeout  → `PioTxTimeout`
+    /// `wait_pull` timeout  → `PioRxTimeout`.
     ///
     /// # Errors ` DshotError::PioTxTimeout`, ` DshotError::PioRxTimeout`
     async fn send_frame_and_receive_gcr21(&mut self, frame: DshotBidirectionalFrame) -> Result<GcrFrame, DshotError> {

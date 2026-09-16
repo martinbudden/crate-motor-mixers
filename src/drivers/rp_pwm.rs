@@ -14,7 +14,9 @@ pub struct MotorDriverQuadPwm {
 }
 
 impl MotorDriverQuadPwm {
+    #[allow(clippy::expect_used)]
     #[must_use]
+    /// # Panics
     pub fn new(pwm0: Pwm<'static>, pwm1: Pwm<'static>, frequency_hz: f32) -> Self {
         let (pwm0_a, pwm0_b) = pwm0.split();
         let (pwm1_a, pwm1_b) = pwm1.split();
@@ -39,13 +41,17 @@ impl MotorDriverQuadPwm {
         // +1.0 → 2000 µs
         let pulse_width_us = PWM_CENTER_US + output * PWM_RANGE_US;
 
-        (pulse_width_us * frequency_hz / 1_000_000.0 * f32::from(top)) as u16
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        {
+            (pulse_width_us * frequency_hz / 1_000_000.0 * f32::from(top)) as u16
+        }
     }
 
     #[inline]
     fn set_motor_output(pwm: &mut PwmOutput<'static>, output: f32, top: u16, frequency_hz: f32) {
         let duty = Self::output_to_duty(output, top, frequency_hz);
 
+        #[allow(clippy::expect_used)]
         pwm.set_duty_cycle(duty).expect("motor PWM duty cycle is within configured range");
     }
 
