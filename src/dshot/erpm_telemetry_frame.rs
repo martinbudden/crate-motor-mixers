@@ -157,7 +157,7 @@ impl ErpmTelemetryFrame {
         Ok(result)
     }
 
-    /*fn decode_telemetry_frame(value: u16) -> Result<TelemetryFrame, DecodeError> {
+    /*fn decode_telemetry_frame(value: u16) -> Result<TelemetryFrame, DshotError> {
         let type_val = (value & 0x0F00) >> 8;
         let is_erpm = (type_val & 0x01) != 0 || type_val == 0;
         if is_erpm {
@@ -168,34 +168,54 @@ impl ErpmTelemetryFrame {
         Ok((value & 0x00FF, TelemetryType::from_u16(type_val >> 1)))
     }*/
 
-    #[must_use]
-    pub fn decode_telemetry(self) -> Telemetry {
+    /// # Errors
+    pub fn try_decode_erpm(self) -> Result<u32, DshotError> {
         let raw_12 = self.0 >> 4;
         let exponent = (raw_12 >> 9) & 0x07;
         let bit8 = (raw_12 >> 8) & 1;
 
         if exponent == 0 || bit8 == 1 {
             if raw_12 == 0 || raw_12 == 0x0FFF {
-                return Telemetry::Erpm(0);
+                return Ok(0);
             }
             let mantissa = raw_12 & 0x1FF;
             let period_us = u32::from(mantissa) << u32::from(exponent);
             if period_us == 0 {
-                return Telemetry::Erpm(0);
+                return Ok(0);
             }
-            return Telemetry::Erpm(Self::ONE_MINUTE_IN_MICROSECONDS / period_us);
+            return Ok(Self::ONE_MINUTE_IN_MICROSECONDS / period_us);
+        }
+        Err(DshotError::InvalidErpm)
+    }
+
+    /// # Errors
+    pub fn try_decode_telemetry(self) -> Result<Telemetry, DshotError> {
+        let raw_12 = self.0 >> 4;
+        let exponent = (raw_12 >> 9) & 0x07;
+        let bit8 = (raw_12 >> 8) & 1;
+
+        if exponent == 0 || bit8 == 1 {
+            if raw_12 == 0 || raw_12 == 0x0FFF {
+                return Ok(Telemetry::Erpm(0));
+            }
+            let mantissa = raw_12 & 0x1FF;
+            let period_us = u32::from(mantissa) << u32::from(exponent);
+            if period_us == 0 {
+                return Ok(Telemetry::Erpm(0));
+            }
+            return Ok(Telemetry::Erpm(Self::ONE_MINUTE_IN_MICROSECONDS / period_us));
         }
 
         let data = (raw_12 & 0xFF) as u8;
         match exponent {
-            1 => Telemetry::Temperature(data),
-            2 => Telemetry::Voltage(u32::from(data) * 250),
-            3 => Telemetry::Current(u32::from(data) * 1000),
-            4 => Telemetry::Debug1(data),
-            5 => Telemetry::Debug2(data),
-            6 => Telemetry::Debug3(data),
-            7 => Telemetry::StateEvent(data),
-            _ => Telemetry::Unknown { type_id: exponent, value: data },
+            1 => Ok(Telemetry::Temperature(data)),
+            2 => Ok(Telemetry::Voltage(u32::from(data) * 250)),
+            3 => Ok(Telemetry::Current(u32::from(data) * 1000)),
+            4 => Ok(Telemetry::Debug1(data)),
+            5 => Ok(Telemetry::Debug2(data)),
+            6 => Ok(Telemetry::Debug3(data)),
+            7 => Ok(Telemetry::StateEvent(data)),
+            _ => Err(DshotError::InvalidTelemetry),
         }
     }
 }
@@ -218,10 +238,10 @@ mod tests {
     #[test]
     fn temperature() {
         let frame = ErpmTelemetryFrame::from_exponent_mantissa(1, 25);
-        assert_eq!(frame.decode_telemetry(), Telemetry::Temperature(25));
+        assert_eq!(frame.try_decode_telemetry(), Ok(Telemetry::Temperature(25)));
         let frame = ErpmTelemetryFrame::from_exponent_mantissa(1, 100);
-        assert_eq!(frame.decode_telemetry(), Telemetry::Temperature(100));
+        assert_eq!(frame.try_decode_telemetry(), Ok(Telemetry::Temperature(100)));
         let frame = ErpmTelemetryFrame::from_exponent_mantissa(1, 255);
-        assert_eq!(frame.decode_telemetry(), Telemetry::Temperature(255));
+        assert_eq!(frame.try_decode_telemetry(), Ok(Telemetry::Temperature(255)));
     }
 }

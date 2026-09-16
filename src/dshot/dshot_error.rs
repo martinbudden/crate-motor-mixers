@@ -9,4 +9,5 @@ pub enum DshotError {
     InvalidGcrData,
     InvalidChecksum,
     InvalidErpm,
+    InvalidTelemetry,
 }

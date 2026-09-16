@@ -1,6 +1,6 @@
 use core::ops::Deref;
 
-use super::{DshotError, ErpmTelemetryFrame, Telemetry};
+use super::{DshotError, ErpmTelemetryFrame};
 
 /// 21-bit edge transition GCR.
 // See https://en.wikipedia.org/wiki/Run-length_limited#GCR:_(0,2)_RLL for details of the GCR encoding.
@@ -99,7 +99,7 @@ impl GcrFrame {
     ///
     /// Returns the value of the Extended Dshot Telemetry (EDT) frame (without the checksum).
     /// # Errors `DshotError`
-    pub fn decode_samples(value: u64) -> Result<Telemetry, DshotError> {
+    pub fn decode_samples(value: u64) -> Result<ErpmTelemetryFrame, DshotError> {
         // telemetry data must start with a 0, so if the first bit is high, we don't have any data
         if (value & 0x8000_0000_0000_0000) != 0 {
             return Err(DshotError::NoGcrData);
@@ -162,7 +162,7 @@ impl GcrFrame {
         //let erpm_telemetry_frame = Self::gcr20_to_erpm(gcr20)?;
         let erpm_telemetry_frame = Self::gcr21_to_erpm(gcr_data)?;
 
-        Ok(erpm_telemetry_frame.decode_telemetry())
+        Ok(erpm_telemetry_frame)
     }
 }
 

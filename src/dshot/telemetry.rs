@@ -12,7 +12,21 @@ pub enum TelemetryType {
     Debug2 = 5,
     StressLevel = 6,
     StateEvents = 7,
-    Invalid = 0xFF,
+}
+
+impl TryFrom<u8> for TelemetryType {
+    type Error = ();
+
+    /// Validating conversion from `u8` to `TelemetryType`. Invalid values return error.
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        let default = Self::default();
+        if value == default as u8 {
+            Ok(default)
+        } else {
+            let ret = Self::from_u8(value);
+            if ret == default { Err(()) } else { Ok(ret) }
+        }
+    }
 }
 
 impl TelemetryType {
@@ -28,14 +42,8 @@ impl TelemetryType {
             6 => Self::Debug2,
             7 => Self::StressLevel,
             8 => Self::StateEvents,
-            0xFF => Self::Invalid,
             _ => Self::default(),
         }
-    }
-
-    #[must_use]
-    pub fn from_u16(value: u16) -> Self {
-        if value > 255 { TelemetryType::Invalid } else { Self::from_u8(value.to_le_bytes()[0]) }
     }
 }
 
