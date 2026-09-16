@@ -4,7 +4,7 @@ use crate::{
     MotorCommands, MotorFrequencies, MotorOutputs,
     dshot::{Command, DshotBidirectionalFrame, DshotError, ErpmTelemetryFrame, GcrFrame},
 };
-#[cfg(feature = "rp")]
+#[cfg(rp)]
 use {
     crate::{dshot::DshotProtocol, dshot_rp::BidirectionalQuadDshotPio},
     embassy_rp::{
@@ -20,7 +20,7 @@ use {
 #[allow(missing_debug_implementations, missing_copy_implementations)]
 pub struct MotorDriverQuadDshot {
     motor_frequencies: MotorFrequencies,
-    #[cfg(feature = "rp")]
+    #[cfg(rp)]
     pio: BidirectionalQuadDshotPio<'static, PIO0>,
     erpm_to_hz: f32,
 }
@@ -30,7 +30,7 @@ impl MotorDriverQuadDshot {
     pub const DEFAULT_MOTOR_POLE_COUNT: u16 = 14;
     const SECONDS_PER_MINUTE: f32 = 60.0;
 
-    #[cfg(feature = "rp")]
+    #[cfg(rp)]
     #[must_use]
     pub fn new(
         pio: Peri<'static, PIO0>,
@@ -53,9 +53,9 @@ impl MotorDriverQuadDshot {
 impl MotorDriverQuadDshot {
     #[inline]
     pub async fn send_frame(&mut self, frame: DshotBidirectionalFrame, index: usize) {
-        #[cfg(feature = "rp")]
+        #[cfg(rp)]
         self.pio.send_frame(frame, index).await;
-        #[cfg(not(feature = "rp"))]
+        #[cfg(not(rp))]
         {
             core::future::ready(()).await;
             _ = frame;
@@ -69,12 +69,12 @@ impl MotorDriverQuadDshot {
         frame: DshotBidirectionalFrame,
         index: usize,
     ) -> Result<GcrFrame, DshotError> {
-        #[cfg(feature = "rp")]
+        #[cfg(rp)]
         {
             let gcr_frame = self.pio.send_frame_and_receive_gcr21(frame, index).await?;
             Ok(gcr_frame)
         }
-        #[cfg(not(feature = "rp"))]
+        #[cfg(not(rp))]
         {
             core::future::ready(()).await;
             _ = frame;

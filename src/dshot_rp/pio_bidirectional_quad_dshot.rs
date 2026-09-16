@@ -1,6 +1,6 @@
 use fixed::{FixedU32, types::extra::U8};
 
-#[cfg(feature = "rp")]
+#[cfg(rp)]
 use {
     crate::dshot::{DshotBidirectionalFrame, DshotError, GcrFrame},
     embassy_rp::{
@@ -28,7 +28,7 @@ use crate::dshot::DshotProtocol;
 //   Wait for falling edge, measure pulse widths using counting loops.
 //   21 GCR-encoded bits which are subsequently decoded to 16-bit telemetry + checksum.
 //   Tight 2-cycle wait loop matches reference implementation.
-#[cfg(feature = "rp")]
+#[cfg(rp)]
 macro_rules! dshot_bidirectional_program {
 () => { pio_asm!(
     ".wrap_target"
@@ -95,7 +95,7 @@ macro_rules! dshot_bidirectional_program {
 /// `Dshot1200` is not supported.
 #[allow(unused)]
 #[allow(missing_debug_implementations, missing_copy_implementations)]
-#[cfg(feature = "rp")]
+#[cfg(rp)]
 pub struct BidirectionalQuadDshotPio<'a, PIO: Instance> {
     sm0: BidirectionalDshotSm<'a, PIO, 0>,
     sm1: BidirectionalDshotSm<'a, PIO, 1>,
@@ -103,7 +103,7 @@ pub struct BidirectionalQuadDshotPio<'a, PIO: Instance> {
     sm3: BidirectionalDshotSm<'a, PIO, 3>,
 }
 
-#[cfg(feature = "rp")]
+#[cfg(rp)]
 impl<'a, PIO: Instance> BidirectionalQuadDshotPio<'a, PIO> {
     /// # Panics if `dshot_protocol` is `Dshot1200`.
     #[allow(unused)]
@@ -132,7 +132,7 @@ impl<'a, PIO: Instance> BidirectionalQuadDshotPio<'a, PIO> {
     }
 }
 
-#[cfg(feature = "rp")]
+#[cfg(rp)]
 impl<'a, PIO: Instance> BidirectionalQuadDshotPio<'a, PIO> {
     #[inline]
     pub async fn send_frame_and_receive_gcr21(
@@ -179,13 +179,13 @@ impl<'a, PIO: Instance> BidirectionalQuadDshotPio<'a, PIO> {
 /// Supports `Dshot150`, `Dshot300`, `Dshot600`. `Dshot1200` is not supported.
 #[allow(unused)]
 #[allow(missing_debug_implementations, missing_copy_implementations)]
-#[cfg(feature = "rp")]
+#[cfg(rp)]
 pub struct BidirectionalDshotSm<'a, PIO: Instance, const SM: usize> {
     sm: StateMachine<'a, PIO, SM>,
     program_origin: u8,
 }
 
-#[cfg(feature = "rp")]
+#[cfg(rp)]
 impl<'a, PIO: Instance, const SM: usize> BidirectionalDshotSm<'a, PIO, SM> {
     pub fn new(
         mut sm: StateMachine<'a, PIO, SM>,
@@ -225,7 +225,7 @@ impl<'a, PIO: Instance, const SM: usize> BidirectionalDshotSm<'a, PIO, SM> {
     }
 }
 
-#[cfg(feature = "rp")]
+#[cfg(rp)]
 impl<'a, PIO: Instance, const SM: usize> BidirectionalDshotSm<'a, PIO, SM> {
     /// Reset PIO program counter to the pull-block address.
     fn reset_program_counter(&mut self) {

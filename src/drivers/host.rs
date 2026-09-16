@@ -1,4 +1,4 @@
-#![cfg(not(any(feature = "esp32", feature = "rp", feature = "stm32")))]
+#![cfg(not(any(feature = "esp32", rp, feature = "stm32")))]
 use crate::dshot::Command;
 use crate::{MotorCommands, MotorFrequencies, MotorOutputs};
 

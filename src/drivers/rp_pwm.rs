@@ -1,4 +1,4 @@
-#![cfg(feature = "rp")]
+#![cfg(rp)]
 
 use crate::MotorOutputs;
 

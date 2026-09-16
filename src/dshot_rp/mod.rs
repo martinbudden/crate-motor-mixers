@@ -20,5 +20,5 @@
 
 mod pio_bidirectional_quad_dshot;
 
-#[cfg(feature = "rp")]
+#[cfg(rp)]
 pub use pio_bidirectional_quad_dshot::BidirectionalQuadDshotPio;
