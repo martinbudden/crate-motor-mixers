@@ -15,7 +15,7 @@ use {defmt_rtt as _, panic_probe as _};
 
 use motor_mixers::{
     MotorDriverQuadDshot,
-    dshot::{Command as DshotCommand, DshotBidirectionalFrame, DshotProtocol},
+    dshot::{DshotCommand, DshotCommandFrame, DshotSpeed},
 };
 
 bind_interrupts!(struct Irqs {

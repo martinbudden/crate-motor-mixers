@@ -62,3 +62,49 @@ WS2812B specification is
 | Dshot150 |            150 Kbps |      106.7 μ s |                     9.37 kHz |
 | Dshot300 |            300 Kbps |       53.3 μ s |                    18.75 kHz |
 | Dshot600 |            600 Kbps |       26.7 μ s |                    37.50 kHz |
+
+## Decoding order
+
+```text
+[ Microcontroller Pin via Input Capture/PIO ]
+                    │
+                    ▼
+          [ 21-bit Raw Transitions ]
+                    │  (Strip leading zero, decode NRZI transitions)
+                    ▼
+           [ 20-bit GCR Buffer ]
+                    │  (Split into 4x 5-bit chunks, apply GCR lookup)
+                    ▼
+     [ 16-bit DshotTelemetryFrame ]  <-- Where our CRC and EDT/eRPM logic starts!
+```
+
+**NRZI** stands for Non-Return-to-Zero, Inverted.
+
+It is a method of mapping digital binary bits (0s and 1s) into physical voltage changes on a wire.
+In standard digital communication (like normal `Dshot` commands), a high voltage represents a 1 and a low voltage represents a 0.
+This is known as standard **NRZ** (Non-Return-to-Zero).
+
+**NRZI** works differently by focusing on the transitions (edges) rather than the absolute voltage levels:
+
+* A 1 bit forces the signal wire to change state (if it was High, it flips to Low; if it was Low, it flips to High).
+* A 0 bit forces the signal wire to stay the same (no change in voltage level).
+
+### Why `DShot` Telemetry uses **GCR** + **NRZI**
+
+Microcontrollers read incoming data by measuring the time between voltage transitions.
+If an ESC sent a long string of 0 bits over normal wiring, the voltage line would just sit perfectly flat for a long time.
+
+The microcontroller's internal clock would quickly drift, lose synchronization, and corrupt the incoming data packet.
+By combining GCR and NRZI, the `DShot` protocol guarantees a rock-solid connection: GCR ensures that you never have more than two 0 bits in a row in your data stream.
+
+Because there are mostly 1 bits, NRZI forces the physical wire to constantly flip back and forth between High and Low.
+
+These constant flips act like a heartbeat, keeping your RP2040 or RP2350 input capture timers perfectly synchronized with the ESC's transmission clock.
+
+## Capture Mechanism
+
+| Architecture    | Primary Hardware Peripheral | Raw Data Form in RAM                                                                   |
+| --------------- | --------------------------- | -------------------------------------------------------------------------------------- |
+| RP2040 / RP2350 | PIO + DMA                   | `u32` containing raw bit values                                                        |
+| STM32           | Timer Input Capture + DMA   | `[u32; 21]` array of clock timestamps                                                  |
+| ESP32           | RMT                         | Array of `RmtPulse` elements specifying the microsecond duration of each high/low peak |

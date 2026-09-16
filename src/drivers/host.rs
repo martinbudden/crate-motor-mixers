@@ -1,5 +1,5 @@
 #![cfg(not(any(feature = "esp32", rp, feature = "stm32")))]
-use crate::dshot::Command;
+use crate::dshot::DshotCommand;
 use crate::{MotorCommands, MotorFrequencies, MotorOutputs};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -41,11 +41,11 @@ impl MotorDriverQuadDshot {
         _ = self;
     }
 
-    pub async fn write_command_to_all_motors(&mut self, _command: Command) {
+    pub async fn write_command_to_all_motors(&mut self, _command: DshotCommand) {
         _ = self;
     }
 
-    pub async fn reverse_all_motors(&mut self, _command: Command) {
+    pub async fn reverse_all_motors(&mut self, _command: DshotCommand) {
         _ = self;
     }
 

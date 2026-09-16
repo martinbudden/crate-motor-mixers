@@ -1,4 +1,4 @@
-use crate::dshot::Command;
+use crate::dshot::DshotCommand;
 use embassy_time::{Duration, Timer};
 
 use super::{MotorCommands, MotorFrequencies, MotorOutputs};
@@ -26,7 +26,7 @@ impl MotorDriver {
         }
     }
 
-    pub async fn write_command_to_all_motors(&mut self, command: Command) {
+    pub async fn write_command_to_all_motors(&mut self, command: DshotCommand) {
         match self {
             Self::QuadPwm(_driver) => {}
             Self::QuadDshot(driver) => driver.write_command_to_all_motors(command).await,
@@ -40,7 +40,7 @@ impl MotorDriver {
             Self::QuadDshot(driver) => {
                 let iterations = duration.as_millis();
                 for _ in 0..iterations {
-                    driver.write_command_to_all_motors(Command::MotorStop).await;
+                    driver.write_command_to_all_motors(DshotCommand::MotorStop).await;
                     Timer::after(Duration::from_millis(1)).await;
                 }
             }

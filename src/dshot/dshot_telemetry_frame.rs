@@ -2,46 +2,67 @@ use core::ops::Deref;
 
 use super::{DshotError, Telemetry};
 
-/// In bidirectional Dshot, the ESC sends a GCR21 frame to the Flight Controller.
-/// The is then decoded into an `ErpmTelemetryFrame`
+/// `DshotTelemetryFrame`: transmitted from ESC to Flight Controller.
+///
+/// If Bidirectional `DShot` is enabled, and the Flight Controller sends a `DshotCommandFrame` with the request telemetry bit set,
+/// the FC shifts its signal pin to an input right after sending a command.
+/// then the ESC then responds with a a `DshotTelemetryFrame`.
+///
 /// ```text
-/// eRPM Telemetry Frame Structure.
+/// This frame can be interpreted either as an `erpm` (Electronic RPM) value, or an `edt` (Extended Dshot Telemetry) value.
 ///
-/// The eRPM telemetry frame sent by the ESC in bidirectional DSHOT mode is a 16 bit value, in the format:
+/// When interpreted as an `erpm` the frame is treated as a 16 bit value, in the format:
 ///
-///     eeem mmmm mmmm cccc
+///     `eeem mmmm mmmm cccc`
 ///
-/// where m is the 9-bit mantissa and e is the 3 bit exponent and cccc the checksum.
-/// The 9 bit value M is shifted left E times to get the period in micro seconds.
-/// This gives a range of 1 us to 65408 us.
-/// Which translates to a minimum e-frequency of 15.29 hz (for 14 pole motors that is 3.82 hz).
+/// where `m` is the 9-bit mantissa and `e` is the 3-bit exponent and `c` the checksum.
+/// the 9-bit value M is shifted left E times to get the period in micro seconds.
+/// This gives a range of 1 us to 65408 us, Which translates to a minimum e-frequency of 15.29 hz (for 14 pole motors that is 3.82 hz).
+///
+/// When interpreted as a `edt` the frame is treated as a 16 bit value, in the format:
+///
+///     `ttt0 vvvv vvvv cccc`
+///
+/// where `t` is the 4-bit data type (eg 0 for temperature, 1 for voltage, etc)
+/// `0` is the bit set to 0
+/// `v` is the 8-bit sensor value,
+/// `c` is the checksum.
+///
+/// The `DshotTelemetryFrame` is interpreted as an `erpm` frame or an `edt` frame depending
+/// on the first 4 bits of the frame, the `prefix` (ie bits `p` if the frame is interpreted as `pppp xxxx xxxx xxxx`.
+///
+/// This interpretation takes advantage of the fact that there is redundancy in the `erpm` encoding
+/// (ie a given `erpm` can be represented in more than one way).
+///
+/// It is an `erpm` frame if the lower bit of the prefix is 1 or the prefix evaluates to exactly 0.
+/// It is an `edt` frame if the prefix is non-zero and the low order bit is 0.
 /// ```
 #[derive(Debug, Copy, Clone, Eq, PartialEq, PartialOrd, Ord)]
-pub struct ErpmTelemetryFrame(u16);
+pub struct DshotTelemetryFrame(u16);
 
-impl Default for ErpmTelemetryFrame {
+impl Default for DshotTelemetryFrame {
     fn default() -> Self {
         Self::from_raw_12(0)
     }
 }
 
-impl TryFrom<u16> for ErpmTelemetryFrame {
+impl TryFrom<u16> for DshotTelemetryFrame {
     type Error = DshotError;
 
     #[inline]
     fn try_from(raw_16: u16) -> Result<Self, DshotError> {
-        ErpmTelemetryFrame::try_from_raw_16(raw_16)
+        DshotTelemetryFrame::try_from_raw_16(raw_16)
     }
 }
 
-impl From<ErpmTelemetryFrame> for u16 {
+impl From<DshotTelemetryFrame> for u16 {
     #[inline]
-    fn from(frame: ErpmTelemetryFrame) -> Self {
+    fn from(frame: DshotTelemetryFrame) -> Self {
         frame.raw_16()
     }
 }
 
-impl Deref for ErpmTelemetryFrame {
+impl Deref for DshotTelemetryFrame {
     type Target = u16;
 
     #[inline]
@@ -51,7 +72,7 @@ impl Deref for ErpmTelemetryFrame {
 }
 
 #[allow(unused)]
-impl ErpmTelemetryFrame {
+impl DshotTelemetryFrame {
     // eeem mmmm mmmm cccc
     const CHECKSUM_BITS: u16 = 0x000F;
     const MANTISSA_BITS: u16 = 0x1FF0;
@@ -106,6 +127,13 @@ impl ErpmTelemetryFrame {
     #[must_use]
     pub const fn from_exponent_mantissa(exponent: u16, mantissa: u16) -> Self {
         let raw_12 = (exponent << 9) | (mantissa & 0x1FFF);
+        Self::from_raw_12(raw_12)
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn from_type_value(data_type: u8, value: u8) -> Self {
+        let raw_12 = (u16::from(data_type) << 9) | u16::from(value);
         Self::from_raw_12(raw_12)
     }
 
@@ -190,15 +218,18 @@ impl ErpmTelemetryFrame {
 
     /// # Errors
     pub fn try_decode_telemetry(self) -> Result<Telemetry, DshotError> {
-        let raw_12 = self.0 >> 4;
-        let exponent = (raw_12 >> 9) & 0x07;
-        let bit8 = (raw_12 >> 8) & 1;
+        // Extract the 12-bit raw payload
+        let raw_12 = (self.0 >> 4) & 0x0FFF;
+        // Extract the 4-bit prefix to differentiate between erpm and edt frames.
+        let prefix = (raw_12 >> 8) & 0x0F;
 
-        if exponent == 0 || bit8 == 1 {
+        let is_erpm = (prefix == 0) || ((prefix & 0x01) != 0);
+        if is_erpm {
             if raw_12 == 0 || raw_12 == 0x0FFF {
                 return Ok(Telemetry::Erpm(0));
             }
             let mantissa = raw_12 & 0x1FF;
+            let exponent = (raw_12 >> 9) & 0x07;
             let period_us = u32::from(mantissa) << u32::from(exponent);
             if period_us == 0 {
                 return Ok(Telemetry::Erpm(0));
@@ -206,8 +237,9 @@ impl ErpmTelemetryFrame {
             return Ok(Telemetry::Erpm(Self::ONE_MINUTE_IN_MICROSECONDS / period_us));
         }
 
+        let data_type = prefix >> 1;
         let data = (raw_12 & 0xFF) as u8;
-        match exponent {
+        match data_type {
             1 => Ok(Telemetry::Temperature(data)),
             2 => Ok(Telemetry::Voltage(u32::from(data) * 250)),
             3 => Ok(Telemetry::Current(u32::from(data) * 1000)),
@@ -227,7 +259,7 @@ mod test_traits {
 
     #[test]
     fn normal_types() {
-        is_full::<ErpmTelemetryFrame>();
+        is_full::<DshotTelemetryFrame>();
     }
 }
 
@@ -237,11 +269,11 @@ mod tests {
 
     #[test]
     fn temperature() {
-        let frame = ErpmTelemetryFrame::from_exponent_mantissa(1, 25);
+        let frame = DshotTelemetryFrame::from_type_value(1, 25);
         assert_eq!(frame.try_decode_telemetry(), Ok(Telemetry::Temperature(25)));
-        let frame = ErpmTelemetryFrame::from_exponent_mantissa(1, 100);
+        let frame = DshotTelemetryFrame::from_type_value(1, 100);
         assert_eq!(frame.try_decode_telemetry(), Ok(Telemetry::Temperature(100)));
-        let frame = ErpmTelemetryFrame::from_exponent_mantissa(1, 255);
+        let frame = DshotTelemetryFrame::from_type_value(1, 255);
         assert_eq!(frame.try_decode_telemetry(), Ok(Telemetry::Temperature(255)));
     }
 }

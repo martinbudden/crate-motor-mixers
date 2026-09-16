@@ -18,21 +18,21 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::doc_paragraphs_missing_punctuation)]
 
-mod command;
-mod dshot_bidirectional_frame;
-mod dshot_error;
-mod erpm_telemetry_frame;
+mod dshot_command_frame;
+mod dshot_commands;
+mod dshot_errors;
+mod dshot_speed;
+mod dshot_telemetry;
+mod dshot_telemetry_frame;
 mod esc_dshot;
-mod gcr_frame;
-mod protocol;
-mod telemetry;
+mod nrzi_frame;
 
 pub use esc_dshot::EscDshot;
 
-pub use command::Command;
-pub use dshot_bidirectional_frame::DshotBidirectionalFrame;
-pub use dshot_error::DshotError;
-pub use erpm_telemetry_frame::ErpmTelemetryFrame;
-pub use gcr_frame::GcrFrame;
-pub use protocol::DshotProtocol;
-pub use telemetry::{Telemetry, TelemetryType};
+pub use dshot_command_frame::DshotCommandFrame;
+pub use dshot_commands::DshotCommand;
+pub use dshot_errors::DshotError;
+pub use dshot_speed::DshotSpeed;
+pub use dshot_telemetry::{Telemetry, TelemetryType};
+pub use dshot_telemetry_frame::DshotTelemetryFrame;
+pub use nrzi_frame::NrziFrame;

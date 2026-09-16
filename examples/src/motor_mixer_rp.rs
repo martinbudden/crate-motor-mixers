@@ -13,7 +13,7 @@ use embassy_time::{Duration, Timer};
 use {defmt_rtt as _, panic_probe as _};
 
 use motor_mixers::{
-    MixerConfig, MotorConfig, MotorDriver, MotorDriverQuadDshot, MotorMixer, MotorMixerMessage, dshot::DshotProtocol,
+    MixerConfig, MotorConfig, MotorDriver, MotorDriverQuadDshot, MotorMixer, MotorMixerMessage, dshot::DshotSpeed,
 };
 
 #[cfg(feature = "rp")]
@@ -41,7 +41,7 @@ async fn main(_spawner: Spawner) {
         p.PIN_12,
         p.PIN_14,
         p.PIN_15,
-        DshotProtocol::Dshot300,
+        DshotSpeed::Dshot300,
         MotorDriverQuadDshot::DEFAULT_MOTOR_POLE_COUNT,
     );
     let driver = MotorDriver::QuadDshot(driver_quad_dshot);

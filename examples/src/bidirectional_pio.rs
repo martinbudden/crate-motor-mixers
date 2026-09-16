@@ -20,7 +20,7 @@ use embassy_time::{Duration, Timer};
 use {defmt_rtt as _, panic_probe as _};
 
 use motor_mixers::{
-    dshot::{Command as DshotCommand, DshotBidirectionalFrame, DshotProtocol},
+    dshot::{DshotCommand, DshotCommandFrame, DshotSpeed},
     dshot_rp::BidirectionalQuadDshotPio,
 };
 

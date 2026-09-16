@@ -1,5 +1,5 @@
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
-pub enum Command {
+pub enum DshotCommand {
     #[default]
     MotorStop = 0,
     /// Wait at least 260ms before next command.
@@ -69,7 +69,7 @@ pub enum Command {
     SignalLineErpmPeriodTelemetry,
 }
 
-impl TryFrom<u8> for Command {
+impl TryFrom<u8> for DshotCommand {
     type Error = ();
 
     /// Validating conversion from `u8` to `Command`. Invalid values return error.
@@ -84,7 +84,7 @@ impl TryFrom<u8> for Command {
     }
 }
 
-impl Command {
+impl DshotCommand {
     /// Forgiving conversion from `u8` to `Command`, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
@@ -132,7 +132,7 @@ impl Command {
     }
 }
 
-impl Command {
+impl DshotCommand {
     #[allow(unused)]
     #[must_use]
     pub const fn repetitions_required(self) -> u8 {
@@ -176,7 +176,7 @@ mod test_traits {
 
     #[test]
     fn normal_types() {
-        is_full_eq::<Command>();
+        is_full_eq::<DshotCommand>();
     }
 }
 
@@ -186,34 +186,34 @@ mod tests {
 
     #[test]
     fn u8_to_command() {
-        assert_eq!(Command::from_u8(0), Command::MotorStop);
-        assert_eq!(Command::from_u8(1), Command::Beep1);
-        assert_eq!(Command::from_u8(35), Command::SignalLineContinuousErpmPeriodTelemetry);
-        assert_eq!(Command::from_u8(36), Command::MotorStop);
-        assert_eq!(Command::from_u8(37), Command::MotorStop);
-        assert_eq!(Command::from_u8(38), Command::MotorStop);
-        assert_eq!(Command::from_u8(39), Command::MotorStop);
-        assert_eq!(Command::from_u8(40), Command::MotorStop);
-        assert_eq!(Command::from_u8(41), Command::MotorStop);
-        assert_eq!(Command::from_u8(42), Command::SignalLineTemperatureTelemetry);
-        assert_eq!(Command::from_u8(47), Command::SignalLineErpmPeriodTelemetry);
-        assert_eq!(Command::from_u8(48), Command::MotorStop);
-        assert_eq!(Command::from_u8(49), Command::MotorStop);
-        assert_eq!(Command::from_u8(50), Command::MotorStop);
+        assert_eq!(DshotCommand::from_u8(0), DshotCommand::MotorStop);
+        assert_eq!(DshotCommand::from_u8(1), DshotCommand::Beep1);
+        assert_eq!(DshotCommand::from_u8(35), DshotCommand::SignalLineContinuousErpmPeriodTelemetry);
+        assert_eq!(DshotCommand::from_u8(36), DshotCommand::MotorStop);
+        assert_eq!(DshotCommand::from_u8(37), DshotCommand::MotorStop);
+        assert_eq!(DshotCommand::from_u8(38), DshotCommand::MotorStop);
+        assert_eq!(DshotCommand::from_u8(39), DshotCommand::MotorStop);
+        assert_eq!(DshotCommand::from_u8(40), DshotCommand::MotorStop);
+        assert_eq!(DshotCommand::from_u8(41), DshotCommand::MotorStop);
+        assert_eq!(DshotCommand::from_u8(42), DshotCommand::SignalLineTemperatureTelemetry);
+        assert_eq!(DshotCommand::from_u8(47), DshotCommand::SignalLineErpmPeriodTelemetry);
+        assert_eq!(DshotCommand::from_u8(48), DshotCommand::MotorStop);
+        assert_eq!(DshotCommand::from_u8(49), DshotCommand::MotorStop);
+        assert_eq!(DshotCommand::from_u8(50), DshotCommand::MotorStop);
 
-        assert_eq!(Command::try_from(0), Ok(Command::MotorStop));
-        assert_eq!(Command::try_from(1), Ok(Command::Beep1));
-        assert_eq!(Command::try_from(35), Ok(Command::SignalLineContinuousErpmPeriodTelemetry));
-        assert_eq!(Command::try_from(36), Err(()));
-        assert_eq!(Command::try_from(37), Err(()));
-        assert_eq!(Command::try_from(38), Err(()));
-        assert_eq!(Command::try_from(39), Err(()));
-        assert_eq!(Command::try_from(40), Err(()));
-        assert_eq!(Command::try_from(41), Err(()));
-        assert_eq!(Command::try_from(42), Ok(Command::SignalLineTemperatureTelemetry));
-        assert_eq!(Command::try_from(47), Ok(Command::SignalLineErpmPeriodTelemetry));
-        assert_eq!(Command::try_from(48), Err(()));
-        assert_eq!(Command::try_from(49), Err(()));
-        assert_eq!(Command::try_from(50), Err(()));
+        assert_eq!(DshotCommand::try_from(0), Ok(DshotCommand::MotorStop));
+        assert_eq!(DshotCommand::try_from(1), Ok(DshotCommand::Beep1));
+        assert_eq!(DshotCommand::try_from(35), Ok(DshotCommand::SignalLineContinuousErpmPeriodTelemetry));
+        assert_eq!(DshotCommand::try_from(36), Err(()));
+        assert_eq!(DshotCommand::try_from(37), Err(()));
+        assert_eq!(DshotCommand::try_from(38), Err(()));
+        assert_eq!(DshotCommand::try_from(39), Err(()));
+        assert_eq!(DshotCommand::try_from(40), Err(()));
+        assert_eq!(DshotCommand::try_from(41), Err(()));
+        assert_eq!(DshotCommand::try_from(42), Ok(DshotCommand::SignalLineTemperatureTelemetry));
+        assert_eq!(DshotCommand::try_from(47), Ok(DshotCommand::SignalLineErpmPeriodTelemetry));
+        assert_eq!(DshotCommand::try_from(48), Err(()));
+        assert_eq!(DshotCommand::try_from(49), Err(()));
+        assert_eq!(DshotCommand::try_from(50), Err(()));
     }
 }

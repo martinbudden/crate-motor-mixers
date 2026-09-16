@@ -2,7 +2,7 @@ use fixed::{FixedU32, types::extra::U8};
 
 #[cfg(rp)]
 use {
-    crate::dshot::{DshotBidirectionalFrame, DshotError, GcrFrame},
+    crate::dshot::{DshotCommandFrame, DshotError, NrziFrame},
     embassy_rp::{
         Peri, clocks,
         gpio::Pull,
@@ -12,7 +12,7 @@ use {
     embassy_time::{Duration, with_timeout},
 };
 
-use crate::dshot::DshotProtocol;
+use crate::dshot::DshotSpeed;
 
 // Bidirectional Dshot PIO program based on pico-bidir-dshot reference.
 //
@@ -115,7 +115,7 @@ impl<'a, PIO: Instance> BidirectionalQuadDshotPio<'a, PIO> {
         pin1: Peri<'a, impl PioPin + 'a>,
         pin2: Peri<'a, impl PioPin + 'a>,
         pin3: Peri<'a, impl PioPin + 'a>,
-        dshot_protocol: DshotProtocol,
+        dshot_protocol: DshotSpeed,
     ) -> Self {
         assert!(
             !matches!(dshot_protocol, DshotProtocol::Dshot1200),
@@ -193,7 +193,7 @@ impl<'a, PIO: Instance, const SM: usize> BidirectionalDshotSm<'a, PIO, SM> {
         mut sm: StateMachine<'a, PIO, SM>,
         pin: Peri<'a, impl PioPin + 'a>,
         pio_common: &mut PioCommon<'a, PIO>,
-        dshot_protocol: DshotProtocol,
+        dshot_protocol: DshotSpeed,
     ) -> Self {
         let mut pin = pio_common.make_pio_pin(pin);
         pin.set_pull(Pull::Up);
@@ -301,7 +301,7 @@ impl<PIO: Instance, const SM: usize> BidirectionalDshotSm<'_, PIO, SM> {
 }
 
 #[allow(unused)]
-fn bidir_pio_clock_divider(protocol: DshotProtocol, sys_clock_frequency: u32) -> FixedU32<U8> {
+fn bidir_pio_clock_divider(protocol: DshotSpeed, sys_clock_frequency: u32) -> FixedU32<U8> {
     // pio clock divider = system_clock / (40 × protocol_baud_rate) encoded as FixedU32<U8>
 
     let sys_clock = u64::from(sys_clock_frequency);
@@ -320,7 +320,7 @@ mod tests {
         // Dshot600: target = 12MHz * 600/300 = 24MHz
         // At 125MHz: divider = 125/24 = 5.2083...
         const SYS_CLOCK: u32 = 125_000_000;
-        let divider = bidir_pio_clock_divider(DshotProtocol::Dshot600, SYS_CLOCK);
+        let divider = bidir_pio_clock_divider(DshotSpeed::Dshot600, SYS_CLOCK);
         let bits = (125 << 8) / 24;
         assert_eq!(1333, bits);
         let expected: FixedU32<U8> = FixedU32::from_bits(bits);

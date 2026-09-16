@@ -1,31 +1,39 @@
 use core::ops::Deref;
 
-use crate::dshot::Command;
+use crate::dshot::DshotCommand;
 
+/// `DshotCommandFrame`: transmitted Flight Controller to ESC.
+/// 
+/// Whenever the FC wants the motor to spin, beep, or change direction, it transmits a 16-bit `DshotCommandFrame`.
+/// Bits 0–10 (11 bits): Throttle value or Command id.
+///     Values 48 to 2047 represent motor speed (throttle).
+///     Values 1 to 47 are reserved for commands.
+/// Bit 11     (1 bit):      Telemetry Request Flag.
+/// Bits 12–15 (4 bits): Checksum (technically a 4-bit Longitudinal Redundancy Check (LRC)). 
 #[derive(Debug, Copy, Clone, Default, Eq, PartialEq, PartialOrd, Ord)]
-pub struct DshotBidirectionalFrame(u16);
+pub struct DshotCommandFrame(u16);
 
-impl TryFrom<u16> for DshotBidirectionalFrame {
+impl TryFrom<u16> for DshotCommandFrame {
     type Error = u16;
 
     #[inline]
     fn try_from(value: u16) -> Result<Self, u16> {
         if value <= Self::MAX_RAW_VALUE {
-            Ok(DshotBidirectionalFrame::encode_raw(value, DshotBidirectionalFrame::NO_TELEMETRY))
+            Ok(DshotCommandFrame::encode_raw(value, DshotCommandFrame::NO_TELEMETRY))
         } else {
             Err(value)
         }
     }
 }
 
-impl From<DshotBidirectionalFrame> for u16 {
+impl From<DshotCommandFrame> for u16 {
     #[inline]
-    fn from(frame: DshotBidirectionalFrame) -> Self {
+    fn from(frame: DshotCommandFrame) -> Self {
         frame.value()
     }
 }
 
-impl Deref for DshotBidirectionalFrame {
+impl Deref for DshotCommandFrame {
     type Target = u16;
 
     #[inline]
@@ -35,7 +43,7 @@ impl Deref for DshotBidirectionalFrame {
 }
 
 #[allow(unused)]
-impl DshotBidirectionalFrame {
+impl DshotCommandFrame {
     pub const NO_TELEMETRY: bool = false;
     pub const WITH_TELEMETRY: bool = true;
     // DShot throttle is strictly 11 bits (0 to 2047)
@@ -61,12 +69,12 @@ impl DshotBidirectionalFrame {
     }
 
     #[must_use]
-    pub const fn from_command(command: Command) -> Self {
+    pub const fn from_command(command: DshotCommand) -> Self {
         Self::encode_raw(command as u16, Self::NO_TELEMETRY)
     }
 
     #[must_use]
-    pub const fn from_command_telemetry(command: Command, with_telemetry: bool) -> Self {
+    pub const fn from_command_telemetry(command: DshotCommand, with_telemetry: bool) -> Self {
         Self::encode_raw(command as u16, with_telemetry)
     }
 
@@ -108,8 +116,7 @@ impl DshotBidirectionalFrame {
 
     /// Convert PWM value (1000-2000) to Dshot value (48-2047),
     /// clamping PWM value to (1000-2000).
-    #[must_use]
-    pub const fn pwm_clamped_to_dshot_raw(pwm: u16) -> u16 {
+    const fn pwm_clamped_to_dshot_raw(pwm: u16) -> u16 {
         if pwm >= 2000 {
             Self::THROTTLE_MAX
         } else if pwm >= 1000 {
@@ -140,6 +147,7 @@ impl DshotBidirectionalFrame {
         ret |= u32::from(Self::NIBBLE_TO_QUINTET[((value >> 12) & 0x0F) as usize]) << 15;
         ret
     }
+
     /// Map the GCR to a 21 bit value, this new value starts with a 0 and the rest of the bits are set by the following two rules:
     ///    1. If the current input bit in GCR data is a 1 then the output bit is the inverse of the previous output bit
     ///    2. If the current input bit in GCR data is a 0 then the output bit is the same as the previous output
@@ -175,7 +183,7 @@ mod test_traits {
 
     #[test]
     fn normal_types() {
-        is_full::<DshotBidirectionalFrame>();
+        is_full::<DshotCommandFrame>();
     }
 }
 
@@ -185,36 +193,36 @@ mod tests {
 
     #[test]
     fn dshot_codec_checksum() {
-        assert_eq!(0b_0000_0000_1001, DshotBidirectionalFrame::calculate_checksum(0b_1000_0010_1100));
+        assert_eq!(0b_0000_0000_1001, DshotCommandFrame::calculate_checksum(0b_1000_0010_1100));
     }
     #[test]
     fn dshot_codec() {
-        assert_eq!(48, DshotBidirectionalFrame::pwm_to_dshot_raw(1000));
-        assert_eq!(2048, DshotBidirectionalFrame::pwm_to_dshot_raw(2000));
+        assert_eq!(48, DshotCommandFrame::pwm_to_dshot_raw(1000));
+        assert_eq!(2048, DshotCommandFrame::pwm_to_dshot_raw(2000));
 
-        assert_eq!(48, DshotBidirectionalFrame::pwm_clamped_to_dshot_raw(0));
-        assert_eq!(48, DshotBidirectionalFrame::pwm_clamped_to_dshot_raw(10));
-        assert_eq!(48, DshotBidirectionalFrame::pwm_clamped_to_dshot_raw(999));
+        assert_eq!(48, DshotCommandFrame::pwm_clamped_to_dshot_raw(0));
+        assert_eq!(48, DshotCommandFrame::pwm_clamped_to_dshot_raw(10));
+        assert_eq!(48, DshotCommandFrame::pwm_clamped_to_dshot_raw(999));
 
-        assert_eq!(48, DshotBidirectionalFrame::pwm_clamped_to_dshot_raw(1000)); // should this be 0 or 48 ?
+        assert_eq!(48, DshotCommandFrame::pwm_clamped_to_dshot_raw(1000)); // should this be 0 or 48 ?
         //assert_eq!(48, DshotCodec::pwm_to_dshot_clamped(1000)); // should this be 0 or 48 ?
-        assert_eq!(50, DshotBidirectionalFrame::pwm_clamped_to_dshot_raw(1001));
-        assert_eq!(52, DshotBidirectionalFrame::pwm_clamped_to_dshot_raw(1002));
-        assert_eq!(54, DshotBidirectionalFrame::pwm_clamped_to_dshot_raw(1003));
-        assert_eq!(548, DshotBidirectionalFrame::pwm_clamped_to_dshot_raw(1250));
-        assert_eq!(1048, DshotBidirectionalFrame::pwm_clamped_to_dshot_raw(1500));
-        assert_eq!(1548, DshotBidirectionalFrame::pwm_clamped_to_dshot_raw(1750));
-        assert_eq!(2046, DshotBidirectionalFrame::pwm_clamped_to_dshot_raw(1999));
-        assert_eq!(2047, DshotBidirectionalFrame::pwm_clamped_to_dshot_raw(2000));
-        assert_eq!(2047, DshotBidirectionalFrame::pwm_clamped_to_dshot_raw(2001));
-        assert_eq!(2047, DshotBidirectionalFrame::pwm_clamped_to_dshot_raw(2002));
-        assert_eq!(2047, DshotBidirectionalFrame::pwm_clamped_to_dshot_raw(4000));
+        assert_eq!(50, DshotCommandFrame::pwm_clamped_to_dshot_raw(1001));
+        assert_eq!(52, DshotCommandFrame::pwm_clamped_to_dshot_raw(1002));
+        assert_eq!(54, DshotCommandFrame::pwm_clamped_to_dshot_raw(1003));
+        assert_eq!(548, DshotCommandFrame::pwm_clamped_to_dshot_raw(1250));
+        assert_eq!(1048, DshotCommandFrame::pwm_clamped_to_dshot_raw(1500));
+        assert_eq!(1548, DshotCommandFrame::pwm_clamped_to_dshot_raw(1750));
+        assert_eq!(2046, DshotCommandFrame::pwm_clamped_to_dshot_raw(1999));
+        assert_eq!(2047, DshotCommandFrame::pwm_clamped_to_dshot_raw(2000));
+        assert_eq!(2047, DshotCommandFrame::pwm_clamped_to_dshot_raw(2001));
+        assert_eq!(2047, DshotCommandFrame::pwm_clamped_to_dshot_raw(2002));
+        assert_eq!(2047, DshotCommandFrame::pwm_clamped_to_dshot_raw(4000));
 
-        assert_eq!(48, DshotBidirectionalFrame::from_throttle(0.0).value());
-        assert_eq!(548, DshotBidirectionalFrame::from_throttle(0.25).value());
-        assert_eq!(1048, DshotBidirectionalFrame::from_throttle(0.5).value());
-        assert_eq!(1548, DshotBidirectionalFrame::from_throttle(0.75).value());
-        assert_eq!(2047, DshotBidirectionalFrame::from_throttle(1.0).value());
+        assert_eq!(48, DshotCommandFrame::from_throttle(0.0).value());
+        assert_eq!(548, DshotCommandFrame::from_throttle(0.25).value());
+        assert_eq!(1048, DshotCommandFrame::from_throttle(0.5).value());
+        assert_eq!(1548, DshotCommandFrame::from_throttle(0.75).value());
+        assert_eq!(2047, DshotCommandFrame::from_throttle(1.0).value());
 
         //assert_eq!(1542, DshotFrame::encode_raw(48).as_u16()); //0x606
         /*assert_eq!(1572, DshotFrame::encode_raw_unidirectional(49)); // 0x624
@@ -235,20 +243,20 @@ mod tests {
     #[rustfmt::skip]
     #[test]
     fn commands() {
-        assert_eq!(1, DshotBidirectionalFrame::from_command_telemetry(Command::Beep1, DshotBidirectionalFrame::NO_TELEMETRY).value());
-        assert_eq!(0b_0000_0000_0010_1101, DshotBidirectionalFrame::from_command_telemetry(Command::Beep1, DshotBidirectionalFrame::NO_TELEMETRY).raw());
-        assert_eq!(0b_0000_0000_0011_1100, DshotBidirectionalFrame::from_command_telemetry(Command::Beep1, DshotBidirectionalFrame::WITH_TELEMETRY).raw());
-        assert_eq!(0b_0000_0101_1100_0110, DshotBidirectionalFrame::from_command_telemetry(Command::SignalLineErpmTelemetry, DshotBidirectionalFrame::NO_TELEMETRY).raw());
-        assert_eq!(0b_0000_0101_1101_0111, DshotBidirectionalFrame::from_command_telemetry(Command::SignalLineErpmTelemetry, DshotBidirectionalFrame::WITH_TELEMETRY).raw());
-        assert_eq!(0b_0000_0101_1110_0100, DshotBidirectionalFrame::from_command_telemetry(Command::SignalLineErpmPeriodTelemetry, DshotBidirectionalFrame::NO_TELEMETRY).raw());
-        assert_eq!(0b_0000_0101_1111_0101, DshotBidirectionalFrame::from_command_telemetry(Command::SignalLineErpmPeriodTelemetry, DshotBidirectionalFrame::WITH_TELEMETRY).raw());
+        assert_eq!(1, DshotCommandFrame::from_command_telemetry(DshotCommand::Beep1, DshotCommandFrame::NO_TELEMETRY).value());
+        assert_eq!(0b_0000_0000_0010_1101, DshotCommandFrame::from_command_telemetry(DshotCommand::Beep1, DshotCommandFrame::NO_TELEMETRY).raw());
+        assert_eq!(0b_0000_0000_0011_1100, DshotCommandFrame::from_command_telemetry(DshotCommand::Beep1, DshotCommandFrame::WITH_TELEMETRY).raw());
+        assert_eq!(0b_0000_0101_1100_0110, DshotCommandFrame::from_command_telemetry(DshotCommand::SignalLineErpmTelemetry, DshotCommandFrame::NO_TELEMETRY).raw());
+        assert_eq!(0b_0000_0101_1101_0111, DshotCommandFrame::from_command_telemetry(DshotCommand::SignalLineErpmTelemetry, DshotCommandFrame::WITH_TELEMETRY).raw());
+        assert_eq!(0b_0000_0101_1110_0100, DshotCommandFrame::from_command_telemetry(DshotCommand::SignalLineErpmPeriodTelemetry, DshotCommandFrame::NO_TELEMETRY).raw());
+        assert_eq!(0b_0000_0101_1111_0101, DshotCommandFrame::from_command_telemetry(DshotCommand::SignalLineErpmPeriodTelemetry, DshotCommandFrame::WITH_TELEMETRY).raw());
     }
     #[test]
     fn test_dshot_checksum_values() {
         // --- Case 1: Pure Zero (e.g., Disarmed / Throttle 0, No Telemetry) ---
         // Inner value = 0. Shifted value for checksum calculation = 0 << 1 = 0
         // Checksum formula: (!(0 ^ 0 ^ 0)) & 0x0F = 0x0F (15)
-        let frame_zero = DshotBidirectionalFrame::new(0);
+        let frame_zero = DshotCommandFrame::new(0);
         assert_eq!(15, frame_zero.checksum());
         // Encoded: (0 << 5) | 15 = 15 (0x000F)
         assert_eq!(frame_zero.raw(), 0x000F);
@@ -261,7 +269,7 @@ mod tests {
         // Nibble 2 (bits 8-11):  0x0 (0b0000)
         // XOR: 0x0 ^ 0x6 ^ 0x0 = 0x6
         // NOT & Mask: (!0x6) & 0x0F = 0x9 (9)
-        let frame = DshotBidirectionalFrame::new(48);
+        let frame = DshotCommandFrame::new(48);
         //assert_eq!(frame.checksum(), 9);
         // Encoded: (96 << 4) | 9 = 1536 | 9 = 1545 (0x0609)
         assert_eq!(frame.raw(), 0x0609);
@@ -274,7 +282,7 @@ mod tests {
         // Nibble 2 (bits 8-11):  0x7 (0b0111)
         // XOR: 0x0 ^ 0xD ^ 0x7 = 0xA (0b1010)
         // NOT & Mask: (!0xA) & 0x0F = 0x5 (5)
-        let frame = DshotBidirectionalFrame::new(1000);
+        let frame = DshotCommandFrame::new(1000);
         assert_eq!(frame.checksum(), 5);
         // Encoded: (2000 << 4) | 5 = 32000 | 5 = 32005 (0x7D05)
         assert_eq!(frame.raw(), 32005);
@@ -287,7 +295,7 @@ mod tests {
         // Nibble 2 (bits 8-11):  0xF (0b1111)
         // XOR: 0xE ^ 0xF ^ 0xF = 0xE (0b1110)
         // NOT & Mask: (!0xE) & 0x0F = 0x1 (1)
-        let frame = DshotBidirectionalFrame::new(2047);
+        let frame = DshotCommandFrame::new(2047);
         assert_eq!(frame.checksum(), 1);
         // Encoded: (4094 << 4) | 1 = 65504 | 1 = 65505 (0xFFE1)
         assert_eq!(frame.raw(), 65505);

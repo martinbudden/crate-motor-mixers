@@ -60,23 +60,23 @@ pub enum Telemetry {
     Debug2(u8),
     Debug3(u8),
     StateEvent(u8),
-    Unknown {
-        type_id: u16,
-        value: u8,
-    },
+}
+
+impl Default for Telemetry {
+    fn default() -> Self {
+        Self::Erpm(0)
+    }
 }
 
 #[cfg(test)]
 mod test_traits {
     use super::*;
 
-    //fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
     fn is_full_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + Eq + PartialEq>() {}
-    fn is_full_eq_no_default<T: Sized + Send + Sync + Unpin + Copy + Clone + Eq + PartialEq>() {}
 
     #[test]
     fn normal_types() {
         is_full_eq::<TelemetryType>();
-        is_full_eq_no_default::<Telemetry>();
+        is_full_eq::<Telemetry>();
     }
 }

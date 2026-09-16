@@ -2,11 +2,11 @@ use embassy_time::{Duration, Timer};
 
 use crate::{
     MotorCommands, MotorFrequencies, MotorOutputs,
-    dshot::{Command, DshotBidirectionalFrame, DshotError, ErpmTelemetryFrame, GcrFrame},
+    dshot::{DshotCommand, DshotCommandFrame, DshotError, DshotTelemetryFrame, NrziFrame},
 };
 #[cfg(rp)]
 use {
-    crate::{dshot::DshotProtocol, dshot_rp::BidirectionalQuadDshotPio},
+    crate::{dshot::DshotSpeed, dshot_rp::BidirectionalQuadDshotPio},
     embassy_rp::{
         Peri,
         interrupt::typelevel::Binding,
@@ -53,7 +53,7 @@ impl MotorDriverQuadDshot {
 
 impl MotorDriverQuadDshot {
     #[inline]
-    pub async fn send_frame(&mut self, frame: DshotBidirectionalFrame, index: usize) {
+    pub async fn send_frame(&mut self, frame: DshotCommandFrame, index: usize) {
         #[cfg(rp)]
         self.pio.send_frame(frame, index).await;
         #[cfg(not(rp))]
@@ -68,9 +68,9 @@ impl MotorDriverQuadDshot {
     #[inline]
     pub async fn send_frame_and_receive_gcr21(
         &mut self,
-        frame: DshotBidirectionalFrame,
+        frame: DshotCommandFrame,
         index: usize,
-    ) -> Result<GcrFrame, DshotError> {
+    ) -> Result<NrziFrame, DshotError> {
         #[cfg(rp)]
         {
             let gcr_frame = self.pio.send_frame_and_receive_gcr21(frame, index).await?;
@@ -81,7 +81,7 @@ impl MotorDriverQuadDshot {
             core::future::ready(()).await;
             _ = frame;
             _ = index;
-            let gcr_frame = GcrFrame::default();
+            let gcr_frame = NrziFrame::default();
             Ok(gcr_frame)
         }
     }
@@ -90,9 +90,9 @@ impl MotorDriverQuadDshot {
     #[inline]
     pub async fn write_to_motor(
         &mut self,
-        frame: DshotBidirectionalFrame,
+        frame: DshotCommandFrame,
         index: usize,
-    ) -> Result<ErpmTelemetryFrame, DshotError> {
+    ) -> Result<DshotTelemetryFrame, DshotError> {
         let gcr_frame = self.send_frame_and_receive_gcr21(frame, index).await?;
         let erpm_frame = gcr_frame.try_decode()?;
         Ok(erpm_frame)
@@ -101,7 +101,7 @@ impl MotorDriverQuadDshot {
     #[allow(unused)]
     pub async fn write_to_motors(&mut self, outputs: MotorOutputs) {
         for index in 0..4 {
-            let frame = DshotBidirectionalFrame::from_throttle(outputs[index]);
+            let frame = DshotCommandFrame::from_throttle(outputs[index]);
             let result = self.write_to_motor(frame, index).await;
             if let Ok(erpm_telemetry_frame) = result {
                 self.motor_frequencies[index] = erpm_telemetry_frame.erpm_f32() * self.erpm_to_hz;
@@ -113,7 +113,7 @@ impl MotorDriverQuadDshot {
     pub async fn write_commands_to_motors(&mut self, commands: MotorCommands) {
         for index in 0..4 {
             let command = commands[index];
-            let frame = DshotBidirectionalFrame::from_command(command);
+            let frame = DshotCommandFrame::from_command(command);
             for _ in 0..command.repetitions_required() {
                 self.send_frame(frame, 0).await;
                 Timer::after(Duration::from_micros(300)).await;
@@ -122,9 +122,9 @@ impl MotorDriverQuadDshot {
     }
 
     #[allow(unused)]
-    pub async fn write_command_to_all_motors(&mut self, command: Command) {
+    pub async fn write_command_to_all_motors(&mut self, command: DshotCommand) {
         for index in 0..4 {
-            let frame = DshotBidirectionalFrame::from_command(command);
+            let frame = DshotCommandFrame::from_command(command);
             for _ in 0..command.repetitions_required() {
                 self.send_frame(frame, 0).await;
                 Timer::after(Duration::from_micros(300)).await;
