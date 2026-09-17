@@ -21,4 +21,4 @@
 mod pio_bidirectional_quad_dshot;
 
 #[cfg(rp)]
-pub use pio_bidirectional_quad_dshot::BidirectionalQuadDshotPio;
+pub use pio_bidirectional_quad_dshot::BidirectionalDshotSm;

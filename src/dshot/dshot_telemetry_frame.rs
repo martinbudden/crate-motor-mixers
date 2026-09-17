@@ -208,11 +208,13 @@ impl DshotTelemetryFrame {
     }
 
     /// # Errors
+    #[inline]
     pub fn try_decode_erpm(self) -> Result<u32, DshotError> {
         if self.is_erpm_frame() { Ok(self.erpm()) } else { Err(DshotError::InvalidErpm) }
     }
 
     /// # Errors
+    #[inline]
     pub fn try_decode_telemetry(self) -> Result<Telemetry, DshotError> {
         if self.is_erpm_frame() {
             return Ok(Telemetry::Erpm(self.erpm()));

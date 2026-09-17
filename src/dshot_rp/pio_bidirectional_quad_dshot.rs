@@ -1,18 +1,17 @@
 use fixed::{FixedU32, types::extra::U8};
 
+use crate::dshot::DshotSpeed;
+
 #[cfg(rp)]
 use {
     crate::dshot::{DshotCommandFrame, DshotError, GcrFrame},
     embassy_rp::{
         Peri, clocks,
         gpio::Pull,
-        interrupt::typelevel::Binding,
-        pio::{self, Common as PioCommon, Config as PioConfig, Instance, Pio, PioPin, StateMachine, program::pio_asm},
+        pio::{self, Common as PioCommon, Config as PioConfig, Instance, PioPin, StateMachine, program::pio_asm},
     },
     embassy_time::{Duration, with_timeout},
 };
-
-use crate::dshot::DshotSpeed;
 
 // Bidirectional Dshot PIO program based on pico-bidir-dshot reference.
 //
@@ -26,7 +25,7 @@ use crate::dshot::DshotSpeed;
 //
 // RX Phase (pulse-width measurement):
 //   Wait for falling edge, measure pulse widths using counting loops.
-//   21 GCR-encoded bits which are subsequently decoded to 16-bit telemetry + checksum.
+//   20 GCR-encoded bits which are subsequently decoded to 16-bit telemetry + checksum.
 //   Tight 2-cycle wait loop matches reference implementation.
 #[cfg(rp)]
 macro_rules! dshot_bidirectional_program {
@@ -87,96 +86,9 @@ macro_rules! dshot_bidirectional_program {
         ".wrap"
     )};
 }
-/// Bidirectional Dshot PIO driver for 4 ESCs with telemetry.
-///
-/// Uses 4 state machines, one for each ESC.
-///
-/// Supports `Dshot150`, `Dshot300`, `Dshot600`.
-/// `Dshot1200` is not supported.
-#[allow(unused)]
-#[allow(missing_debug_implementations, missing_copy_implementations)]
-#[cfg(rp)]
-pub struct BidirectionalQuadDshotPio<'a, PIO: Instance> {
-    sm0: BidirectionalDshotSm<'a, PIO, 0>,
-    sm1: BidirectionalDshotSm<'a, PIO, 1>,
-    sm2: BidirectionalDshotSm<'a, PIO, 2>,
-    sm3: BidirectionalDshotSm<'a, PIO, 3>,
-}
-
-#[cfg(rp)]
-impl<'a, PIO: Instance> BidirectionalQuadDshotPio<'a, PIO> {
-    /// # Panics
-    ///  if `dshot_protocol` is `Dshot1200`.
-    #[allow(unused)]
-    pub fn new(
-        pio: Peri<'a, PIO>,
-        irq: impl Binding<PIO::Interrupt, pio::InterruptHandler<PIO>>,
-        pin0: Peri<'a, impl PioPin + 'a>,
-        pin1: Peri<'a, impl PioPin + 'a>,
-        pin2: Peri<'a, impl PioPin + 'a>,
-        pin3: Peri<'a, impl PioPin + 'a>,
-        dshot_speed: DshotSpeed,
-    ) -> Self {
-        assert!(!matches!(dshot_speed, DshotSpeed::Dshot1200), "Dshot1200 is not supported in bidirectional mode");
-
-        let mut pio = Pio::new(pio, irq);
-
-        let sm0 = BidirectionalDshotSm::new(pio.sm0, pin0, &mut pio.common, dshot_speed);
-        let sm1 = BidirectionalDshotSm::new(pio.sm1, pin1, &mut pio.common, dshot_speed);
-        let sm2 = BidirectionalDshotSm::new(pio.sm2, pin2, &mut pio.common, dshot_speed);
-        let sm3 = BidirectionalDshotSm::new(pio.sm3, pin3, &mut pio.common, dshot_speed);
-
-        Self { sm0, sm1, sm2, sm3 }
-    }
-}
-
-#[cfg(rp)]
-impl<PIO: Instance> BidirectionalQuadDshotPio<'_, PIO> {
-    /// # Errors
-    #[inline]
-    pub async fn send_frame_and_receive_gcr20(
-        &mut self,
-        frame: DshotCommandFrame,
-        sm_index: usize,
-    ) -> Result<GcrFrame, DshotError> {
-        match sm_index {
-            1 => self.sm1.send_frame_and_receive_gcr20(frame).await,
-            2 => self.sm2.send_frame_and_receive_gcr20(frame).await,
-            3 => self.sm3.send_frame_and_receive_gcr20(frame).await,
-            _ => self.sm0.send_frame_and_receive_gcr20(frame).await,
-        }
-    }
-
-    /// Sends a `DshotCommandFrame`
-    /// Does not return any response.
-    #[allow(unused)]
-    #[inline]
-    pub async fn send_frame(&mut self, frame: DshotCommandFrame, sm_index: usize) {
-        match sm_index {
-            1 => self.sm1.send_frame(frame).await,
-            2 => self.sm2.send_frame(frame).await,
-            3 => self.sm3.send_frame(frame).await,
-            _ => self.sm0.send_frame(frame).await,
-        }
-    }
-    /// Synchronously sends a `DshotCommandFrame`
-    /// Does not return any response.
-    #[allow(unused)]
-    #[inline]
-    pub fn send_frame_blocking(&mut self, frame: DshotCommandFrame, sm_index: usize) {
-        match sm_index {
-            1 => self.sm1.send_frame_blocking(frame),
-            2 => self.sm2.send_frame_blocking(frame),
-            3 => self.sm3.send_frame_blocking(frame),
-            _ => self.sm0.send_frame_blocking(frame),
-        }
-    }
-}
-
 /// Bidirectional `Dshot` State Machine driver for 1 ESC with telemetry.
 ///
 /// Supports `Dshot150`, `Dshot300`, `Dshot600`. `Dshot1200` is not supported.
-#[allow(unused)]
 #[allow(missing_debug_implementations, missing_copy_implementations)]
 #[cfg(rp)]
 pub struct BidirectionalDshotSm<'a, PIO: Instance, const SM: usize> {
@@ -190,7 +102,7 @@ impl<'a, PIO: Instance, const SM: usize> BidirectionalDshotSm<'a, PIO, SM> {
         mut sm: StateMachine<'a, PIO, SM>,
         pin: Peri<'a, impl PioPin + 'a>,
         pio_common: &mut PioCommon<'a, PIO>,
-        dshot_protocol: DshotSpeed,
+        dshot_speed: DshotSpeed,
     ) -> Self {
         let mut pin = pio_common.make_pio_pin(pin);
         pin.set_pull(Pull::Up);
@@ -202,7 +114,7 @@ impl<'a, PIO: Instance, const SM: usize> BidirectionalDshotSm<'a, PIO, SM> {
 
         config.use_program(&program, &[]);
 
-        config.clock_divider = bidir_pio_clock_divider(dshot_protocol, clocks::clk_sys_freq());
+        config.clock_divider = pio_clock_divider(dshot_speed, clocks::clk_sys_freq());
 
         config.shift_out = pio::ShiftConfig { auto_fill: false, direction: pio::ShiftDirection::Left, threshold: 32 };
         config.shift_in = pio::ShiftConfig { auto_fill: false, direction: pio::ShiftDirection::Left, threshold: 32 };
@@ -251,7 +163,7 @@ impl<PIO: Instance, const SM: usize> BidirectionalDshotSm<'_, PIO, SM> {
     /// # Errors
     /// Returns [`DshotError::TxTimeout`] if pushing to the TX FIFO times out,
     /// or [`DshotError::RxTimeout`] if the ESC fails to return a telemetry packet.
-    async fn send_frame_and_receive_gcr20(&mut self, frame: DshotCommandFrame) -> Result<GcrFrame, DshotError> {
+    pub async fn send_frame_and_receive_gcr20(&mut self, frame: DshotCommandFrame) -> Result<GcrFrame, DshotError> {
         // Clear any stale rx data out of the FIFO queue
         while self.sm.rx().try_pull().is_some() {}
 
@@ -282,7 +194,6 @@ impl<PIO: Instance, const SM: usize> BidirectionalDshotSm<'_, PIO, SM> {
 
     /// Sends a `DshotCommandFrame`
     /// Does not return any response.
-    #[allow(unused)]
     pub async fn send_frame(&mut self, frame: DshotCommandFrame) {
         // Clear any stale rx data out of the FIFO queue
         while self.sm.rx().try_pull().is_some() {}
@@ -296,7 +207,6 @@ impl<PIO: Instance, const SM: usize> BidirectionalDshotSm<'_, PIO, SM> {
 
     /// Synchronously sends a `DshotCommandFrame`
     /// Does not return any response.
-    #[allow(unused)]
     pub fn send_frame_blocking(&mut self, frame: DshotCommandFrame) {
         // Clear any stale rx data out of the FIFO queue
         while self.sm.rx().try_pull().is_some() {}
@@ -310,11 +220,11 @@ impl<PIO: Instance, const SM: usize> BidirectionalDshotSm<'_, PIO, SM> {
 }
 
 #[allow(unused)]
-fn bidir_pio_clock_divider(protocol: DshotSpeed, sys_clock_frequency: u32) -> FixedU32<U8> {
-    // pio clock divider = system_clock / (40 × protocol_baud_rate) encoded as FixedU32<U8>
+fn pio_clock_divider(dshot_speed: DshotSpeed, sys_clock_frequency: u32) -> FixedU32<U8> {
+    // pio clock divider = system_clock / (40 × dshot_speed_baud_rate) encoded as FixedU32<U8>
 
     let sys_clock = u64::from(sys_clock_frequency);
-    let target = 12_000_000u64 * u64::from(protocol.baud_rate()) / 300_000;
+    let target = 12_000_000u64 * u64::from(dshot_speed.baud_rate()) / 300_000;
     #[allow(clippy::cast_possible_truncation)]
     FixedU32::<U8>::from_bits(((sys_clock << 8) / target) as u32)
 }
@@ -324,16 +234,22 @@ mod tests {
     use super::*;
 
     #[test]
-    fn dshot_bidir_divider_at_125mhz() {
-        // Verify bidir divider: target PIO clock = 12MHz * dshot_speed/300kHz
+    fn test_pio_clock_divider() {
+        // Verify divider: target PIO clock = 12MHz * dshot_speed/300kHz
         // Dshot600: target = 12MHz * 600/300 = 24MHz
         // At 125MHz: divider = 125/24 = 5.2083...
-        const SYS_CLOCK: u32 = 125_000_000;
-        let divider = bidir_pio_clock_divider(DshotSpeed::Dshot600, SYS_CLOCK);
+        let sys_clock_125 = 125_000_000u32;
+        let divider = pio_clock_divider(DshotSpeed::Dshot600, sys_clock_125);
         let bits = (125 << 8) / 24;
         assert_eq!(1333, bits);
         let expected: FixedU32<U8> = FixedU32::from_bits(bits);
-
         assert_eq!(expected, divider);
+
+        let sys_clock_120 = 120_000_000u32;
+        let divider = pio_clock_divider(DshotSpeed::Dshot300, sys_clock_120);
+        let bits = (120 << 8) / 24;
+        assert_eq!(1280, bits);
+        let pio_clock = u64::from(sys_clock_120) * 256 / u64::from(divider.to_bits());
+        assert_eq!(pio_clock, 40 * 300_000);
     }
 }

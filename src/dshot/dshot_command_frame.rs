@@ -2,14 +2,21 @@ use core::ops::Deref;
 
 use crate::dshot::DshotCommand;
 
-/// `DshotCommandFrame`: transmitted Flight Controller to ESC.
+/// `DshotCommandFrame`: transmitted from the Flight Controller(FC) to the ESC.
 ///
-/// Whenever the FC wants the motor to spin, beep, or change direction, it transmits a 16-bit `DshotCommandFrame`.
-/// Bits 0–10 (11 bits): Throttle value or Command id.
-///     Values 48 to 2047 represent motor speed (throttle).
-///     Values 1 to 47 are reserved for commands.
-/// Bit 11     (1 bit):      Telemetry Request Flag.
-/// Bits 12–15 (4 bits): Checksum (technically a 4-bit Longitudinal Redundancy Check (LRC)).
+/// Whenever the FC wants the motor to spin, beep, or change direction, it transmits a 16-bit `DshotCommandFrame`.<br>
+/// Bits 0–10 (11 bits): Throttle value or Command, values 48 to 2047 for motor speed (throttle), values 1 to 47 for commands.<br>
+/// Bit 11     (1 bit):  Telemetry Request Flag.<br>
+/// Bits 12–15 (4 bits): Checksum (technically a 4-bit Longitudinal Redundancy Check (LRC)).<br>
+///
+/// | Operational Aspect     | Unidirectional (Throttle)           | Unidirectional (Commands)                 | Bidirectional (Throttle & Commands)                |
+/// | :--------------------- | :---------------------------------- | :---------------------------------------- | :------------------------------------------------- |
+/// | **Telemetry Bit**      | **`false`** (Set to `0`)            | **`true`** (Set to `1`)                   | **`true`** (Set to `1`)                            |
+/// | **XOR Checksum Mode**  | **Standard**                        | **Bitwise Inverted**                      | **Bitwise Inverted**                               |
+/// | **ESC Action**         | Executes throttle<br>Remains silent | Executes command<br>Returns a ghost reply | Executes command<br>Returns a telemetry frame      |
+/// | **FC Pin Mode**        | Permanent **Output**                | Permanent **Output**                      | Flips from **Output to Input** right after TX      |
+/// | **Repetition Gate**    | Streams continuously                | **Must repeat ~10 times** to execute      | **Must repeat ~10 times** to execute               |
+/// | **FC Software Action** | Fire-and-forget stream              | Fire-and-forget stream                    | Transmits, then pauses ~30µs to capture `GcrFrame` |
 #[derive(Debug, Copy, Clone, Default, Eq, PartialEq, PartialOrd, Ord)]
 pub struct DshotCommandFrame(u16);
 
@@ -41,7 +48,6 @@ impl Deref for DshotCommandFrame {
         &self.0
     }
 }
-
 impl DshotCommandFrame {
     pub const NO_TELEMETRY: bool = false;
     pub const WITH_TELEMETRY: bool = true;
@@ -125,7 +131,14 @@ impl DshotCommandFrame {
         // Shift left by 1 and inject the telemetry selection bit
         let frame_raw = if with_telemetry { (value << 1) | 0x01 } else { value << 1 };
 
-        Self((frame_raw << 4) | Self::calculate_checksum(frame_raw))
+        // Calculate the base XOR checksum
+        let mut checksum = Self::calculate_checksum(frame_raw);
+
+        // Both Unidirectional and Bidirectional DShot require the checksum to be inverted when the telemetry bit is set.
+        if with_telemetry {
+            checksum = (!checksum) & 0x0F;
+        }
+        Self((frame_raw << 4) | checksum)
     }
 
     /// Converts a throttle scale `[0.0, 1.0]` directly to the `Dshot` frame range `[48, 2047]`.
@@ -238,11 +251,11 @@ mod tests {
     fn commands() {
         assert_eq!(1, DshotCommandFrame::from_command_telemetry(DshotCommand::Beep1, DshotCommandFrame::NO_TELEMETRY).value());
         assert_eq!(0b_0000_0000_0010_0010, DshotCommandFrame::from_command_telemetry(DshotCommand::Beep1, DshotCommandFrame::NO_TELEMETRY).raw());
-        assert_eq!(0b_0000_0000_0011_0011, DshotCommandFrame::from_command_telemetry(DshotCommand::Beep1, DshotCommandFrame::WITH_TELEMETRY).raw());
+        assert_eq!(0b_0000_0000_0011_1100, DshotCommandFrame::from_command_telemetry(DshotCommand::Beep1, DshotCommandFrame::WITH_TELEMETRY).raw());
         assert_eq!(0b_0000_0101_1100_1001, DshotCommandFrame::from_command_telemetry(DshotCommand::SignalLineErpmTelemetry, DshotCommandFrame::NO_TELEMETRY).raw());
-        assert_eq!(0b_0000_0101_1101_1000, DshotCommandFrame::from_command_telemetry(DshotCommand::SignalLineErpmTelemetry, DshotCommandFrame::WITH_TELEMETRY).raw());
+        assert_eq!(0b_0000_0101_1101_0111, DshotCommandFrame::from_command_telemetry(DshotCommand::SignalLineErpmTelemetry, DshotCommandFrame::WITH_TELEMETRY).raw());
         assert_eq!(0b_0000_0101_1110_1011, DshotCommandFrame::from_command_telemetry(DshotCommand::SignalLineErpmPeriodTelemetry, DshotCommandFrame::NO_TELEMETRY).raw());
-        assert_eq!(0b_0000_0101_1111_1010, DshotCommandFrame::from_command_telemetry(DshotCommand::SignalLineErpmPeriodTelemetry, DshotCommandFrame::WITH_TELEMETRY).raw());
+        assert_eq!(0b_0000_0101_1111_0101, DshotCommandFrame::from_command_telemetry(DshotCommand::SignalLineErpmPeriodTelemetry, DshotCommandFrame::WITH_TELEMETRY).raw());
     }
     /*#[test]
     fn test_dshot_checksum_values() {
@@ -322,13 +335,15 @@ mod command_frame_tests {
         // 2. Calculate checksum:
         //    nibble0 = 0x1, nibble1 = 0xD, nibble2 = 0x7
         //    0x1 ^ 0xD ^ 0x7 = 0xB
-        // 3. Shift payload left by 4 and add checksum: (2001 << 4) | 0xB = 32027 (0x7D1B)
+        // 3. Because with_telemetry is true, encode_raw bitwise inverts this checksum.
+        //    !0xB & 0x0F = !0b1011 & 0x0F = 0b0100 = 0x4
+        // 4. Shift payload left by 4 and add checksum: (2001 << 4) | 0x4 = 32016 + 4 = 32020 (0x7D14)
         let frame = DshotCommandFrame::encode_raw(1000, DshotCommandFrame::WITH_TELEMETRY);
 
-        assert_eq!(frame.raw(), 0x7D1B);
+        assert_eq!(frame.raw(), 0x7D14);
         assert_eq!(frame.value(), 1000);
         assert!(frame.is_telemetry_enabled());
-        assert_eq!(frame.checksum(), 0x0B);
+        assert_eq!(frame.checksum(), 0x04);
     }
 
     #[test]

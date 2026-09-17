@@ -12,7 +12,7 @@ See <https://en.wikipedia.org/wiki/Run-length_limited#GCR:_(0,2)_RLL> for detail
 * `T0` is the width of the pulse
 * `T1` is the width of gap to the next pulse
 
-WS2812B specification is
+`WS2812B` specification is
 
 ```text
     T0H = 400ns +/- 150ns
@@ -65,17 +65,31 @@ WS2812B specification is
 
 ## Decoding order
 
+STM32 microcontrollers
+
 ```text
-[ Microcontroller Pin via Input Capture/PIO ]
+[ Microcontroller Pin via Input Capture ]
                     │
                     ▼
-          [ 21-bit Raw Transitions ]
+             [ 21-bit NRZI ]
                     │  (Strip leading zero, decode NRZI transitions)
                     ▼
-           [ 20-bit GCR Buffer ]
+             [ 20-bit GCR ]
                     │  (Split into 4x 5-bit chunks, apply GCR lookup)
                     ▼
-     [ 16-bit DshotTelemetryFrame ]  <-- Where our CRC and EDT/eRPM logic starts!
+       [ 16-bit DshotTelemetryFrame ]
+```
+
+Raspberry Pi microcontrollers use PIO to capture the pin transitions directly as GCR
+
+```text
+[ Microcontroller Pin via PIO ]
+                    │
+                    ▼
+             [ 20-bit GCR ]
+                    │  (Split into 4x 5-bit chunks, apply GCR lookup)
+                    ▼
+        [ 16-bit DshotTelemetryFrame ]
 ```
 
 **NRZI** stands for Non-Return-to-Zero, Inverted.
@@ -92,14 +106,16 @@ This is known as standard **NRZ** (Non-Return-to-Zero).
 ### Why `DShot` Telemetry uses **GCR** + **NRZI**
 
 Microcontrollers read incoming data by measuring the time between voltage transitions.
+
 If an ESC sent a long string of 0 bits over normal wiring, the voltage line would just sit perfectly flat for a long time.
+The microcontroller's internal clock would lose synchronization, and incorrectly read the incoming data packet.
 
-The microcontroller's internal clock would quickly drift, lose synchronization, and corrupt the incoming data packet.
-By combining GCR and NRZI, the `DShot` protocol guarantees a rock-solid connection: GCR ensures that you never have more than two 0 bits in a row in your data stream.
+By combining `GCR` and `NRZI`, the `DShot` protocol ensures synchronization:
 
-Because there are mostly 1 bits, NRZI forces the physical wire to constantly flip back and forth between High and Low.
+* GCR ensures that there are never have more than two 0 bits in a row in hte data stream.
+* Because there are mostly 1 bits, `NRZI` forces the physical wire to constantly flip back and forth between `HIGH` and `LOW`.
 
-These constant flips act like a heartbeat, keeping your RP2040 or RP2350 input capture timers perfectly synchronized with the ESC's transmission clock.
+These constant flips act like a heartbeat, keeping the microcontroller's input capture timers synchronized with the ESC's transmission clock.
 
 ## Capture Mechanism
 
@@ -108,3 +124,14 @@ These constant flips act like a heartbeat, keeping your RP2040 or RP2350 input c
 | RP2040 / RP2350 | PIO + DMA                   | `u32` containing raw bit values                                                        |
 | STM32           | Timer Input Capture + DMA   | `[u32; 21]` array of clock timestamps                                                  |
 | ESP32           | RMT                         | Array of `RmtPulse` elements specifying the microsecond duration of each high/low peak |
+
+## Unidirectional vs Bidirectional Dshot Modes
+
+| Operational Aspect     | Unidirectional (Throttle)           | Unidirectional (Commands)                 | Bidirectional (Throttle & Commands)                |
+| :--------------------- | :---------------------------------- | :---------------------------------------- | :------------------------------------------------- |
+| **Telemetry Bit**      | **`false`** (Set to `0`)            | **`true`** (Set to `1`)                   | **`true`** (Set to `1`)                            |
+| **XOR Checksum Mode**  | **Standard**                        | **Bitwise Inverted**                      | **Bitwise Inverted**                               |
+| **ESC Action**         | Executes throttle<br>Remains silent | Executes command<br>Returns a ghost reply | Executes command<br>Returns a telemetry frame      |
+| **FC Pin Mode**        | Permanent **Output**                | Permanent **Output**                      | Flips from **Output to Input** right after TX      |
+| **Repetition Gate**    | Streams continuously                | **Must repeat ~10 times** to execute      | **Must repeat ~10 times** to execute               |
+| **FC Software Action** | Fire-and-forget stream              | Fire-and-forget stream                    | Transmits, then pauses ~30µs to capture `GcrFrame` |
