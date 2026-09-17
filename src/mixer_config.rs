@@ -66,6 +66,42 @@ impl MotorMixerParameters {
         Self { max_servo_angle_radians: 0.0, throttle: 0.0, undershoot: 0.0, overshoot: 0.0 }
     }
 }
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
+#[allow(missing_docs)]
+pub struct HybridOctoMixerParameters {
+    pub throttle: f32,
+    pub overshoot: f32,
+    pub undershoot: f32,
+    /// What fraction of attitude commands spill into the large lifting props [0.0 to 1.0].
+    /// Setting this to 0.0 means large props handle ONLY lift; 0.1 means they help a tiny bit.
+    pub large_prop_authority: f32,
+    /// Baseline background throttle offset given to small props so they stay spinning and responsive.
+    pub small_prop_idle_throttle: f32,
+}
+
+#[cfg(feature = "storage")]
+impl PostcardValue<'_> for HybridOctoMixerParameters {}
+
+impl Default for HybridOctoMixerParameters {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl HybridOctoMixerParameters {
+    /// Constructor.
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            throttle: 0.0,
+            undershoot: 0.0,
+            overshoot: 0.0,
+            large_prop_authority: 0.0,
+            small_prop_idle_throttle: 0.0,
+        }
+    }
+}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]

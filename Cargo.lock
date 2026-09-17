@@ -127,7 +127,7 @@ checksum = "c0cb6f3d4773a2107b94cbeccaa5b5f0b35a88389b5d522d13d659f64317b22d"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.5",
+ "syn 3.0.6",
 ]
 
 [[package]]
@@ -184,9 +184,9 @@ dependencies = [
 
 [[package]]
 name = "cfg-if"
-version = "1.0.4"
+version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
+checksum = "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
 
 [[package]]
 name = "cobs"
@@ -379,7 +379,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "strsim",
- "syn 3.0.5",
+ "syn 3.0.6",
 ]
 
 [[package]]
@@ -412,7 +412,7 @@ checksum = "2ac7135c3ef02b2f7833bbeb1be5ba7f966dcde8a87c6b87f65a778d71a02785"
 dependencies = [
  "darling_core 0.24.1",
  "quote",
- "syn 3.0.5",
+ "syn 3.0.6",
 ]
 
 [[package]]
@@ -966,7 +966,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fcd577a122ec917691f6820a3df54388ecebc750f071b060f5e83707bc415512"
 dependencies = [
  "document-features",
- "esp-metadata-generated",
+ "esp-metadata-generated 0.5.1",
  "serde",
  "serde_yaml",
  "somni-expr",
@@ -991,10 +991,10 @@ dependencies = [
  "enumset",
  "esp-config",
  "esp-hal-procmacros",
- "esp-metadata-generated",
+ "esp-metadata-generated 0.5.1",
  "esp-rom-sys",
  "esp-sync",
- "esp32s3",
+ "esp32s3 0.36.0",
  "fugit",
  "instability",
  "paste",
@@ -1024,19 +1024,26 @@ dependencies = [
 
 [[package]]
 name = "esp-metadata-generated"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42c2ee95b945a4780796e4359e72c033aed3b45073880e8029458f538532db8a"
+
+[[package]]
+name = "esp-metadata-generated"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "44d5a63d730b8c56e6b32773e35fcc4988d7d2e5c64d521652317d3ebddf2b52"
 
 [[package]]
 name = "esp-rom-sys"
-version = "0.1.5"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e933ff78374b763b65998b64ad671b4890ed4ba13a80deff9f53afe95ede289d"
+checksum = "eae852ccb08971155023d1371c96d5490cbc26860f06aee2d629ef73f1a890c3"
 dependencies = [
+ "cfg-if",
  "document-features",
- "esp-metadata-generated",
- "esp32s3",
+ "esp-metadata-generated 0.4.0",
+ "esp32s3 0.35.2",
 ]
 
 [[package]]
@@ -1049,9 +1056,18 @@ dependencies = [
  "embassy-sync 0.6.2",
  "embassy-sync 0.7.2",
  "embassy-sync 0.8.0",
- "esp-metadata-generated",
+ "esp-metadata-generated 0.5.1",
  "riscv",
  "xtensa-lx",
+]
+
+[[package]]
+name = "esp32s3"
+version = "0.35.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b4b8c4e4d9f187553ecdb7173edec7b2deb2beea106eedefecdb1654b8ee25a"
+dependencies = [
+ "vcell",
 ]
 
 [[package]]
@@ -1272,7 +1288,7 @@ dependencies = [
  "indoc",
  "proc-macro2",
  "quote",
- "syn 3.0.5",
+ "syn 3.0.6",
 ]
 
 [[package]]
@@ -1412,6 +1428,7 @@ dependencies = [
  "embassy-time",
  "esp-hal",
  "fixed",
+ "num-traits",
  "pidsk-controller",
  "postcard",
  "rustc_version 0.4.1",
@@ -1584,7 +1601,7 @@ checksum = "5be167a7af36ee22fe3115051bc51f6e6c7054c9348e28deb4f49bd6f705a315"
 [[package]]
 name = "pidsk-controller"
 version = "0.1.9"
-source = "git+https://github.com/martinbudden/crate-pid-controller#1c1db67b449f84a2cc9889108a1ba17cfb0d9977"
+source = "git+https://github.com/martinbudden/crate-pid-controller#21cd6c73b9cca64944433d20e7a85f166d56333d"
 dependencies = [
  "num-traits",
  "postcard",
@@ -1970,7 +1987,7 @@ checksum = "e7a5d71263a5a7d47b41f6b3f06ba276f10cc18b0931f1799f710578e2309348"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.5",
+ "syn 3.0.6",
 ]
 
 [[package]]
@@ -2020,7 +2037,7 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 [[package]]
 name = "signal-filters"
 version = "0.1.12"
-source = "git+https://github.com/martinbudden/crate-signal-filters#88a354d5e30262f9658b18c3304daddbf3767b06"
+source = "git+https://github.com/martinbudden/crate-signal-filters#b80a77771f96701d691e6f56982d2bad013abf4a"
 dependencies = [
  "libm",
  "num-traits",
@@ -2198,9 +2215,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "3.0.5"
+version = "3.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12df2e0110f65b775f769bb17ef989067a1d931b2eb822bd4346631eeada89f9"
+checksum = "8593e8e72159ed2257d083c7a454a85cbf854f37a0966d8d483aff8c8a3ebcee"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2242,7 +2259,7 @@ checksum = "bc04cd3e1236dd4a98afca4569f2deb3f120e5422a4023be2cb683f8486292af"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 3.0.5",
+ "syn 3.0.6",
 ]
 
 [[package]]
@@ -2364,9 +2381,9 @@ checksum = "b6f5e870be6c3b371b77fe0ee0bafb859fa4964b4404c27de1d380043c4dda20"
 
 [[package]]
 name = "unicode-ident"
-version = "1.0.24"
+version = "1.0.25"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
+checksum = "ab72a15cf68d77cb0987d3684aa8a45c5ef827e8cb49ee2f30bfd7ba2feb519f"
 
 [[package]]
 name = "unicode-segmentation"
@@ -2428,7 +2445,7 @@ dependencies = [
 [[package]]
 name = "vqm"
 version = "0.1.16"
-source = "git+https://github.com/martinbudden/crate-vector-quaternion-matrix#423b75bcb804abb36fa7541344bd7c3d11e7996e"
+source = "git+https://github.com/martinbudden/crate-vector-quaternion-matrix#35e0bf1ff7dacb7125c31d145023fab98f518839"
 dependencies = [
  "cfg-if",
  "derive_more",

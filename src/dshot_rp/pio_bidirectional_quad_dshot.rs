@@ -2,7 +2,7 @@ use fixed::{FixedU32, types::extra::U8};
 
 #[cfg(rp)]
 use {
-    crate::dshot::{DshotCommandFrame, DshotError, NrziFrame},
+    crate::dshot::{DshotCommandFrame, DshotError, GcrFrame},
     embassy_rp::{
         Peri, clocks,
         gpio::Pull,
@@ -115,19 +115,16 @@ impl<'a, PIO: Instance> BidirectionalQuadDshotPio<'a, PIO> {
         pin1: Peri<'a, impl PioPin + 'a>,
         pin2: Peri<'a, impl PioPin + 'a>,
         pin3: Peri<'a, impl PioPin + 'a>,
-        dshot_protocol: DshotSpeed,
+        dshot_speed: DshotSpeed,
     ) -> Self {
-        assert!(
-            !matches!(dshot_protocol, DshotProtocol::Dshot1200),
-            "Dshot1200 is not supported in bidirectional mode"
-        );
+        assert!(!matches!(dshot_speed, DshotSpeed::Dshot1200), "Dshot1200 is not supported in bidirectional mode");
 
         let mut pio = Pio::new(pio, irq);
 
-        let sm0 = BidirectionalDshotSm::new(pio.sm0, pin0, &mut pio.common, dshot_protocol);
-        let sm1 = BidirectionalDshotSm::new(pio.sm1, pin1, &mut pio.common, dshot_protocol);
-        let sm2 = BidirectionalDshotSm::new(pio.sm2, pin2, &mut pio.common, dshot_protocol);
-        let sm3 = BidirectionalDshotSm::new(pio.sm3, pin3, &mut pio.common, dshot_protocol);
+        let sm0 = BidirectionalDshotSm::new(pio.sm0, pin0, &mut pio.common, dshot_speed);
+        let sm1 = BidirectionalDshotSm::new(pio.sm1, pin1, &mut pio.common, dshot_speed);
+        let sm2 = BidirectionalDshotSm::new(pio.sm2, pin2, &mut pio.common, dshot_speed);
+        let sm3 = BidirectionalDshotSm::new(pio.sm3, pin3, &mut pio.common, dshot_speed);
 
         Self { sm0, sm1, sm2, sm3 }
     }
@@ -137,24 +134,24 @@ impl<'a, PIO: Instance> BidirectionalQuadDshotPio<'a, PIO> {
 impl<PIO: Instance> BidirectionalQuadDshotPio<'_, PIO> {
     /// # Errors
     #[inline]
-    pub async fn send_frame_and_receive_gcr21(
+    pub async fn send_frame_and_receive_gcr20(
         &mut self,
-        frame: DshotBidirectionalFrame,
+        frame: DshotCommandFrame,
         sm_index: usize,
     ) -> Result<GcrFrame, DshotError> {
         match sm_index {
-            1 => self.sm1.send_frame_and_receive_gcr21(frame).await,
-            2 => self.sm2.send_frame_and_receive_gcr21(frame).await,
-            3 => self.sm3.send_frame_and_receive_gcr21(frame).await,
-            _ => self.sm0.send_frame_and_receive_gcr21(frame).await,
+            1 => self.sm1.send_frame_and_receive_gcr20(frame).await,
+            2 => self.sm2.send_frame_and_receive_gcr20(frame).await,
+            3 => self.sm3.send_frame_and_receive_gcr20(frame).await,
+            _ => self.sm0.send_frame_and_receive_gcr20(frame).await,
         }
     }
 
-    /// Sends a `DshotBidirectionalFrame`
+    /// Sends a `DshotCommandFrame`
     /// Does not return any response.
     #[allow(unused)]
     #[inline]
-    pub async fn send_frame(&mut self, frame: DshotBidirectionalFrame, sm_index: usize) {
+    pub async fn send_frame(&mut self, frame: DshotCommandFrame, sm_index: usize) {
         match sm_index {
             1 => self.sm1.send_frame(frame).await,
             2 => self.sm2.send_frame(frame).await,
@@ -162,11 +159,11 @@ impl<PIO: Instance> BidirectionalQuadDshotPio<'_, PIO> {
             _ => self.sm0.send_frame(frame).await,
         }
     }
-    /// Synchronously sends a `DshotBidirectionalFrame`
+    /// Synchronously sends a `DshotCommandFrame`
     /// Does not return any response.
     #[allow(unused)]
     #[inline]
-    pub fn send_frame_blocking(&mut self, frame: DshotBidirectionalFrame, sm_index: usize) {
+    pub fn send_frame_blocking(&mut self, frame: DshotCommandFrame, sm_index: usize) {
         match sm_index {
             1 => self.sm1.send_frame_blocking(frame),
             2 => self.sm2.send_frame_blocking(frame),
@@ -248,54 +245,66 @@ impl<PIO: Instance, const SM: usize> BidirectionalDshotSm<'_, PIO, SM> {
         }
     }
 
-    /// Sends a `DshotBidirectionalFrame` and returns a `GcrFrame`.
+    /// Sends a `DshotCommandFrame` and returns a `GcrFrame`.
     /// It is the responsibility of the caller to check this frame is valid and decode it.
     ///
-    /// `wait_push` timeout  → `PioTxTimeout`
-    /// `wait_pull` timeout  → `PioRxTimeout`.
-    ///
-    /// # Errors ` DshotError::PioTxTimeout`, ` DshotError::PioRxTimeout`
-    async fn send_frame_and_receive_gcr21(&mut self, frame: DshotBidirectionalFrame) -> Result<GcrFrame, DshotError> {
-        // Clear any existing rx data
+    /// # Errors
+    /// Returns [`DshotError::TxTimeout`] if pushing to the TX FIFO times out,
+    /// or [`DshotError::RxTimeout`] if the ESC fails to return a telemetry packet.
+    async fn send_frame_and_receive_gcr20(&mut self, frame: DshotCommandFrame) -> Result<GcrFrame, DshotError> {
+        // Clear any stale rx data out of the FIFO queue
         while self.sm.rx().try_pull().is_some() {}
+
+        // Clear state variations by forcing the execution index back to the wrapper start
         self.reset_program_counter();
 
-        // bidirectional dshot inverts frame
-        let frame_inverted = u32::from(!frame.raw());
-        // TODO: check 10ms timeout ins PIO `send_and_receive`.
+        // Bitwise invert the raw frame data.
+        // Mask explicitly with 0xFFFF to ensure the upper 16 bits are strictly zeroed out,
+        // preventing `out null, 16` inside the PIO from discarding live values.
+        let frame_inverted = u32::from(!frame.raw()) & 0x0000_FFFF;
+
+        // Push the data into the TX FIFO block
         with_timeout(Duration::from_millis(10), self.sm.tx().wait_push(frame_inverted))
             .await
             .map_err(|_| DshotError::TxTimeout)?;
 
-        let gcr21_raw = with_timeout(Duration::from_micros(500), self.sm.rx().wait_pull())
+        // Wait for the telemetry packet response from the ESC.
+        // Timeout is 2ms to absorb the transmission window
+        // and allow the ESC sufficient time to calculate the GCR reply.
+        let gcr20_raw = with_timeout(Duration::from_millis(2), self.sm.rx().wait_pull())
             .await
             .map_err(|_| DshotError::RxTimeout)?;
 
-        let gcr_frame = GcrFrame::from_raw_21(gcr21_raw);
+        // 6. Map the raw 20-bit GCR value to our domain container
+        let gcr_frame = GcrFrame::from_raw(gcr20_raw);
         Ok(gcr_frame)
     }
 
-    /// Sends a `DshotBidirectionalFrame`
+    /// Sends a `DshotCommandFrame`
     /// Does not return any response.
     #[allow(unused)]
-    pub async fn send_frame(&mut self, frame: DshotBidirectionalFrame) {
+    pub async fn send_frame(&mut self, frame: DshotCommandFrame) {
+        // Clear any stale rx data out of the FIFO queue
         while self.sm.rx().try_pull().is_some() {}
         self.reset_program_counter();
 
-        // bidirectional dshot inverts frame
-        let frame_inverted = u32::from(!frame.raw());
+        // Bidirectional DShot inverts the frame payload.
+        // Fix: Mask explicitly with 0xFFFF to ensure clean upper padding zeros.
+        let frame_inverted = u32::from(!frame.raw()) & 0x0000_FFFF;
         self.sm.tx().wait_push(frame_inverted).await;
     }
 
-    /// Synchronously sends a `DshotBidirectionalFrame`
+    /// Synchronously sends a `DshotCommandFrame`
     /// Does not return any response.
     #[allow(unused)]
-    pub fn send_frame_blocking(&mut self, frame: DshotBidirectionalFrame) {
+    pub fn send_frame_blocking(&mut self, frame: DshotCommandFrame) {
+        // Clear any stale rx data out of the FIFO queue
         while self.sm.rx().try_pull().is_some() {}
         self.reset_program_counter();
 
-        // bidirectional dshot inverts frame
-        let frame_inverted = u32::from(!frame.raw());
+        // Bidirectional DShot inverts the frame payload.
+        // Fix: Mask explicitly with 0xFFFF to ensure clean upper padding zeros.
+        let frame_inverted = u32::from(!frame.raw()) & 0x0000_FFFF;
         self.sm.tx().push(frame_inverted);
     }
 }

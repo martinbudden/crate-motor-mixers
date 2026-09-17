@@ -2,7 +2,7 @@ use embassy_time::{Duration, Timer};
 
 use crate::{
     MotorCommands, MotorFrequencies, MotorOutputs,
-    dshot::{DshotCommand, DshotCommandFrame, DshotError, DshotTelemetryFrame, NrziFrame},
+    dshot::{DshotCommand, DshotCommandFrame, DshotError, DshotTelemetryFrame, GcrFrame},
 };
 #[cfg(rp)]
 use {
@@ -40,7 +40,7 @@ impl MotorDriverQuadDshot {
         pin1: Peri<'static, impl PioPin + 'static>,
         pin2: Peri<'static, impl PioPin + 'static>,
         pin3: Peri<'static, impl PioPin + 'static>,
-        protocol: DshotProtocol,
+        protocol: DshotSpeed,
         motor_pole_count: u16,
     ) -> Self {
         Self {
@@ -70,10 +70,10 @@ impl MotorDriverQuadDshot {
         &mut self,
         frame: DshotCommandFrame,
         index: usize,
-    ) -> Result<NrziFrame, DshotError> {
+    ) -> Result<GcrFrame, DshotError> {
         #[cfg(rp)]
         {
-            let gcr_frame = self.pio.send_frame_and_receive_gcr21(frame, index).await?;
+            let gcr_frame = self.pio.send_frame_and_receive_gcr20(frame, index).await?;
             Ok(gcr_frame)
         }
         #[cfg(not(rp))]
@@ -81,7 +81,7 @@ impl MotorDriverQuadDshot {
             core::future::ready(()).await;
             _ = frame;
             _ = index;
-            let gcr_frame = NrziFrame::default();
+            let gcr_frame = GcrFrame::default();
             Ok(gcr_frame)
         }
     }

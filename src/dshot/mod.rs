@@ -25,6 +25,7 @@ mod dshot_speed;
 mod dshot_telemetry;
 mod dshot_telemetry_frame;
 mod esc_dshot;
+mod gcr_frame;
 mod nrzi_frame;
 
 pub use esc_dshot::EscDshot;
@@ -35,4 +36,5 @@ pub use dshot_errors::DshotError;
 pub use dshot_speed::DshotSpeed;
 pub use dshot_telemetry::{Telemetry, TelemetryType};
 pub use dshot_telemetry_frame::DshotTelemetryFrame;
+pub use gcr_frame::GcrFrame;
 pub use nrzi_frame::NrziFrame;

@@ -48,9 +48,8 @@ pub use motor_driver::MotorDriver;
 
 pub use drivers::{MotorDriverQuadDshot, MotorDriverQuadPwm};
 
-#[cfg(feature = "eight_motors")]
-pub use mixer_calculations::mix_hex_x;
 pub use mixer_calculations::{mix_airplane, mix_bicopter, mix_quad_x, mix_tricopter, mix_wing};
+pub use mixer_calculations::{mix_hex_x, mix_hybrid_octo};
 
 pub use mixer_common::{
     MAX_SUPPORTED_MOTOR_COUNT, MotorCommands, MotorFrequencies, MotorMixerCommon, MotorOutputFilters, MotorOutputs,
