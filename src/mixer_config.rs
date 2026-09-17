@@ -69,27 +69,34 @@ impl MotorMixerParameters {
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 #[allow(missing_docs)]
-pub struct HybridOctoMixerParameters {
+pub struct OctoMixerParameters {
     pub throttle: f32,
     pub overshoot: f32,
     pub undershoot: f32,
-    /// What fraction of attitude commands spill into the large lifting props [0.0 to 1.0].
+    /// **Attitude/Momentum parameter**. It dictates how much steering control (torque) is allocated to the large props
+    /// ie what fraction of attitude commands spill into the large lifting props [0.0 to 1.0].
     /// Setting this to 0.0 means large props handle ONLY lift; 0.1 means they help a tiny bit.
+    /// Set this to 1.0 for a standard octocopter.
     pub large_prop_authority: f32,
-    /// Baseline background throttle offset given to small props so they stay spinning and responsive.
+    /// **Thrust/Lift parameter**. It dictates how much of the collective vertical lifting burden is shared by the small motors.
+    /// ie what fraction of throttle is allocated to the small props [0.0 to 1.0].
+    /// Set this to 0.5 for hybrid mode, or 1.0 for a standard octocopter.
+    pub small_prop_throttle_scale: f32,
+    /// Baseline background throttle offset given to small props so they stay spinning and responsive in hybrid mode.
+    /// Set this to 0.0 for standard octocopter.
     pub small_prop_idle_throttle: f32,
 }
 
 #[cfg(feature = "storage")]
-impl PostcardValue<'_> for HybridOctoMixerParameters {}
+impl PostcardValue<'_> for OctoMixerParameters {}
 
-impl Default for HybridOctoMixerParameters {
+impl Default for OctoMixerParameters {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl HybridOctoMixerParameters {
+impl OctoMixerParameters {
     /// Constructor.
     #[must_use]
     pub const fn new() -> Self {
@@ -99,6 +106,7 @@ impl HybridOctoMixerParameters {
             overshoot: 0.0,
             large_prop_authority: 0.0,
             small_prop_idle_throttle: 0.0,
+            small_prop_throttle_scale: 0.0,
         }
     }
 }
@@ -422,6 +430,7 @@ mod test_traits {
     #[test]
     fn normal_types() {
         is_full::<MotorMixerParameters>();
+        is_full::<OctoMixerParameters>();
         is_full::<MixerConfig>();
         is_full::<MotorDeviceConfig>();
         is_full::<MotorConfig>();
@@ -432,6 +441,7 @@ mod test_traits {
     #[test]
     fn serde_types() {
         is_serde::<MotorMixerParameters>();
+        is_serde::<OctoMixerParameters>();
         is_serde::<MixerConfig>();
         is_serde::<MotorDeviceConfig>();
         is_serde::<MotorConfig>();
@@ -442,6 +452,7 @@ mod test_traits {
     #[test]
     fn storage_types() {
         is_storage::<MotorMixerParameters>();
+        is_storage::<OctoMixerParameters>();
         is_storage::<MixerConfig>();
         is_storage::<MotorDeviceConfig>();
         is_storage::<MotorConfig>();

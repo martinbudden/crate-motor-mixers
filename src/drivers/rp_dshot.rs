@@ -70,10 +70,10 @@ impl MotorDriverQuadDshot {
     pub async fn send_frame(&mut self, frame: DshotCommandFrame, motor_index: usize) {
         #[cfg(rp)]
         match motor_index {
+            0 => self.sm0.send_frame(frame).await,
             1 => self.sm1.send_frame(frame).await,
             2 => self.sm2.send_frame(frame).await,
-            3 => self.sm3.send_frame(frame).await,
-            _ => self.sm0.send_frame(frame).await,
+            _ => self.sm3.send_frame(frame).await,
         }
         #[cfg(not(rp))]
         {
@@ -94,10 +94,10 @@ impl MotorDriverQuadDshot {
         #[cfg(rp)]
         {
             let gcr_frame = match motor_index {
+                0 => self.sm0.send_frame_and_receive_gcr20(frame).await?,
                 1 => self.sm1.send_frame_and_receive_gcr20(frame).await?,
                 2 => self.sm2.send_frame_and_receive_gcr20(frame).await?,
-                3 => self.sm3.send_frame_and_receive_gcr20(frame).await?,
-                _ => self.sm0.send_frame_and_receive_gcr20(frame).await?,
+                _ => self.sm3.send_frame_and_receive_gcr20(frame).await?,
             };
             Ok(gcr_frame)
         }
