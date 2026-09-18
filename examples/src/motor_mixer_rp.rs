@@ -43,7 +43,7 @@ async fn main(_spawner: Spawner) {
         DshotSpeed::Dshot300,
         MotorDriverDshot::DEFAULT_MOTOR_POLE_COUNT,
     );
-    let driver = MotorDriver::DriverDshot(driver_quad_dshot);
+    let driver = MotorDriver::Dshot(driver_quad_dshot);
     let mixer_config = MixerConfig::default();
     let motor_config = MotorConfig::default();
     let mut motor_mixer = MotorMixer::new(mixer_config, motor_config, driver);
