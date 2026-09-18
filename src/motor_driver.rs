@@ -1,4 +1,4 @@
-use crate::dshot::DshotCommand;
+use dshot_codec::DshotCommand;
 use embassy_time::{Duration, Timer};
 
 use super::{MotorCommands, MotorFrequencies, MotorOutputs};

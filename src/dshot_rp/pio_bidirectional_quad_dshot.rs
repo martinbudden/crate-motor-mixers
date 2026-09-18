@@ -1,10 +1,10 @@
 use fixed::{FixedU32, types::extra::U8};
 
-use crate::dshot::DshotSpeed;
+use dshot_codec::DshotSpeed;
 
 #[cfg(rp)]
 use {
-    crate::dshot::{DshotCommandFrame, DshotError, GcrFrame},
+    dshot_codec::{DshotCommandFrame, DshotError, GcrFrame},
     embassy_rp::{
         Peri, clocks,
         gpio::Pull,
@@ -187,7 +187,7 @@ impl<PIO: Instance, const SM: usize> BidirectionalDshotSm<'_, PIO, SM> {
             .await
             .map_err(|_| DshotError::RxTimeout)?;
 
-        // 6. Map the raw 20-bit GCR value to our domain container
+        // Map the raw 20-bit GCR value to our domain container
         let gcr_frame = GcrFrame::from_raw(gcr20_raw);
         Ok(gcr_frame)
     }

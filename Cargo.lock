@@ -538,6 +538,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "dshot-codec"
+version = "0.1.0"
+dependencies = [
+ "num-traits",
+ "rustc_version 0.4.1",
+]
+
+[[package]]
+name = "dshot-codec"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "538b525bec1b76c6eb1fa038d8ee3c1d482dfd31dfb4074a4bb14e9c0646551e"
+dependencies = [
+ "num-traits",
+ "rustc_version 0.4.1",
+]
+
+[[package]]
 name = "either"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -966,7 +984,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fcd577a122ec917691f6820a3df54388ecebc750f071b060f5e83707bc415512"
 dependencies = [
  "document-features",
- "esp-metadata-generated 0.5.1",
+ "esp-metadata-generated 0.5.2",
  "serde",
  "serde_yaml",
  "somni-expr",
@@ -991,7 +1009,7 @@ dependencies = [
  "enumset",
  "esp-config",
  "esp-hal-procmacros",
- "esp-metadata-generated 0.5.1",
+ "esp-metadata-generated 0.5.2",
  "esp-rom-sys",
  "esp-sync",
  "esp32s3 0.36.0",
@@ -1030,9 +1048,9 @@ checksum = "42c2ee95b945a4780796e4359e72c033aed3b45073880e8029458f538532db8a"
 
 [[package]]
 name = "esp-metadata-generated"
-version = "0.5.1"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44d5a63d730b8c56e6b32773e35fcc4988d7d2e5c64d521652317d3ebddf2b52"
+checksum = "302e17a70ea13688fc2aba60b9c4a42855aff6ca53e77dd76570e144b90a07f5"
 
 [[package]]
 name = "esp-rom-sys"
@@ -1056,7 +1074,7 @@ dependencies = [
  "embassy-sync 0.6.2",
  "embassy-sync 0.7.2",
  "embassy-sync 0.8.0",
- "esp-metadata-generated 0.5.1",
+ "esp-metadata-generated 0.5.2",
  "riscv",
  "xtensa-lx",
 ]
@@ -1155,9 +1173,9 @@ checksum = "1d758ba1b47b00caf47f24925c0074ecb20d6dfcffe7f6d53395c0465674841a"
 
 [[package]]
 name = "generator"
-version = "0.8.9"
+version = "0.8.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3b854b0e584ead1a33f18b2fcad7cf7be18b3875c78816b753639aa501513ae"
+checksum = "54ade96dc9003043bce7c035c85a9df5a858bfb2039c5a2e6fdf00f324f6c551"
 dependencies = [
  "cc",
  "cfg-if",
@@ -1420,6 +1438,7 @@ version = "0.1.6"
 dependencies = [
  "approx",
  "defmt",
+ "dshot-codec 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "embassy-executor",
  "embassy-futures",
  "embassy-rp",
@@ -1447,6 +1466,7 @@ dependencies = [
  "defmt",
  "defmt-rtt",
  "defmt-test",
+ "dshot-codec 0.1.0",
  "embassy-executor",
  "embassy-rp",
  "embassy-stm32",
@@ -2381,9 +2401,9 @@ checksum = "b6f5e870be6c3b371b77fe0ee0bafb859fa4964b4404c27de1d380043c4dda20"
 
 [[package]]
 name = "unicode-ident"
-version = "1.0.25"
+version = "1.0.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab72a15cf68d77cb0987d3684aa8a45c5ef827e8cb49ee2f30bfd7ba2feb519f"
+checksum = "d245f478577f809a851594d02313b640fb437e0bb33866753cff937863096954"
 
 [[package]]
 name = "unicode-segmentation"

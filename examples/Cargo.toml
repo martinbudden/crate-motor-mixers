@@ -74,6 +74,9 @@ esp32 = [
 
 [dependencies]
 motor-mixers = { path = "..", default-features = false}
+#dshot-codec = { version = "0.1.0" }
+#dshot-codec = { git = "https://github.com/martinbudden/crate-dshot-codec" }
+dshot-codec = { path = "../../dshot-codec"  }
 
 # Core Embassy executor and concurrency primitives
 embassy-executor = { version = "0.10.0", default-features = false, features = ["executor-thread"] }

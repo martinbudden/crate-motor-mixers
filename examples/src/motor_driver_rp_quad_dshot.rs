@@ -9,7 +9,7 @@
 
 use defmt::info;
 use embassy_executor::Spawner;
-use embassy_rp::{bind_interrupts, clocks::clk_sys_freq, peripherals::PIO0, pio::InterruptHandler};
+use embassy_rp::{bind_interrupts, clocks::clk_sys_freq, peripherals::PIO1, pio::InterruptHandler};
 use embassy_time::{Duration, Timer};
 use {defmt_rtt as _, panic_probe as _};
 
@@ -19,7 +19,7 @@ use motor_mixers::{
 };
 
 bind_interrupts!(struct Irqs {
-    PIO0_IRQ_0 => InterruptHandler<PIO0>;
+    PIO1_IRQ_0 => InterruptHandler<PIO1>;
 });
 
 #[embassy_executor::main]
@@ -33,7 +33,7 @@ async fn main(_spawner: Spawner) {
 
     // Initialize MotorDriverQuadDshot on pins 11-14
     let mut driver = MotorDriverQuadDshot::new(
-        p.PIO0,
+        p.PIO1,
         Irqs,
         p.PIN_11,
         p.PIN_12,

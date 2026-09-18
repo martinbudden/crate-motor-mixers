@@ -27,8 +27,8 @@ rustc_version = "0.4.1"
 #default = ["std", "serde"]
 #default = ["eight_motors"]
 #default = ["rp2040"]
-#default = ["rp2040", "eight_motors"]
 #default = ["rp235xa"]
+#default = ["rp235xa", "eight_motors"]
 #default = ["stm32", "motors_t4_t3"]
 #default = ["esp32"]
 #default = ["serde"]
@@ -83,6 +83,9 @@ defmt = { version = "1.0.1", optional = true }
 fixed = "1.31"
 #paste = "1.0.15"
 
+dshot-codec = { version = "0.1.0" }
+#dshot-codec = { git = "https://github.com/martinbudden/crate-dshot-codec" }
+#dshot-codec = { path = "../dshot-codec"  }
 #vqm = { version = "0.1.16" }
 vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix" }
 #vqm = { path = "../vqm"  }

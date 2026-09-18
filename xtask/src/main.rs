@@ -2,7 +2,7 @@ use std::env;
 use std::process::{Command, ExitStatus};
 
 fn main() {
-    // Collect the arguments passed to xtask (e.g., "ci" or "check-serde")
+    // Collect the arguments passed to xtask (e.g., "ci" or "check-msrv")
     let args: Vec<String> = env::args().collect();
     let command = args.get(1).map(|s| s.as_str()).unwrap_or("ci");
 
@@ -11,7 +11,7 @@ fn main() {
         "check-msrv" => run_msrv_check(),
         _ => {
             eprintln!("❌ Unknown xtask command: '{}'", command);
-            eprintln!("Available commands: ci, check-serde");
+            eprintln!("Available commands: ci, check-msrv");
             std::process::exit(1);
         }
     }
@@ -35,7 +35,7 @@ fn run_ci_pipeline() {
 }
 
 fn run_msrv_check() {
-    println!("🚀 Running: cargo +1.93.0 check --lib --features serde");
+    println!("🚀 Running: cargo +1.93.0 check --lib --features msrv");
 
     // We invoke cargo, passing the toolchain string as the very first argument
     let status = Command::new("cargo").arg("+1.93.0").arg("check").arg("--lib").arg("--features").arg("serde").status();

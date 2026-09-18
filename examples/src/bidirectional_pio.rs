@@ -15,7 +15,7 @@
 
 use defmt::info;
 use embassy_executor::Spawner;
-use embassy_rp::{bind_interrupts, clocks::clk_sys_freq, peripherals::PIO0, pio::InterruptHandler};
+use embassy_rp::{bind_interrupts, clocks::clk_sys_freq, peripherals::PIO1, pio::InterruptHandler};
 use embassy_time::{Duration, Timer};
 use {defmt_rtt as _, panic_probe as _};
 
@@ -25,7 +25,7 @@ use motor_mixers::{
 };
 
 bind_interrupts!(struct Irqs {
-    PIO0_IRQ_0 => InterruptHandler<PIO0>;
+    PIO1_IRQ_0 => InterruptHandler<PIO1>;
 });
 
 #[embassy_executor::main]
@@ -39,7 +39,7 @@ async fn main(_spawner: Spawner) {
 
     // Initialize DShot150 on pins 11-14
     let mut dshot =
-        BidirectionalQuadDshotPio::new(p.PIO0, Irqs, p.PIN_11, p.PIN_12, p.PIN_14, p.PIN_15, DshotProtocol::Dshot300);
+        BidirectionalQuadDshotPio::new(p.PIO1, Irqs, p.PIN_11, p.PIN_12, p.PIN_14, p.PIN_15, DshotProtocol::Dshot300);
 
     info!("DShot300 initialized on PIN_11");
     info!("Expected DShot300 timing:");

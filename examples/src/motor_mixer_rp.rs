@@ -8,19 +8,18 @@
 #![no_main]
 
 use defmt::info;
+use dshot_codec::DshotSpeed;
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use {defmt_rtt as _, panic_probe as _};
 
-use motor_mixers::{
-    MixerConfig, MotorConfig, MotorDriver, MotorDriverQuadDshot, MotorMixer, MotorMixerMessage, dshot::DshotSpeed,
-};
+use motor_mixers::{MixerConfig, MotorConfig, MotorDriver, MotorDriverQuadDshot, MotorMixer, MotorMixerMessage};
 
 #[cfg(feature = "rp")]
-use embassy_rp::{bind_interrupts, clocks::clk_sys_freq, peripherals::PIO0, pio::InterruptHandler};
+use embassy_rp::{bind_interrupts, clocks::clk_sys_freq, peripherals::PIO1, pio::InterruptHandler};
 #[cfg(feature = "rp")]
 bind_interrupts!(struct Irqs {
-    PIO0_IRQ_0 => InterruptHandler<PIO0>;
+    PIO1_IRQ_0 => InterruptHandler<PIO1>;
 });
 
 #[cfg(feature = "rp")]
@@ -35,7 +34,7 @@ async fn main(_spawner: Spawner) {
 
     // Initialize MotorDriverQuadDshot on pins 11-14
     let driver_quad_dshot = MotorDriverQuadDshot::new(
-        p.PIO0,
+        p.PIO1,
         Irqs,
         p.PIN_11,
         p.PIN_12,

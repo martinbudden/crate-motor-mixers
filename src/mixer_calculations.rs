@@ -835,7 +835,7 @@ mod quadcopter_tests {
 
         let outputs = mix_quad_x(commands, range, &mut params);
 
-        // In a perfect hover, all motors should match throttle exactly
+        // In a perfect hover, all motors should match throttle value
         assert_eq!(outputs, [0.5, 0.5, 0.5, 0.5]);
         assert_eq!(params.overshoot, 0.0);
         assert_eq!(params.undershoot, 0.0);
@@ -954,7 +954,7 @@ mod tricopter_tests {
 
         let outputs = mix_tricopter(commands, range, &mut params);
 
-        // When yaw is 0, cos(0) = 1. All motors should receive exactly the baseline throttle
+        // When yaw is 0.0, cos(0) = 1.0 All motors should receive the baseline throttle
         assert_eq!(outputs[0], 0.6); // REAR
         assert_eq!(outputs[1], 0.6); // FR
         assert_eq!(outputs[2], 0.6); // FL
@@ -1051,7 +1051,7 @@ mod hexacopter_tests {
 
         let outputs = mix_hex_x(commands, range, &mut params);
 
-        // In a static hover with no inputs, all 6 motors must match throttle exactly
+        // In a static hover with no inputs, all 6 motors must match throttle
         assert_eq!(outputs, [0.5, 0.5, 0.5, 0.5, 0.5, 0.5]);
         assert_eq!(params.overshoot, 0.0);
         assert_eq!(params.undershoot, 0.0);
@@ -1309,7 +1309,7 @@ fn test_standard_octocopter_fallback_behavior() {
 
     let outputs = mix_octo_quad_x(commands, range, &mut params);
 
-    // 1. Calculate expected outputs for the Large Prop group (0-3)
+    // Calculate expected outputs for the Large Prop group (0-3)
     let expected_large_br = 0.6 - (0.1 + 0.1); // 0.4
     let expected_large_fr = 0.6 - (0.1 - 0.1); // 0.6
     let expected_large_bl = 0.6 + (0.1 - 0.1); // 0.6
@@ -1320,7 +1320,7 @@ fn test_standard_octocopter_fallback_behavior() {
     assert!((outputs[2] - expected_large_bl).abs() < 1e-5);
     assert!((outputs[3] - expected_large_fl).abs() < 1e-5);
 
-    // 2. Calculate expected outputs for the Small Prop group (4-7)
+    // Calculate expected outputs for the Small Prop group (4-7)
     // With small_prop_throttle_scale = 1.0, the small props must output
     // the EXACT same values as their corresponding large prop counterparts.
     assert_eq!(outputs[4], outputs[0]); // Small BR == Large BR

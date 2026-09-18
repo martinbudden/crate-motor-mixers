@@ -1,9 +1,9 @@
 use core::ops::{Deref, DerefMut};
 
+use dshot_codec::DshotCommand;
 use signal_filters::SlewRateLimiterf32;
 
 use super::{MixerConfig, MixerType, MotorConfig, MotorMixerParameters, MotorOutputRange};
-use crate::dshot::DshotCommand;
 
 #[cfg(feature = "eight_motors")]
 pub const MAX_SUPPORTED_MOTOR_COUNT: usize = 8;

@@ -1,5 +1,6 @@
 #![cfg(not(any(feature = "esp32", rp, feature = "stm32")))]
-use crate::dshot::DshotCommand;
+use dshot_codec::DshotCommand;
+
 use crate::{MotorCommands, MotorFrequencies, MotorOutputs};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]

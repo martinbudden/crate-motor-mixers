@@ -20,8 +20,7 @@
 #![warn(clippy::doc_paragraphs_missing_punctuation)]
 
 mod drivers;
-pub mod dshot; // will eventually be a separate crate
-pub mod dshot_rp; // will eventually be a separate crate
+pub mod dshot_rp;
 
 mod dynamic_idle_controller;
 

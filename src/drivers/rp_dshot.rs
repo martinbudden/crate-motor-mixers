@@ -1,44 +1,44 @@
 use embassy_time::{Duration, Timer};
 
-use crate::{
-    MAX_SUPPORTED_MOTOR_COUNT, MotorCommands, MotorFrequencies, MotorOutputs,
-    dshot::{DshotCommand, DshotCommandFrame, DshotError, DshotTelemetryFrame, GcrFrame},
-};
+use dshot_codec::{DshotCommand, DshotCommandFrame, DshotError, DshotTelemetryFrame, GcrFrame};
+
+use crate::{MAX_SUPPORTED_MOTOR_COUNT, MotorCommands, MotorFrequencies, MotorOutputs};
 
 #[cfg(all(rp, feature = "eight_motors"))]
-use embassy_rp::peripherals::PIO1;
+use embassy_rp::peripherals::PIO2;
 #[cfg(rp)]
 use {
-    crate::{dshot::DshotSpeed, dshot_rp::BidirectionalDshotSm},
+    crate::dshot_rp::BidirectionalDshotSm,
+    dshot_codec::DshotSpeed,
     embassy_rp::{
         Peri,
         interrupt::typelevel::Binding,
-        peripherals::PIO0,
+        peripherals::PIO1,
         pio::{InterruptHandler, PioPin},
     },
 };
 
-/// Bidirectional Dshot driver using `PIO` for 4 motors.
-/// Currently hardcoded to use `PIO0`.
+/// Bidirectional Dshot driver using `PIO` for 4 or 8 motors.
+/// Hardcoded to use `PIO1` and optionally `PIO2`, since `PIO0` is reserved for UARTs and SPI.
 #[allow(missing_debug_implementations, missing_copy_implementations)]
 pub struct MotorDriverQuadDshot {
     motor_frequencies: MotorFrequencies,
     #[cfg(rp)]
-    sm0: BidirectionalDshotSm<'static, PIO0, 0>,
+    sm0: BidirectionalDshotSm<'static, PIO1, 0>,
     #[cfg(rp)]
-    sm1: BidirectionalDshotSm<'static, PIO0, 1>,
+    sm1: BidirectionalDshotSm<'static, PIO1, 1>,
     #[cfg(rp)]
-    sm2: BidirectionalDshotSm<'static, PIO0, 2>,
+    sm2: BidirectionalDshotSm<'static, PIO1, 2>,
     #[cfg(rp)]
-    sm3: BidirectionalDshotSm<'static, PIO0, 3>,
+    sm3: BidirectionalDshotSm<'static, PIO1, 3>,
     #[cfg(all(rp, feature = "eight_motors"))]
-    sm4: BidirectionalDshotSm<'static, PIO1, 0>,
+    sm4: BidirectionalDshotSm<'static, PIO2, 0>,
     #[cfg(all(rp, feature = "eight_motors"))]
-    sm5: BidirectionalDshotSm<'static, PIO1, 1>,
+    sm5: BidirectionalDshotSm<'static, PIO2, 1>,
     #[cfg(all(rp, feature = "eight_motors"))]
-    sm6: BidirectionalDshotSm<'static, PIO1, 2>,
+    sm6: BidirectionalDshotSm<'static, PIO2, 2>,
     #[cfg(all(rp, feature = "eight_motors"))]
-    sm7: BidirectionalDshotSm<'static, PIO1, 3>,
+    sm7: BidirectionalDshotSm<'static, PIO2, 3>,
     erpm_to_hz: f32,
 }
 
@@ -51,10 +51,10 @@ impl MotorDriverQuadDshot {
     #[allow(clippy::too_many_arguments, clippy::similar_names)]
     #[must_use]
     pub fn new(
-        pio0: Peri<'static, PIO0>,
         pio1: Peri<'static, PIO1>,
-        irq0: impl Binding<<PIO0 as embassy_rp::pio::Instance>::Interrupt, InterruptHandler<PIO0>>,
-        irq1: impl Binding<<PIO1 as embassy_rp::pio::Instance>::Interrupt, InterruptHandler<PIO1>>,
+        pio2: Peri<'static, PIO2>,
+        irq0: impl Binding<<PIO1 as embassy_rp::pio::Instance>::Interrupt, InterruptHandler<PIO1>>,
+        irq1: impl Binding<<PIO2 as embassy_rp::pio::Instance>::Interrupt, InterruptHandler<PIO2>>,
         pin0: Peri<'static, impl PioPin + 'static>,
         pin1: Peri<'static, impl PioPin + 'static>,
         pin2: Peri<'static, impl PioPin + 'static>,
@@ -68,19 +68,19 @@ impl MotorDriverQuadDshot {
     ) -> Self {
         use embassy_rp::pio::Pio;
 
-        let mut pio0 = Pio::new(pio0, irq0);
-        let mut pio1 = Pio::new(pio1, irq1);
+        let mut pio1 = Pio::new(pio1, irq0);
+        let mut pio2 = Pio::new(pio2, irq1);
 
         Self {
             motor_frequencies: MotorFrequencies::new(),
-            sm0: BidirectionalDshotSm::new(pio0.sm0, pin0, &mut pio0.common, dshot_speed),
-            sm1: BidirectionalDshotSm::new(pio0.sm1, pin1, &mut pio0.common, dshot_speed),
-            sm2: BidirectionalDshotSm::new(pio0.sm2, pin2, &mut pio0.common, dshot_speed),
-            sm3: BidirectionalDshotSm::new(pio0.sm3, pin3, &mut pio0.common, dshot_speed),
-            sm4: BidirectionalDshotSm::new(pio1.sm0, pin4, &mut pio1.common, dshot_speed),
-            sm5: BidirectionalDshotSm::new(pio1.sm1, pin5, &mut pio1.common, dshot_speed),
-            sm6: BidirectionalDshotSm::new(pio1.sm2, pin6, &mut pio1.common, dshot_speed),
-            sm7: BidirectionalDshotSm::new(pio1.sm3, pin7, &mut pio1.common, dshot_speed),
+            sm0: BidirectionalDshotSm::new(pio1.sm0, pin0, &mut pio1.common, dshot_speed),
+            sm1: BidirectionalDshotSm::new(pio1.sm1, pin1, &mut pio1.common, dshot_speed),
+            sm2: BidirectionalDshotSm::new(pio1.sm2, pin2, &mut pio1.common, dshot_speed),
+            sm3: BidirectionalDshotSm::new(pio1.sm3, pin3, &mut pio1.common, dshot_speed),
+            sm4: BidirectionalDshotSm::new(pio2.sm0, pin4, &mut pio2.common, dshot_speed),
+            sm5: BidirectionalDshotSm::new(pio2.sm1, pin5, &mut pio2.common, dshot_speed),
+            sm6: BidirectionalDshotSm::new(pio2.sm2, pin6, &mut pio2.common, dshot_speed),
+            sm7: BidirectionalDshotSm::new(pio2.sm3, pin7, &mut pio2.common, dshot_speed),
             erpm_to_hz: 2.0 * (100.0 / Self::SECONDS_PER_MINUTE) / f32::from(motor_pole_count),
         }
     }
@@ -88,8 +88,8 @@ impl MotorDriverQuadDshot {
     #[allow(clippy::too_many_arguments)]
     #[must_use]
     pub fn new(
-        pio: Peri<'static, PIO0>,
-        irq: impl Binding<<PIO0 as embassy_rp::pio::Instance>::Interrupt, InterruptHandler<PIO0>>,
+        pio: Peri<'static, PIO1>,
+        irq: impl Binding<<PIO1 as embassy_rp::pio::Instance>::Interrupt, InterruptHandler<PIO1>>,
         pin0: Peri<'static, impl PioPin + 'static>,
         pin1: Peri<'static, impl PioPin + 'static>,
         pin2: Peri<'static, impl PioPin + 'static>,
@@ -117,10 +117,10 @@ impl MotorDriverQuadDshot {
     pub async fn write_to_motors(&mut self, outputs: MotorOutputs) {
         #[cfg(rp)]
         let (res0, res1, res2, res3) = {
-            let frame0 = DshotCommandFrame::from_throttle(outputs[0]);
-            let frame1 = DshotCommandFrame::from_throttle(outputs[1]);
-            let frame2 = DshotCommandFrame::from_throttle(outputs[2]);
-            let frame3 = DshotCommandFrame::from_throttle(outputs[3]);
+            let frame0 = DshotCommandFrame::from_throttle_bidirectional(outputs[0]);
+            let frame1 = DshotCommandFrame::from_throttle_bidirectional(outputs[1]);
+            let frame2 = DshotCommandFrame::from_throttle_bidirectional(outputs[2]);
+            let frame3 = DshotCommandFrame::from_throttle_bidirectional(outputs[3]);
 
             // Execute all 4 transactions in parallel across the PIO state machines.
             // The join4 macro awaits until ALL 4 asynchronous futures resolve.
@@ -134,10 +134,10 @@ impl MotorDriverQuadDshot {
         };
         #[cfg(all(rp, feature = "eight_motors"))]
         let (res4, res5, res6, res7) = {
-            let frame4 = DshotCommandFrame::from_throttle(outputs[4]);
-            let frame5 = DshotCommandFrame::from_throttle(outputs[5]);
-            let frame6 = DshotCommandFrame::from_throttle(outputs[6]);
-            let frame7 = DshotCommandFrame::from_throttle(outputs[7]);
+            let frame4 = DshotCommandFrame::from_throttle_bidirectional(outputs[4]);
+            let frame5 = DshotCommandFrame::from_throttle_bidirectional(outputs[5]);
+            let frame6 = DshotCommandFrame::from_throttle_bidirectional(outputs[6]);
+            let frame7 = DshotCommandFrame::from_throttle_bidirectional(outputs[7]);
 
             // Execute all 4 transactions in parallel across the PIO state machines.
             // The join4 macro awaits until ALL 4 asynchronous futures resolve.
@@ -187,7 +187,7 @@ impl MotorDriverQuadDshot {
     #[allow(unused)]
     pub async fn write_to_motors_unjoined(&mut self, outputs: MotorOutputs) {
         for motor_index in 0..MAX_SUPPORTED_MOTOR_COUNT {
-            let frame = DshotCommandFrame::from_throttle(outputs[motor_index]);
+            let frame = DshotCommandFrame::from_throttle_bidirectional(outputs[motor_index]);
             let result = self.write_to_motor(frame, motor_index).await;
             if let Ok(erpm_telemetry_frame) = result {
                 self.motor_frequencies[motor_index] = erpm_telemetry_frame.erpm_f32() * self.erpm_to_hz;
