@@ -5,7 +5,7 @@ use crate::MotorOutputs;
 use embassy_rp::pwm::{Pwm, PwmOutput, SetDutyCycle};
 
 #[allow(missing_debug_implementations, missing_copy_implementations)]
-pub struct MotorDriverQuadPwm {
+pub struct MotorDriverPwm {
     pwm0_a: PwmOutput<'static>,
     pwm0_b: PwmOutput<'static>,
     pwm1_a: PwmOutput<'static>,
@@ -13,7 +13,7 @@ pub struct MotorDriverQuadPwm {
     frequency_hz: f32,
 }
 
-impl MotorDriverQuadPwm {
+impl MotorDriverPwm {
     #[allow(clippy::expect_used)]
     #[must_use]
     /// # Panics
@@ -76,6 +76,6 @@ mod test_traits {
 
     #[test]
     fn normal_types() {
-        is_normal::<MotorDriverQuadPwm>();
+        is_normal::<MotorDriverPwm>();
     }
 }

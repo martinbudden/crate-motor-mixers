@@ -1,12 +1,12 @@
 #![cfg(not(any(feature = "esp32", rp, feature = "stm32")))]
 use dshot_codec::DshotCommand;
 
-use crate::{MotorCommands, MotorFrequencies, MotorOutputs};
+use crate::{DshotCommands, MotorFrequencies, MotorOutputs};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct MotorDriverQuadPwm;
+pub struct MotorDriverPwm;
 
-impl MotorDriverQuadPwm {
+impl MotorDriverPwm {
     #[must_use]
     pub const fn new() -> Self {
         Self {}
@@ -21,11 +21,11 @@ impl MotorDriverQuadPwm {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct MotorDriverQuadDshot {
+pub struct MotorDriverDshot {
     motor_frequencies: MotorFrequencies,
 }
 
-impl MotorDriverQuadDshot {
+impl MotorDriverDshot {
     #[must_use]
     pub const fn new() -> Self {
         Self { motor_frequencies: MotorFrequencies::new() }
@@ -33,12 +33,12 @@ impl MotorDriverQuadDshot {
 }
 
 #[allow(clippy::unused_async)]
-impl MotorDriverQuadDshot {
+impl MotorDriverDshot {
     pub async fn write_to_motors(&mut self, _outputs: MotorOutputs) {
         _ = self;
     }
 
-    pub async fn write_commands_to_motors(&mut self, _commands: MotorCommands) {
+    pub async fn write_commands_to_motors(&mut self, _commands: DshotCommands) {
         _ = self;
     }
 
@@ -66,6 +66,6 @@ mod test_traits {
 
     #[test]
     fn normal_types() {
-        is_full::<MotorDriverQuadPwm>();
+        is_full::<MotorDriverPwm>();
     }
 }

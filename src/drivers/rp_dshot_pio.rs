@@ -1,12 +1,12 @@
+#![cfg(rp)]
 use embassy_time::{Duration, Timer};
 
 use dshot_codec::{DshotCommand, DshotCommandFrame, DshotError, DshotTelemetryFrame, GcrFrame};
 
-use crate::{MotorCommands, MotorFrequencies, MotorOutputs};
+use crate::{DshotCommands, MotorFrequencies, MotorOutputs};
 
-#[cfg(all(rp, any(feature = "rp235xa", feature = "rp235xb")))]
+#[cfg(any(feature = "rp235xa", feature = "rp235xb"))]
 use embassy_rp::peripherals::PIO2;
-#[cfg(rp)]
 use {
     crate::dshot_rp::BidirectionalDshotSm,
     dshot_codec::DshotSpeed,
@@ -190,7 +190,7 @@ impl<PIO: Instance> MotorDriverQuadDshotPio<'_, PIO> {
 
     /// # Errors
     #[allow(unused)]
-    pub async fn write_commands_to_motors(&mut self, commands: MotorCommands) {
+    pub async fn write_commands_to_motors(&mut self, commands: DshotCommands) {
         for motor_index in 0..Self::MOTOR_COUNT {
             let command = commands[motor_index];
             let frame = DshotCommandFrame::from_command(command);

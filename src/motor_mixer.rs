@@ -5,18 +5,18 @@ use super::{
 };
 
 /*
-        MotorMixer
-            │
-            │ MotorOutputs
-            ▼
-    MotorDriver
-    /          \
-QuadPwm        QuadDshot
-    │                │
-    │                ├── Dshot output
-    │                └── telemetry
-    │
-    └── PWM output
+            MotorMixer
+                │
+                │ MotorOutputs
+                ▼
+        MotorDriver
+        /          \
+MotorDriverPwm     MotorDriverDshot
+        │                │
+        │                ├── Dshot output
+        │                └── telemetry
+        │
+        └── PWM output
 */
 
 #[allow(missing_debug_implementations, missing_copy_implementations)]
@@ -107,11 +107,11 @@ impl MotorMixer {
 mod test_traits {
     use super::*;
 
-    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
 
     #[test]
     fn normal_types() {
-        is_full::<MotorMixerCommon>();
+        is_normal::<MotorMixer>();
     }
 }
 

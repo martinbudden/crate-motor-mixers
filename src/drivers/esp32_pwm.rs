@@ -1,9 +1,7 @@
 #![cfg(feature = "esp32")]
 
-use super::{
-    drivers::output_to_duty,
-    {MotorFrequencies, MotorOutputs},
-};
+use crate::MotorOutputs;
+
 use esp_idf_hal::ledc::{Channel, LedcDriver, LedcTimerDriver, SpeedMode};
 
 /*
@@ -18,11 +16,11 @@ channel.set_duty(1023).unwrap(); // 10-bit duty   }
 */
 //type PwmType = SimplePwm<'static, embassy_esp32::peripherals::LED_PWM>;
 
-pub struct MotorDriverQuadPwm {
+pub struct MotorDriverPwm {
     channels: [LedcDriver<'static>; 4],
 }
 
-impl MotorDriverQuadPwm {
+impl MotorDriverPwm {
     pub fn new(
         ch0: LedcDriver<'static>,
         ch1: LedcDriver<'static>,
@@ -30,6 +28,20 @@ impl MotorDriverQuadPwm {
         ch3: LedcDriver<'static>,
     ) -> Self {
         Self { channels: [ch0, ch1, ch2, ch3] }
+    }
+
+    #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation, unused)]
+    #[inline]
+    fn output_to_duty(output: f32, max_duty: f32) -> u32 {
+        let output = output.clamp(-1.0, 1.0);
+
+        // -1.0 → 1000 µs
+        //  0.0 → 1500 µs
+        // +1.0 → 2000 µs
+        let pulse_width_us = 1500.0 + output * 500.0;
+
+        // 50 Hz → 20,000 µs period.
+        (pulse_width_us / 20_000.0 * max_duty) as u32
     }
 
     #[inline]
@@ -55,6 +67,17 @@ mod test_traits {
 
     #[test]
     fn normal_types() {
-        is_full::<MotorDriverQuadPwm>();
+        is_full::<MotorDriverPwm>();
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_output_to_duty() {
+        assert_eq!(1000, MotorDriverPwm::output_to_duty(-1.0, 20_000.0));
+        assert_eq!(1500, MotorDriverPwm::output_to_duty(0.0, 20_000.0));
+        assert_eq!(2000, MotorDriverPwm::output_to_duty(1.0, 20_000.0));
     }
 }

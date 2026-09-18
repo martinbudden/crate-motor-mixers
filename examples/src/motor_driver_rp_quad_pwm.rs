@@ -1,4 +1,4 @@
-//! Minimal test for MotorDriverQuadDshot.
+//! Minimal test for MotorDriverPwm.
 //! Hardware: Raspberry Pi Pico / Pico 2
 //! Connections:
 //!   - ESC signal: PINs 11-14
@@ -17,7 +17,7 @@ use embassy_time::{Duration, Timer};
 use fixed::traits::ToFixed;
 use {defmt_rtt as _, panic_probe as _};
 
-use motor_mixers::{MotorDriverQuadPwm, MotorOutputs};
+use motor_mixers::{MotorDriverPwm, MotorOutputs};
 
 #[allow(unused)]
 fn pwm_config_400hz() -> PwmConfig {
@@ -31,7 +31,7 @@ fn pwm_config_400hz() -> PwmConfig {
     config
 }
 
-fn driver_rp() -> MotorDriverQuadPwm {
+fn driver_rp() -> MotorDriverPwm {
     let p = embassy_rp::init(Default::default());
 
     // Print system clock for verification
@@ -39,7 +39,7 @@ fn driver_rp() -> MotorDriverQuadPwm {
     info!("System clock: {} Hz", sys_freq);
     info!("Starting motor-mixers Basic test");
 
-    // Initialize MotorDriverQuadDshot on pins 0-3
+    // Initialize MotorDriverPwm on pins 0-3
     let config0 = PwmConfig::default();
     let config1 = PwmConfig::default();
     let frequency_hz = 50.0;
@@ -47,7 +47,7 @@ fn driver_rp() -> MotorDriverQuadPwm {
     let pwm0 = Pwm::new_output_ab(p.PWM_SLICE5, p.PIN_10, p.PIN_11, config0);
     let pwm1 = Pwm::new_output_ab(p.PWM_SLICE6, p.PIN_12, p.PIN_13, config1);
 
-    MotorDriverQuadPwm::new(pwm0, pwm1, frequency_hz)
+    MotorDriverPwm::new(pwm0, pwm1, frequency_hz)
 }
 
 #[embassy_executor::main]

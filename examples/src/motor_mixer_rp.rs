@@ -13,7 +13,7 @@ use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use {defmt_rtt as _, panic_probe as _};
 
-use motor_mixers::{MixerConfig, MotorConfig, MotorDriver, MotorDriverQuadDshot, MotorMixer, MotorMixerMessage};
+use motor_mixers::{MixerConfig, MotorConfig, MotorDriver, MotorDriverDshot, MotorMixer, MotorMixerMessage};
 
 #[cfg(feature = "rp")]
 use embassy_rp::{bind_interrupts, clocks::clk_sys_freq, peripherals::PIO1, pio::InterruptHandler};
@@ -33,7 +33,7 @@ async fn main(_spawner: Spawner) {
     info!("Starting motor-mixers Basic test");
 
     // Initialize MotorDriverQuadDshot on pins 11-14
-    let driver_quad_dshot = MotorDriverQuadDshot::new(
+    let driver_quad_dshot = MotorDriverDshot::new(
         p.PIO1,
         Irqs,
         p.PIN_11,
@@ -41,9 +41,9 @@ async fn main(_spawner: Spawner) {
         p.PIN_14,
         p.PIN_15,
         DshotSpeed::Dshot300,
-        MotorDriverQuadDshot::DEFAULT_MOTOR_POLE_COUNT,
+        MotorDriverDshot::DEFAULT_MOTOR_POLE_COUNT,
     );
-    let driver = MotorDriver::QuadDshot(driver_quad_dshot);
+    let driver = MotorDriver::DriverDshot(driver_quad_dshot);
     let mixer_config = MixerConfig::default();
     let motor_config = MotorConfig::default();
     let mut motor_mixer = MotorMixer::new(mixer_config, motor_config, driver);

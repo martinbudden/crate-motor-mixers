@@ -1,30 +1,24 @@
 #![cfg(feature = "stm32")]
 
+use crate::MotorOutputs;
+
 use embassy_stm32::timer::{
     GeneralInstance4Channel,
     simple_pwm::{SimplePwm, SimplePwmChannel},
 };
 
-use super::{
-    drivers::output_to_duty,
-    {MotorCommands, MotorFrequencies, MotorOutputs},
-};
-use crate::dshot::Command;
-
-// TODO: sort out MotorDriverQuadPwmGeneral for stm32 variant
+// TODO: sort out MotorDriverPwmGeneral for stm32 variant
 #[cfg(feature = "motors_t8")]
-pub type MotorDriverQuadPwm = MotorDriverQuadPwmGeneral<embassy_stm32::peripherals::TIM8>;
+pub type MotorDriverPwm = MotorDriverPwmGeneral<embassy_stm32::peripherals::TIM8>;
 
 #[cfg(feature = "motors_t3_t2")]
-pub type MotorDriverQuadPwm =
-    MotorDriverQuadPwmGeneral2<embassy_stm32::peripherals::TIM3, embassy_stm32::peripherals::TIM2>;
+pub type MotorDriverPwm = MotorDriverPwmGeneral2<embassy_stm32::peripherals::TIM3, embassy_stm32::peripherals::TIM2>;
 
 #[cfg(feature = "motors_t4_t3")]
-pub type MotorDriverQuadPwm =
-    MotorDriverQuadPwmGeneral2<embassy_stm32::peripherals::TIM4, embassy_stm32::peripherals::TIM3>;
+pub type MotorDriverPwm = MotorDriverPwmGeneral2<embassy_stm32::peripherals::TIM4, embassy_stm32::peripherals::TIM3>;
 
 #[allow(missing_debug_implementations, missing_copy_implementations)]
-pub struct MotorDriverQuadPwmGeneral<T>
+pub struct MotorDriverPwmGeneral<T>
 where
     T: GeneralInstance4Channel,
 {
@@ -34,7 +28,8 @@ where
     ch3: SimplePwmChannel<'static, T>,
 }
 
-impl<T> MotorDriverQuadPwmGeneral<T>
+#[allow(unused)]
+impl<T> MotorDriverPwmGeneral<T>
 where
     T: GeneralInstance4Channel,
 {
@@ -62,7 +57,7 @@ where
 }
 
 #[allow(missing_debug_implementations, missing_copy_implementations)]
-pub struct MotorDriverQuadPwmGeneral2<T1, T2>
+pub struct MotorDriverPwmGeneral2<T1, T2>
 where
     T1: GeneralInstance4Channel,
     T2: GeneralInstance4Channel,
@@ -73,7 +68,7 @@ where
     ch3: SimplePwmChannel<'static, T2>,
 }
 
-impl<T1, T2> MotorDriverQuadPwmGeneral2<T1, T2>
+impl<T1, T2> MotorDriverPwmGeneral2<T1, T2>
 where
     T1: GeneralInstance4Channel,
     T2: GeneralInstance4Channel,
@@ -102,12 +97,26 @@ where
     }
 }
 
+#[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation, unused)]
+#[inline]
+fn output_to_duty(output: f32, max_duty: f32) -> u32 {
+    let output = output.clamp(-1.0, 1.0);
+
+    // -1.0 → 1000 µs
+    //  0.0 → 1500 µs
+    // +1.0 → 2000 µs
+    let pulse_width_us = 1500.0 + output * 500.0;
+
+    // 50 Hz → 20,000 µs period.
+    (pulse_width_us / 20_000.0 * max_duty) as u32
+}
+
 /*
 let p = embassy_stm32::init(Default::default());
 let ch1 = PwmPin::new_ch1(p.PA8); // TIM1_CH1
 let ch2 = PwmPin::new_ch2(p.PA9);
 let pwm = SimplePwm::new(p.TIM1, Some(ch1), Some(ch2), None, None, khz(1));
-let mut driver = MotorDriverQuadPwm::new(pwm);
+let mut driver = MotorDriverPwm::new(pwm);
 */
 
 #[cfg(test)]
@@ -118,6 +127,17 @@ mod test_traits {
 
     #[test]
     fn normal_types() {
-        is_full::<MotorDriverQuadPwm>();
+        is_full::<MotorDriverPwm>();
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_output_to_duty() {
+        assert_eq!(1000, output_to_duty(-1.0, 20_000.0));
+        assert_eq!(1500, output_to_duty(0.0, 20_000.0));
+        assert_eq!(2000, output_to_duty(1.0, 20_000.0));
     }
 }

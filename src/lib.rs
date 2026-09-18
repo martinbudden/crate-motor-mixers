@@ -45,14 +45,14 @@ pub use mixer_config::{
 
 pub use motor_driver::MotorDriver;
 
-pub use drivers::{MotorDriverQuadDshot, MotorDriverQuadPwm};
+pub use drivers::{MotorDriverDshot, MotorDriverPwm};
 
 pub use mixer_calculations::{
     mix_airplane, mix_bicopter, mix_hex_x, mix_octo_quad_x, mix_quad_x, mix_tricopter, mix_wing,
 };
 
 pub use mixer_common::{
-    MAX_SUPPORTED_MOTOR_COUNT, MotorCommands, MotorFrequencies, MotorMixerCommon, MotorOutputFilters, MotorOutputs,
+    DshotCommands, MAX_SUPPORTED_MOTOR_COUNT, MotorFrequencies, MotorMixerCommon, MotorOutputFilters, MotorOutputs,
 };
 
 pub use motor_mixer::MotorMixer;

@@ -8,13 +8,13 @@ mod stm32_dshot;
 mod stm32_pwm;
 
 #[cfg(feature = "esp32")]
-pub use {esp32_dshot::MotorDriverQuadDshot, esp32_pwm::MotorDriverQuadPwm};
+pub use {esp32_dshot::MotorDriverDshot, esp32_pwm::MotorDriverPwm};
 
 #[cfg(rp)]
-pub use {rp_dshot::MotorDriverQuadDshot, rp_pwm::MotorDriverQuadPwm};
+pub use {rp_dshot::MotorDriverDshot, rp_pwm::MotorDriverPwm};
 
 #[cfg(feature = "stm32")]
-pub use {stm32_dshot::MotorDriverQuadDshot, stm32_pwm::MotorDriverQuadPwm};
+pub use {stm32_dshot::MotorDriverDshot, stm32_pwm::MotorDriverPwm};
 
 #[cfg(not(any(feature = "esp32", rp, feature = "stm32")))]
-pub use host::{MotorDriverQuadDshot, MotorDriverQuadPwm};
+pub use host::{MotorDriverDshot, MotorDriverPwm};

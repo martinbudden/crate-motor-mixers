@@ -3,11 +3,11 @@
 use crate::{MotorCommands, MotorFrequencies, MotorOutputs, dshot::Command};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct MotorDriverQuadDshot {
+pub struct MotorDriverDshot {
     motor_frequencies: MotorFrequencies,
 }
 
-impl MotorDriverQuadDshot {
+impl MotorDriverDshot {
     #[must_use]
     pub const fn new() -> Self {
         Self { motor_frequencies: MotorFrequencies::new() }
@@ -15,7 +15,7 @@ impl MotorDriverQuadDshot {
 }
 
 #[allow(clippy::unused_async)]
-impl MotorDriverQuadDshot {
+impl MotorDriverDshot {
     pub async fn write_to_motors(&mut self, _outputs: MotorOutputs) {
         _ = self;
     }
@@ -43,6 +43,6 @@ mod test_traits {
 
     #[test]
     fn normal_types() {
-        is_full::<MotorDriverQuadDshot>();
+        is_full::<MotorDriverDshot>();
     }
 }
