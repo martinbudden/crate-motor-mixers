@@ -162,6 +162,7 @@
         "typelevel",
         "typenum",
         "typestate",
+        "UART",
         "ulps",
         "uncommanded",
         "uninit",

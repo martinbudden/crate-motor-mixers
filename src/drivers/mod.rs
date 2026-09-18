@@ -2,6 +2,7 @@ mod esp32_dshot;
 mod esp32_pwm;
 mod host;
 mod rp_dshot;
+mod rp_dshot_pio;
 mod rp_pwm;
 mod stm32_dshot;
 mod stm32_pwm;
