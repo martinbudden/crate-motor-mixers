@@ -8,11 +8,14 @@ use embassy_stm32::timer::{
 };
 
 // TODO: sort out MotorDriverPwmGeneral for stm32 variant
+#[cfg(feature = "motors_t3")]
+pub type MotorDriverPwm = MotorDriverPwmGeneral<embassy_stm32::peripherals::TIM3>;
+
 #[cfg(feature = "motors_t8")]
 pub type MotorDriverPwm = MotorDriverPwmGeneral<embassy_stm32::peripherals::TIM8>;
 
-#[cfg(feature = "motors_t3_t2")]
-pub type MotorDriverPwm = MotorDriverPwmGeneral2<embassy_stm32::peripherals::TIM3, embassy_stm32::peripherals::TIM2>;
+#[cfg(feature = "motors_t3_t5")]
+pub type MotorDriverPwm = MotorDriverPwmGeneral2<embassy_stm32::peripherals::TIM3, embassy_stm32::peripherals::TIM5>;
 
 #[cfg(feature = "motors_t4_t3")]
 pub type MotorDriverPwm = MotorDriverPwmGeneral2<embassy_stm32::peripherals::TIM4, embassy_stm32::peripherals::TIM3>;
@@ -56,6 +59,7 @@ where
     }
 }
 
+#[allow(unused)]
 #[allow(missing_debug_implementations, missing_copy_implementations)]
 pub struct MotorDriverPwmGeneral2<T1, T2>
 where
@@ -68,6 +72,7 @@ where
     ch3: SimplePwmChannel<'static, T2>,
 }
 
+#[allow(unused)]
 impl<T1, T2> MotorDriverPwmGeneral2<T1, T2>
 where
     T1: GeneralInstance4Channel,
