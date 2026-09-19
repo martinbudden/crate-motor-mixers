@@ -1,8 +1,103 @@
-# `motor-mixers` Rust Crate ![license](https://img.shields.io/badge/license-MIT-green) [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) ![open source](https://badgen.net/badge/open/source/blue?icon=github)
+# `motor-mixers` Rust Crate<br>![License: MIT](https://img.shields.io/badge/license-MIT-green) [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) ![open source](https://badgen.net/badge/open/source/blue?icon=github)
 
-## WORK IN PROGRESS
+`motor-mixers` is a Rust crate that implements motor mixing and actuator driving for robotics and arial vehicles.
 
-**THIS CRATE IS A WORK IN PROGRESS AND NOT YET READY FOR USE.**
+**Motor mixing** is the mathematical process used in robotics, drones, and radio-controlled vehicles to translate high-level movement commands
+(such as desired throttle, roll, pitch, and yaw) into individual motor speeds or angles.
+
+**Actuator driving** is the subsequent hardware-abstraction step where the outputs from the mixer are serialized into specific electronic signals
+(like digital packets or timed pulses) and sent to a motor driver or Electronic Speed Controller (ESC).
+
+`motor-mixers` supports **PWM** (Pulse-Width Modulation) for DC motors and standard servos, as well as bidirectional **`Dshot`** for modern brushless ESCs.
+
+When using bidirectional `Dshot`, `motor-mixers` supports **dynamic idle control**.
+This feature protects against ESC desynchronization caused by "windmilling" during aggressive maneuvers,
+and increases braking authority by maintaining a minimum RPM floor.
+
+This crate is `no_std`, no alloc and Minimum Supported Rust Version (MSRV) is `Rust 1.89`.
+
+## Hardware supported
+
+`motor-mixers` targets embedded architectures and supports Raspberry Pi Pico, STM32, and ESP32 microcontrollers.
+
+> **⚠️ Note:** This crate is currently under active development.
+>
+> PWM and `Dshot` implementations are provisional, and `Dshot` is not yet supported on STM32 and ESP32 targets.
+
+## Mixes available
+
+In all configurations, motor numbering follows the **Betaflight** convention.
+
+All mixes feature built-in output saturation management and yaw-jump compensation.
+
+In the diagrams below:
+
+* **CW** = Clockwise
+* **CC** = Counter-Clockwise
+
+### Classic X-configuration quadcopter
+
+Motor rotation is "propellers out" (ie Betaflight "yaw reversed").
+
+```text
+       front
+ vCC^ 4     2 ^CWv
+       \   /
+        |X|
+       /   \
+ ^CWv 3     1 vCC^
+```
+
+### Tricopter (3 motors, 1 servo)
+
+```text
+    front
+  vCC^   ^CWv
+    3     2
+     \   /
+      |Y|
+       |
+       1
+      vCW^
+```
+
+### X-configuration hexacopter
+
+Motor rotation is "propellers out" (ie Betaflight "yaw reversed").
+
+```text
+        front
+  vCC^ 4     2 ^CWv
+        \   /
+^CWv 6---|*|---5 vCC^
+        /   \
+  vCC^ 3     1 ^CWv
+```
+
+### X-configuration octocopter
+
+Motor directions are the same as Betaflight.
+
+The mix can be configured as a standard X-octocopter, or can use a hybrid mode.
+
+In **hybrid mode** propulsion is split between four large lifting propellers and four small maneuvering propellers.
+
+This gives best of both worlds: high efficiency for hovering/cruising and crisp attitude control due to the lower rotational inertia
+of the smaller maneuvering props.
+
+* **Large props:** Motors 1–4
+* **Small props:** Motors 5–8
+
+```text
+       front
+ vCC^ 8     6 ^CWv
+ ^CWv 4     2 vCC^
+       \   /
+        |X|
+       /   \
+ vCC^ 3     1 ^CWv
+ ^CWv 7     5 vCC^
+```
 
 ## Original implementation
 
