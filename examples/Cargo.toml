@@ -18,10 +18,10 @@ default = []
 eight_motors = ["motor-mixers/eight_motors"]
 
 # stm32 motor timers
-motors_t8 = [ "motor-mixers/motors_t8"]
-motors_t4_t3 = [ "motor-mixers/motors_t4_t3"]
-motors_t3_t2 = [ "motor-mixers/motors_t3_t2"]
-
+motors_t3 = [ "motor-mixers/motors_t3" ]
+motors_t8 = [ "motor-mixers/motors_t8" ]
+motors_t3_t5 = [ "motor-mixers/motors_t3_t5" ]
+motors_t4_t3 = [ "motor-mixers/motors_t4_t3" ]
 rp = ["dep:embassy-rp"] # combined feature for all rp variants
 rp2040 = [
     "rp",

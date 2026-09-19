@@ -34,7 +34,12 @@ rustc_version = "0.4.1"
 #default = ["serde"]
 #default = ["serde", "eight_motors"]
 
+motors_t1 = []
 motors_t3 = []
+motors_t4 = []
+motors_t5 = []
+motors_t6 = []
+motors_t7 = []
 motors_t8 = []
 motors_t3_t5 = []
 motors_t4_t3 = []

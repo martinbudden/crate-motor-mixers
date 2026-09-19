@@ -8,8 +8,23 @@ use embassy_stm32::timer::{
 };
 
 // TODO: sort out MotorDriverPwmGeneral for stm32 variant
+#[cfg(feature = "motors_t1")]
+pub type MotorDriverPwm = MotorDriverPwmGeneral<embassy_stm32::peripherals::TIM1>;
+
 #[cfg(feature = "motors_t3")]
 pub type MotorDriverPwm = MotorDriverPwmGeneral<embassy_stm32::peripherals::TIM3>;
+
+#[cfg(feature = "motors_t4")]
+pub type MotorDriverPwm = MotorDriverPwmGeneral<embassy_stm32::peripherals::TIM4>;
+
+#[cfg(feature = "motors_t5")]
+pub type MotorDriverPwm = MotorDriverPwmGeneral<embassy_stm32::peripherals::TIM5>;
+
+#[cfg(feature = "motors_t6")]
+pub type MotorDriverPwm = MotorDriverPwmGeneral<embassy_stm32::peripherals::TIM6>;
+
+#[cfg(feature = "motors_t7")]
+pub type MotorDriverPwm = MotorDriverPwmGeneral<embassy_stm32::peripherals::TIM7>;
 
 #[cfg(feature = "motors_t8")]
 pub type MotorDriverPwm = MotorDriverPwmGeneral<embassy_stm32::peripherals::TIM8>;
@@ -78,7 +93,7 @@ where
     T1: GeneralInstance4Channel,
     T2: GeneralInstance4Channel,
 {
-    pub fn new2(pwm1: SimplePwm<'static, T1>, pwm2: SimplePwm<'static, T2>) -> Self {
+    pub fn new(pwm1: SimplePwm<'static, T1>, pwm2: SimplePwm<'static, T2>) -> Self {
         let channels1 = pwm1.split();
         let channels2 = pwm2.split();
 
