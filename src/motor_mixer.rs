@@ -1,7 +1,8 @@
 use core::ops::{Deref, DerefMut};
 
 use crate::{
-    MotorDriver, MotorMixerCommands, MotorMixerMessage, mixers::{
+    MotorDriver, MotorMixerCommands, MotorMixerMessage,
+    mixers::{
         MixerAirplane, MixerBicopter, MixerHexacopter, MixerOctocopter, MixerQuadcopter, MixerTricopter, MixerWing,
     },
 };
@@ -41,9 +42,8 @@ MotorDriverPwm     MotorDriverDshot
         └── PWM output
 */
 
-
 #[allow(missing_debug_implementations, missing_copy_implementations)]
-pub struct MotorMixerCommon {
+pub struct MotorMixer {
     driver: MotorDriver,
     pub outputs: MotorOutputs,
     pub output_filters: MotorOutputFilters,
@@ -62,7 +62,7 @@ pub struct MotorMixerCommon {
     motors_is_reversed: bool,
 }
 
-impl MotorMixerCommon {
+impl MotorMixer {
     /// Constructor.
     #[must_use]
     pub const fn new(mixer_config: MixerConfig, _motor_config: MotorConfig, driver: MotorDriver) -> Self {
@@ -115,7 +115,7 @@ impl MotorMixerCommon {
     }
 }
 
-impl MotorMixerCommon {
+impl MotorMixer {
     #[inline]
     #[must_use]
     pub fn output_denominator(&self) -> usize {
@@ -188,7 +188,7 @@ impl MotorMixerCommon {
     }
 }
 
-impl MotorMixerCommon {
+impl MotorMixer {
     pub fn mix(&mut self, commands: MotorMixerCommands) {
         self.set_throttle_command(commands.throttle);
 
@@ -239,7 +239,7 @@ impl MotorMixerCommon {
     }
 }
 
-impl MotorMixerCommon {
+impl MotorMixer {
     #[must_use]
     pub fn motor_frequencies(&self) -> Option<MotorFrequencies> {
         self.driver.motor_frequencies()
@@ -420,7 +420,7 @@ mod test_traits {
 
     #[test]
     fn normal_types() {
-        is_normal::<MotorMixerCommon>();
+        is_normal::<MotorMixer>();
         is_full::<MotorOutputs>();
         is_full::<DshotCommands>();
         is_full::<MotorFrequencies>();

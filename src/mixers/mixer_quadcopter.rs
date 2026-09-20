@@ -9,9 +9,7 @@
 //! checking for overshoot and undershoot, and corrections
 //! applied to avoid unwanted jumps.
 
-use crate::{
-    MotorMixerCommands, MotorOutputRange, mixer_common::MotorSaturation, mixer_config::YawCompensationStrategy,
-};
+use crate::{MotorMixerCommands, MotorOutputRange, MotorSaturation, YawCompensationStrategy};
 
 /// Classic X-configuration quadcopter.
 /// Includes overflow and yaw-jump compensation.
