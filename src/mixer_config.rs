@@ -35,11 +35,21 @@ impl MotorOutputRange {
     }
 }
 
-// parameters to mix function
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum YawCompensationStrategy {
+    /// Method 1: Dynamically reduces yaw rate to preserve throttle and attitude stabilization.
+    #[default]
+    YawReduction,
+    /// Method 2: Shifts the throttle baseline up or down to maximize requested yaw authority.
+    DynamicThrottleShift,
+}
+
+/// Parameters to mix function.
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 #[allow(missing_docs)]
 pub struct MotorMixerParameters {
+    pub strategy: YawCompensationStrategy,
     /// used by tricopter.
     pub max_servo_angle_radians: f32,
     /// possibly adjusted throttle value for recording by blackbox.
@@ -63,13 +73,20 @@ impl MotorMixerParameters {
     /// Constructor.
     #[must_use]
     pub const fn new() -> Self {
-        Self { max_servo_angle_radians: 0.0, throttle: 0.0, undershoot: 0.0, overshoot: 0.0 }
+        Self {
+            strategy: YawCompensationStrategy::YawReduction,
+            max_servo_angle_radians: 0.0,
+            throttle: 0.0,
+            undershoot: 0.0,
+            overshoot: 0.0,
+        }
     }
 }
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 #[allow(missing_docs)]
 pub struct OctoMixerParameters {
+    pub strategy: YawCompensationStrategy,
     pub throttle: f32,
     pub overshoot: f32,
     pub undershoot: f32,
@@ -101,6 +118,7 @@ impl OctoMixerParameters {
     #[must_use]
     pub const fn new() -> Self {
         Self {
+            strategy: YawCompensationStrategy::YawReduction,
             throttle: 0.0,
             undershoot: 0.0,
             overshoot: 0.0,
@@ -429,6 +447,7 @@ mod test_traits {
 
     #[test]
     fn normal_types() {
+        is_full::<YawCompensationStrategy>();
         is_full::<MotorMixerParameters>();
         is_full::<OctoMixerParameters>();
         is_full::<MixerConfig>();

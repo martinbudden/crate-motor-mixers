@@ -60,3 +60,5 @@ pub use motor_mixer::MotorMixer;
 pub use rpm_notch_filters::{RpmNotchFilterBank, RpmNotchFilterBankConfig, RpmNotchFilterFrequencies, RpmNotchFilters};
 
 pub use dynamic_idle_controller::{DynamicIdleController, DynamicIdleControllerConfig, RpmHz};
+#[cfg(test)]
+mod test_mixers;

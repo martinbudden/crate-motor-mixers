@@ -72,14 +72,12 @@ impl DynamicIdleControllerConfig {
 /// overcome the fixed output value. Many types of maneuver can generate this reverse torque.
 ///
 /// Instead we have a PID controller that increases output to the motors as the slowest motor nears the minimum allowed RPM.
-///
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct DynamicIdleController {
     task_interval_microseconds: u32,
     minimum_allowed_motor_hz: f32, // minimum motor Hz, dynamically controlled
     max_increase: f32,
-    // dynamic_idle_max_increase_delay_k :f32,
-    pid: PidControllerf32, // PID to dynamic idle, ie to ensure slowest motor does not go below min RPS
+    pid: PidControllerf32, // PID to ensure slowest motor does not go below min RPS
     dterm_filter: Pt1Filterf32,
     config: DynamicIdleControllerConfig,
 }
@@ -92,13 +90,13 @@ impl Default for DynamicIdleController {
 
 impl DynamicIdleController {
     /// Constructor.
-    fn new(task_interval_microseconds: u32) -> Self {
+    #[must_use]
+    pub fn new(task_interval_microseconds: u32) -> Self {
         Self {
             task_interval_microseconds,
             minimum_allowed_motor_hz: 0.0, // minimum motor Hz, dynamically controlled
             max_increase: 0.0,
-            // dynamic_idle_max_increase_delay_k :f32,
-            pid: PidControllerf32::default(), // PID to dynamic idle, ie to ensure slowest motor does not go below min RPS
+            pid: PidControllerf32::default(), // PID for dynamic idle, ie to ensure slowest motor does not go below min RPS
             dterm_filter: Pt1Filterf32::new(),
             config: DynamicIdleControllerConfig::new(),
         }
@@ -113,28 +111,31 @@ impl DynamicIdleController {
     pub fn set_config(&mut self, config: DynamicIdleControllerConfig) {
         self.config = config;
 
+        // Convert max increase multiplier from thousandths to fractional float bounds
         self.max_increase = f32::from(self.config.dyn_idle_max_increase) * 0.001;
 
+        // Convert RPM to Hz (RPS): RPM / 60
         self.minimum_allowed_motor_hz = f32::from(self.config.dyn_idle_min_rpm_d100) * 100.0 / 60.0;
         self.pid.set_setpoint(self.minimum_allowed_motor_hz);
 
         #[allow(clippy::cast_precision_loss)]
         let delta_t = self.task_interval_microseconds as f32 * 0.000_001;
 
-        // use Betaflight multiplier for compatibility with Betaflight Configurator
+        // Use Betaflight multipliers for compatibility with Betaflight Configurator
         let pid_gains = PidGainsf32 {
             kp: f32::from(self.config.dyn_idle_p_gain_x100) * 0.00015,
             ki: f32::from(self.config.dyn_idle_i_gain_x100) * 0.01 * delta_t,
-            kd: f32::from(self.config.dyn_idle_i_gain_x100) * 0.000_000_3 / delta_t,
+            kd: f32::from(self.config.dyn_idle_d_gain_x100) * 0.000_000_3 / delta_t,
             ks: 0.0,
             kk: 0.0,
         };
         self.pid.set_gains(pid_gains);
-        // limit Iterm to range [0, _max_increase]
+        // Limit Iterm to range [0, _max_increase] to prevent integral windup.
         self.pid.set_integral_max(self.max_increase);
         self.pid.set_integral_min(0.0);
 
-        self.dterm_filter.set_k(800.0 * delta_t / 20.0); //approx 20ms D delay, arbitrarily suits many motors
+        // PT1 low pass filter step response cutoff selection (approx 20ms delay alignment)
+        self.dterm_filter.set_k(800.0 * delta_t / 20.0);
     }
 
     #[inline]
@@ -149,23 +150,21 @@ impl DynamicIdleController {
         self.pid.set_setpoint(self.minimum_allowed_motor_hz);
     }
 
+    #[must_use]
     pub fn calculate_speed_increase(&mut self, slowest_motor_hz: f32, delta_t: f32) -> f32 {
-        if self.minimum_allowed_motor_hz == 0.0 {
-            // if motors are allowed to stop, then no speed increase is needed
+        // Fast-path bypass if idle control feature is disabled
+        if self.minimum_allowed_motor_hz <= 0.0 {
             return 0.0;
         }
 
+        // Derive the localized frequency delta derivative step
         let slowest_motor_hz_delta_filtered =
             self.dterm_filter.update(slowest_motor_hz - self.pid.previous_measurement());
+
+        // Calculate the raw PID loop response step adjustment
         let speed_increase = self.pid.update_delta(slowest_motor_hz, slowest_motor_hz_delta_filtered, delta_t);
 
-        /*if (debug.get_mode() == DEBUG_DYN_IDLE) {
-            const pid_error_t error = _pid.get_error();
-            debug.set(0, static_cast<int16_t>(std::max(-1000L, std::lroundf(error.p * 10000))));
-            debug.set(1, static_cast<int16_t>(std::lroundf(error.i * 10000)));
-            debug.set(2, static_cast<int16_t>(std::lroundf(error.d * 10000)));
-        }*/
-
+        // Clamp the final correction to avoid overloading physical motor headroom ranges
         speed_increase.clamp(0.0, self.max_increase)
     }
 }

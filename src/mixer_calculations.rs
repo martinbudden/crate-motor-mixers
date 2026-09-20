@@ -11,7 +11,7 @@
 
 #![allow(clippy::excessive_precision)]
 
-use crate::mixer_config::OctoMixerParameters;
+use crate::mixer_config::{OctoMixerParameters, YawCompensationStrategy};
 
 use super::{MotorMixerCommands, MotorMixerParameters, MotorOutputRange};
 #[allow(unused)]
@@ -90,6 +90,7 @@ pub fn mix_tricopter(
     params: &mut MotorMixerParameters,
 ) -> [f32; 4] {
     // NOTE: motor array indices are zero-based, whereas motor numbering in the diagram above is one-based.
+    const MOTOR_COUNT: usize = 3;
     const REAR: usize = 0;
     const FR: usize = 1;
     const FL: usize = 2;
@@ -113,36 +114,47 @@ pub fn mix_tricopter(
         (commands.throttle - FOUR_THIRDS * commands.pitch) / cos_tilt,
         commands.throttle - commands.roll + TWO_THIRDS * commands.pitch,
         commands.throttle + commands.roll + TWO_THIRDS * commands.pitch,
-        commands.yaw, // The fourth element maps straight to the tail servo tilt demand
+        commands.yaw, // Maps straight to the tail servo tilt
     ];
 
     // Check for Rear Motor Top-End Saturation (Overshoot).
     // Front motors are unlikely to overshoot since there are two of them and there is no yaw-related attenuation.
     if outputs[REAR] > range.max {
         params.overshoot = outputs[REAR] - range.max;
-
-        // Rear motor is saturated; reduce its output to range.max and reduce front motors similarly.
         outputs[REAR] = range.max;
-        outputs[FR] = (outputs[FR] - params.overshoot).max(range.min);
-        outputs[FL] = (outputs[FL] - params.overshoot).max(range.min);
     }
 
     // Check for Front Motor Bottom-End Saturation (Undershoot).
     let min_front = outputs[FL].min(outputs[FR]);
     if min_front < range.min {
-        // Express undershoot as an absolute positive error distance.
         params.undershoot = range.min - min_front;
-
-        // Push both front motors up by the error distance to preserve roll authority.
-        outputs[FR] = (outputs[FR] + params.undershoot).min(range.max);
-        outputs[FL] = (outputs[FL] + params.undershoot).min(range.max);
-
-        // Scale the rear motor upward similarly to balance the overall vertical thrust lifting vector.
-        outputs[REAR] = (outputs[REAR] + params.undershoot).min(range.max);
     }
 
-    // Final Safety Guard (Applies only to the three motor outputs)
-    for output in &mut outputs[0..3] {
+    // Centralized Saturated Thrust Compensation Block
+    if params.overshoot > 0.0 || params.undershoot > 0.0 {
+        match params.strategy {
+            YawCompensationStrategy::DynamicThrottleShift => {
+                // Adjust tracked virtual throttle baseline and apply raw deltas
+                params.throttle += params.undershoot - params.overshoot;
+
+                outputs[FR] = outputs[FR] - params.overshoot + params.undershoot;
+                outputs[FL] = outputs[FL] - params.overshoot + params.undershoot;
+                outputs[REAR] += params.undershoot;
+            }
+            YawCompensationStrategy::YawReduction => {
+                // Symmetrically damp the overshoot or undershoot impact using max violation bounds.
+                // This acts to prioritize attitude hold without modifying the internal throttle parameter.
+                let max_violation = params.overshoot.max(params.undershoot);
+
+                outputs[FR] -= max_violation;
+                outputs[FL] -= max_violation;
+                // Rear motor stays clamped at range.max/min to prioritize steady attitude tracking over total yaw rate
+            }
+        }
+    }
+
+    // Now clamp the three motor outputs.
+    for output in &mut outputs[0..MOTOR_COUNT] {
         *output = output.clamp(range.min, range.max);
     }
 
@@ -199,71 +211,58 @@ pub fn mix_quad_x(
         commands.throttle + commands.roll + commands.pitch,
     ];
 
-    // Check for overshoot caused by roll and pitch.
-    // If there is overshoot, we can just clamp the output, since this will just reduce the magnitude of the command
-    // without without affecting the other axes (because of the symmetry of the QuadX).
-    // Roll & Pitch Overflow Management
-    // Clamping here reduces attitude command magnitude without skewing axis symmetry.
+    // Roll & Pitch Overflow Management (Clamping preserves axis symmetry).
     for output in &mut outputs {
         *output = output.clamp(range.min, range.max);
     }
 
-    // Add initial yaw demands.
+    // Add initial raw yaw demands to the calculated baseline.
     outputs[BACK_RIGHT] += commands.yaw;
     outputs[FRONT_RIGHT] -= commands.yaw;
     outputs[BACK_LEFT] -= commands.yaw;
     outputs[FRONT_LEFT] += commands.yaw;
 
-    // Yaw Overflow/Undershoot Compensation.
-    // Now check if there is overshoot due to yaw.
-    // We cannot simply clamp the offending outputs, since this may cause result in a change in the overall
-    // vertical thrust (ie a "yaw jump").
-    // For example, if m1 and m2 have their undershoot clamped without a corresponding clamping of the m0 and m3
-    // then the overall vertical thrust will increase and the quadcopter will "jump" upwards.
-    // So instead of clamping individual motors, we reduce the magnitude of the yaw command.
+    // Calculate tracking constraints based on yaw stick direction.
     if commands.yaw > 0.0 {
-        // Find how far the falling motors went below range.min (convert to positive error distance).
-        params.undershoot = (range.min - outputs[1]).max(params.undershoot);
-        params.undershoot = (range.min - outputs[2]).max(params.undershoot);
+        params.undershoot = (range.min - outputs[FRONT_RIGHT]).max(params.undershoot);
+        params.undershoot = (range.min - outputs[BACK_LEFT]).max(params.undershoot);
 
-        // Find how far the rising motors went above range.max (positive error distance).
-        params.overshoot = (outputs[0] - range.max).max(params.overshoot);
-        params.overshoot = (outputs[3] - range.max).max(params.overshoot);
-
-        // If the total error doesn't completely wipe out the original yaw request.
-        if commands.yaw - params.undershoot - params.overshoot > 0.0 {
-            // Adjust the virtual throttle tracking parameter to reflect clipping state.
-            params.throttle += params.undershoot - params.overshoot;
-
-            // yaw_delta calculation: adjust both sides equally to pull them into range.
-            let yaw_delta = params.undershoot + params.overshoot;
-            outputs[BACK_RIGHT] -= yaw_delta;
-            outputs[FRONT_RIGHT] += yaw_delta;
-            outputs[BACK_LEFT] += yaw_delta;
-            outputs[FRONT_LEFT] -= yaw_delta;
-        }
+        params.overshoot = (outputs[BACK_RIGHT] - range.max).max(params.overshoot);
+        params.overshoot = (outputs[FRONT_LEFT] - range.max).max(params.overshoot);
     } else if commands.yaw < 0.0 {
-        // Find how far the falling motors went below range.min (positive error distance).
-        params.undershoot = (range.min - outputs[0]).max(params.undershoot);
-        params.undershoot = (range.min - outputs[3]).max(params.undershoot);
+        params.undershoot = (range.min - outputs[BACK_RIGHT]).max(params.undershoot);
+        params.undershoot = (range.min - outputs[FRONT_LEFT]).max(params.undershoot);
 
-        // Find how far the rising motors went above range.max (positive error distance).
-        params.overshoot = (outputs[1] - range.max).max(params.overshoot);
-        params.overshoot = (outputs[2] - range.max).max(params.overshoot);
+        params.overshoot = (outputs[FRONT_RIGHT] - range.max).max(params.overshoot);
+        params.overshoot = (outputs[BACK_LEFT] - range.max).max(params.overshoot);
+    }
 
-        if commands.yaw + params.undershoot + params.overshoot < 0.0 {
-            params.throttle += params.undershoot - params.overshoot;
+    // Apply unified compensation block if a boundary constraint was triggered.
+    if params.undershoot > 0.0 || params.overshoot > 0.0 {
+        let compensation = match params.strategy {
+            YawCompensationStrategy::DynamicThrottleShift => {
+                params.throttle += params.undershoot - params.overshoot;
+                params.undershoot + params.overshoot
+            }
+            YawCompensationStrategy::YawReduction => params.undershoot.max(params.overshoot),
+        };
 
-            let yaw_delta = params.undershoot + params.overshoot;
-            outputs[BACK_RIGHT] += yaw_delta;
-            outputs[FRONT_RIGHT] -= yaw_delta;
-            outputs[BACK_LEFT] -= yaw_delta;
-            outputs[FRONT_LEFT] += yaw_delta;
+        // This boolean mapping avoids pipeline-stalling branches and heavy FPU multiplications,
+        // allowing the compiler to use conditional register selection (like VMOVGE/VMOVLT).
+        if commands.yaw >= 0.0 {
+            outputs[BACK_RIGHT] -= compensation;
+            outputs[FRONT_RIGHT] += compensation;
+            outputs[BACK_LEFT] += compensation;
+            outputs[FRONT_LEFT] -= compensation;
+        } else {
+            outputs[BACK_RIGHT] += compensation;
+            outputs[FRONT_RIGHT] -= compensation;
+            outputs[BACK_LEFT] -= compensation;
+            outputs[FRONT_LEFT] += compensation;
         }
     }
 
-    // Final Safety Guard.
-    // Clamp to catch floating point truncation leaks.
+    // Final safety guard to catch floating-point truncation/rounding leaks.
     for output in &mut outputs {
         *output = output.clamp(range.min, range.max);
     }
@@ -350,17 +349,6 @@ pub fn mix_hex_x(commands: MotorMixerCommands, range: MotorOutputRange, params: 
         params.overshoot = (outputs[BACK_LEFT] - range.max).max(params.overshoot);
         params.overshoot = (outputs[FRONT_LEFT] - range.max).max(params.overshoot);
         params.overshoot = (outputs[CENTER_LEFT] - range.max).max(params.overshoot);
-
-        if commands.roll - params.undershoot - params.overshoot > 0.0 {
-            let roll_delta = params.undershoot + params.overshoot;
-            outputs[BACK_RIGHT] += SIN30 * roll_delta;
-            outputs[FRONT_RIGHT] += SIN30 * roll_delta;
-            outputs[BACK_LEFT] -= SIN30 * roll_delta;
-            outputs[FRONT_LEFT] -= SIN30 * roll_delta;
-            outputs[CENTER_RIGHT] += roll_delta;
-            outputs[CENTER_LEFT] -= roll_delta;
-            params.throttle += params.undershoot - params.overshoot;
-        }
     } else if commands.roll < 0.0 {
         // Rolling left means right motors go up (check max), left motors drop (check min).
         params.undershoot = (range.min - outputs[BACK_LEFT]).max(params.undershoot);
@@ -370,16 +358,27 @@ pub fn mix_hex_x(commands: MotorMixerCommands, range: MotorOutputRange, params: 
         params.overshoot = (outputs[BACK_RIGHT] - range.max).max(params.overshoot);
         params.overshoot = (outputs[FRONT_RIGHT] - range.max).max(params.overshoot);
         params.overshoot = (outputs[CENTER_RIGHT] - range.max).max(params.overshoot);
+    }
 
-        if commands.roll + params.undershoot + params.overshoot < 0.0 {
-            let roll_delta = params.undershoot + params.overshoot;
+    if params.undershoot > 0.0 || params.overshoot > 0.0 {
+        // Roll uses Method 2 style shifting inherently in the original codebase layout
+        let roll_delta = params.undershoot + params.overshoot;
+        params.throttle += params.undershoot - params.overshoot;
+
+        if commands.roll >= 0.0 {
+            outputs[BACK_RIGHT] += SIN30 * roll_delta;
+            outputs[FRONT_RIGHT] += SIN30 * roll_delta;
+            outputs[BACK_LEFT] -= SIN30 * roll_delta;
+            outputs[FRONT_LEFT] -= SIN30 * roll_delta;
+            outputs[CENTER_RIGHT] += roll_delta;
+            outputs[CENTER_LEFT] -= roll_delta;
+        } else {
             outputs[BACK_RIGHT] -= SIN30 * roll_delta;
             outputs[FRONT_RIGHT] -= SIN30 * roll_delta;
             outputs[BACK_LEFT] += SIN30 * roll_delta;
             outputs[FRONT_LEFT] += SIN30 * roll_delta;
             outputs[CENTER_RIGHT] -= roll_delta;
             outputs[CENTER_LEFT] += roll_delta;
-            params.throttle += params.undershoot - params.overshoot;
         }
     }
 
@@ -392,13 +391,12 @@ pub fn mix_hex_x(commands: MotorMixerCommands, range: MotorOutputRange, params: 
     outputs[CENTER_RIGHT] -= commands.yaw;
     outputs[CENTER_LEFT] += commands.yaw;
 
-    // Reset parameters tracking block for yaw compensation.
+    // Reset parameter tracking registers specifically for the Yaw calculation pass.
     params.overshoot = 0.0;
     params.undershoot = 0.0;
 
-    // Yaw Overflow/Undershoot Compensation.
+    // --- STAGE 2: Yaw Overflow/Undershoot Compensation ---
     if commands.yaw > 0.0 {
-        // CW yaw increases CCW motors (1, 3, 5) and drops CW motors (0, 2, 4).
         params.undershoot = (range.min - outputs[BACK_RIGHT]).max(params.undershoot);
         params.undershoot = (range.min - outputs[BACK_LEFT]).max(params.undershoot);
         params.undershoot = (range.min - outputs[CENTER_RIGHT]).max(params.undershoot);
@@ -406,19 +404,7 @@ pub fn mix_hex_x(commands: MotorMixerCommands, range: MotorOutputRange, params: 
         params.overshoot = (outputs[FRONT_RIGHT] - range.max).max(params.overshoot);
         params.overshoot = (outputs[FRONT_LEFT] - range.max).max(params.overshoot);
         params.overshoot = (outputs[CENTER_LEFT] - range.max).max(params.overshoot);
-
-        if commands.yaw - params.undershoot - params.overshoot > 0.0 {
-            let yaw_delta = params.undershoot + params.overshoot;
-            outputs[BACK_RIGHT] += yaw_delta;
-            outputs[FRONT_RIGHT] -= yaw_delta;
-            outputs[BACK_LEFT] += yaw_delta;
-            outputs[FRONT_LEFT] -= yaw_delta;
-            outputs[CENTER_RIGHT] += yaw_delta;
-            outputs[CENTER_LEFT] -= yaw_delta;
-            params.throttle += params.undershoot - params.overshoot;
-        }
     } else if commands.yaw < 0.0 {
-        // CCW yaw increases CW motors (0, 2, 4) and drops CCW motors (1, 3, 5).
         params.undershoot = (range.min - outputs[FRONT_RIGHT]).max(params.undershoot);
         params.undershoot = (range.min - outputs[FRONT_LEFT]).max(params.undershoot);
         params.undershoot = (range.min - outputs[CENTER_LEFT]).max(params.undershoot);
@@ -426,20 +412,35 @@ pub fn mix_hex_x(commands: MotorMixerCommands, range: MotorOutputRange, params: 
         params.overshoot = (outputs[BACK_RIGHT] - range.max).max(params.overshoot);
         params.overshoot = (outputs[BACK_LEFT] - range.max).max(params.overshoot);
         params.overshoot = (outputs[CENTER_RIGHT] - range.max).max(params.overshoot);
+    }
 
-        if commands.yaw + params.undershoot + params.overshoot < 0.0 {
-            let yaw_delta = params.undershoot + params.overshoot;
-            outputs[BACK_RIGHT] -= yaw_delta;
-            outputs[FRONT_RIGHT] += yaw_delta;
-            outputs[BACK_LEFT] -= yaw_delta;
-            outputs[FRONT_LEFT] += yaw_delta;
-            outputs[CENTER_RIGHT] -= yaw_delta;
-            outputs[CENTER_LEFT] += yaw_delta;
-            params.throttle += params.undershoot - params.overshoot;
+    if params.undershoot > 0.0 || params.overshoot > 0.0 {
+        let compensation = match params.strategy {
+            YawCompensationStrategy::DynamicThrottleShift => {
+                params.throttle += params.undershoot - params.overshoot;
+                params.undershoot + params.overshoot
+            }
+            YawCompensationStrategy::YawReduction => params.undershoot.max(params.overshoot),
+        };
+
+        if commands.yaw >= 0.0 {
+            outputs[BACK_RIGHT] += compensation;
+            outputs[FRONT_RIGHT] -= compensation;
+            outputs[BACK_LEFT] += compensation;
+            outputs[FRONT_LEFT] -= compensation;
+            outputs[CENTER_RIGHT] += compensation;
+            outputs[CENTER_LEFT] -= compensation;
+        } else {
+            outputs[BACK_RIGHT] -= compensation;
+            outputs[FRONT_RIGHT] += compensation;
+            outputs[BACK_LEFT] -= compensation;
+            outputs[FRONT_LEFT] += compensation;
+            outputs[CENTER_RIGHT] -= compensation;
+            outputs[CENTER_LEFT] += compensation;
         }
     }
 
-    // Final clamp to protect outputs from precision leaks.
+    // Final safety guard to catch precision/truncation leaks.
     for output in &mut outputs {
         *output = output.clamp(range.min, range.max);
     }
@@ -606,725 +607,4 @@ pub fn mix_octo_quad_x(
     }
 
     outputs
-}
-
-#[cfg(test)]
-mod tests {
-    #![allow(clippy::float_cmp)]
-    use approx::assert_abs_diff_eq;
-
-    use super::*;
-
-    #[test]
-    fn test_mixer_quad_x_roll() {
-        const EPSILON: f32 = 0.000_000_1;
-        let mut commands = MotorMixerCommands::default();
-        let range = MotorOutputRange::default();
-        let mut mix_params = MotorMixerParameters::default();
-
-        let mut outputs = mix_quad_x(commands, range, &mut mix_params);
-
-        assert_eq!(0.0, mix_params.undershoot);
-        assert_eq!(0.0, mix_params.overshoot);
-        assert_eq!(0.0, mix_params.throttle);
-        assert_eq!(0.0, outputs[0]);
-        assert_eq!(0.0, outputs[1]);
-        assert_eq!(0.0, outputs[2]);
-        assert_eq!(0.0, outputs[3]);
-
-        commands.throttle = 0.4;
-        commands.roll = 0.3;
-        outputs = mix_quad_x(commands, range, &mut mix_params);
-        assert_eq!(0.0, mix_params.undershoot);
-        assert_eq!(0.0, mix_params.overshoot);
-        assert_eq!(0.4, mix_params.throttle);
-        assert_abs_diff_eq!(0.1, outputs[0], epsilon = EPSILON); // throttle - commands.roll
-        assert_abs_diff_eq!(0.1, outputs[1], epsilon = EPSILON); // throttle - commands.roll
-        assert_abs_diff_eq!(0.7, outputs[2], epsilon = EPSILON); // throttle + commands.roll
-        assert_abs_diff_eq!(0.7, outputs[3], epsilon = EPSILON); // throttle + commands.roll
-
-        commands.throttle = 0.8;
-        commands.roll = 0.3;
-        outputs = mix_quad_x(commands, range, &mut mix_params);
-        assert_eq!(0.0, mix_params.undershoot);
-        assert_eq!(0.0, mix_params.overshoot);
-        assert_eq!(0.8, mix_params.throttle);
-        assert_eq!(0.5, outputs[0]); // throttle - commands.roll
-        assert_eq!(0.5, outputs[1]); // throttle - commands.roll
-        assert_eq!(1.0, outputs[2]); // throttle + commands.roll
-        assert_eq!(1.0, outputs[3]); // throttle + commands.roll
-
-        commands.throttle = 0.1;
-        commands.roll = 0.3;
-        outputs = mix_quad_x(commands, range, &mut mix_params);
-        assert_eq!(0.0, mix_params.undershoot);
-        assert_eq!(0.0, mix_params.overshoot);
-        assert_eq!(0.1, mix_params.throttle);
-        assert_eq!(0.0, outputs[0]); // throttle - commands.roll
-        assert_eq!(0.0, outputs[1]); // throttle - commands.roll
-        assert_eq!(0.4, outputs[2]); // throttle + commands.roll
-        assert_eq!(0.4, outputs[3]); // throttle + commands.roll
-    }
-    #[test]
-    fn test_mixer_quad_x_pitch() {
-        const EPSILON: f32 = 0.000_000_1;
-        let mut commands = MotorMixerCommands::default();
-        let range = MotorOutputRange::default();
-        let mut mix_params = MotorMixerParameters::default();
-
-        commands.throttle = 0.4;
-        commands.pitch = 0.3;
-        let mut outputs = mix_quad_x(commands, range, &mut mix_params);
-        assert_eq!(0.0, mix_params.undershoot);
-        assert_eq!(0.0, mix_params.overshoot);
-        assert_eq!(0.4, mix_params.throttle);
-        assert_abs_diff_eq!(0.1, outputs[0], epsilon = EPSILON); // throttle - commands.pitch
-        assert_abs_diff_eq!(0.7, outputs[1], epsilon = EPSILON); // throttle + commands.pitch
-        assert_abs_diff_eq!(0.1, outputs[2], epsilon = EPSILON); // throttle - commands.pitch
-        assert_abs_diff_eq!(0.7, outputs[3], epsilon = EPSILON); // throttle + commands.pitch
-
-        commands.throttle = 0.8;
-        commands.pitch = 0.3;
-        outputs = mix_quad_x(commands, range, &mut mix_params);
-        assert_eq!(0.0, mix_params.undershoot);
-        assert_eq!(0.0, mix_params.overshoot); // pitch overshoot is ignored
-        assert_eq!(0.8, mix_params.throttle);
-        assert_eq!(0.5, outputs[0]); // throttle - commands.pitch
-        assert_eq!(1.0, outputs[1]); // throttle + commands.pitch
-        assert_eq!(0.5, outputs[2]); // throttle - commands.pitch
-        assert_eq!(1.0, outputs[3]); // throttle + commands.pitch
-
-        commands.throttle = 0.1;
-        commands.pitch = 0.3;
-        outputs = mix_quad_x(commands, range, &mut mix_params);
-        assert_eq!(0.0, mix_params.undershoot);
-        assert_eq!(0.0, mix_params.overshoot); // pitch overshoot is ignored
-        assert_eq!(0.1, mix_params.throttle);
-        assert_eq!(0.0, outputs[0]); // throttle - commands.pitch
-        assert_eq!(0.4, outputs[1]); // throttle + commands.pitch
-        assert_eq!(0.0, outputs[2]); // throttle - commands.pitch
-        assert_eq!(0.4, outputs[3]); // throttle + commands.pitch
-    }
-    #[test]
-    fn test_mixer_quad_x_yaw() {
-        const EPSILON: f32 = 0.000_000_1;
-        let mut commands = MotorMixerCommands::default();
-        let mut range = MotorOutputRange::default();
-        let mut mix_params = MotorMixerParameters::default();
-
-        commands.throttle = 0.4;
-        commands.yaw = 0.3;
-        let mut outputs = mix_quad_x(commands, range, &mut mix_params);
-        assert_eq!(0.0, mix_params.undershoot);
-        assert_eq!(0.0, mix_params.overshoot);
-        assert_eq!(0.4, mix_params.throttle);
-        assert_abs_diff_eq!(0.7, outputs[0], epsilon = EPSILON); // throttle + commands.yaw
-        assert_abs_diff_eq!(0.1, outputs[1], epsilon = EPSILON); // throttle - commands.yaw
-        assert_abs_diff_eq!(0.1, outputs[2], epsilon = EPSILON); // throttle - commands.yaw
-        assert_abs_diff_eq!(0.7, outputs[3], epsilon = EPSILON); // throttle + commands.yaw
-
-        // this will give an undershoot of -0.1, so commands.yaw should be adjusted to 0.2
-        commands.throttle = 0.4;
-        commands.yaw = 0.3;
-        range.min = 0.2;
-        outputs = mix_quad_x(commands, range, &mut mix_params);
-        assert_abs_diff_eq!(0.1, mix_params.undershoot, epsilon = EPSILON);
-        assert_eq!(0.0, mix_params.overshoot);
-        assert_eq!(0.5, mix_params.throttle);
-        assert_eq!(0.6, outputs[0]); // throttle + commands.yaw
-        assert_eq!(0.2, outputs[1]); // throttle - commands.yaw
-        assert_eq!(0.2, outputs[2]); // throttle - commands.yaw
-        assert_eq!(0.6, outputs[3]); // throttle + commands.yaw
-
-        // this will give an undershoot of -0.1, so commands.yaw should be adjusted to -0.2
-        commands.throttle = 0.4;
-        commands.yaw = -0.3;
-        range.min = 0.2;
-        outputs = mix_quad_x(commands, range, &mut mix_params);
-        assert_abs_diff_eq!(0.1, mix_params.undershoot, epsilon = EPSILON);
-        assert_eq!(0.0, mix_params.overshoot);
-        assert_eq!(0.5, mix_params.throttle);
-        assert_eq!(0.2, outputs[0]); // throttle + commands.yaw
-        assert_eq!(0.6, outputs[1]); // throttle - commands.yaw
-        assert_eq!(0.6, outputs[2]); // throttle - commands.yaw
-        assert_eq!(0.2, outputs[3]); // throttle + commands.yaw
-
-        // this will give an overshoot of 0.1, so commands.yaw should be adjusted to 0.2
-        commands.throttle = 0.8;
-        commands.yaw = 0.3;
-        range.min = 0.0;
-        outputs = mix_quad_x(commands, range, &mut mix_params);
-        assert_eq!(0.0, mix_params.undershoot);
-        assert_abs_diff_eq!(0.1, mix_params.overshoot, epsilon = EPSILON);
-        assert_eq!(0.7, mix_params.throttle);
-        assert_eq!(1.0, outputs[0]); // throttle + commands.yaw
-        assert_eq!(0.6, outputs[1]); // throttle - commands.yaw
-        assert_eq!(0.6, outputs[2]); // throttle - commands.yaw
-        assert_eq!(1.0, outputs[3]); // throttle + commands.yaw
-
-        // this will give an overshoot of 0.1, so commands.yaw should be adjusted to -0.2
-        commands.throttle = 0.8;
-        commands.yaw = -0.3;
-        range.min = 0.0;
-        outputs = mix_quad_x(commands, range, &mut mix_params);
-        assert_eq!(0.0, mix_params.undershoot);
-        assert_abs_diff_eq!(0.1, mix_params.overshoot, epsilon = EPSILON);
-        assert_eq!(0.7, mix_params.throttle);
-        assert_eq!(0.6, outputs[0]); // throttle + commands.yaw
-        assert_eq!(1.0, outputs[1]); // throttle - commands.yaw
-        assert_eq!(1.0, outputs[2]); // throttle - commands.yaw
-        assert_eq!(0.6, outputs[3]); // throttle + commands.yaw
-    }
-    #[test]
-    fn test_mixer_tricopter() {
-        const REAR: usize = 0;
-        const FR: usize = 1;
-        const FL: usize = 2;
-        const S0: usize = 3;
-        const EPSILON: f32 = 0.000_000_1;
-        let mut commands = MotorMixerCommands::default();
-        let range = MotorOutputRange { min: 0.1, max: 1.0 };
-        let mut mix_params = MotorMixerParameters {
-            max_servo_angle_radians: 60.0f32.to_radians(),
-            throttle: 0.0,
-            undershoot: 0.0,
-            overshoot: 0.0,
-        };
-
-        commands.throttle = 0.4;
-        let outputs = mix_tricopter(commands, range, &mut mix_params);
-        assert_eq!(0.0, mix_params.undershoot);
-        assert_eq!(0.0, mix_params.overshoot);
-        assert_eq!(0.4, mix_params.throttle);
-        assert_eq!(0.4, outputs[FL]);
-        assert_eq!(0.4, outputs[FR]);
-        assert_eq!(0.4, outputs[REAR]);
-        assert_eq!(0.0, outputs[S0]);
-
-        commands.yaw = 0.3;
-        let outputs = mix_tricopter(commands, range, &mut mix_params);
-        assert_eq!(0.0, mix_params.undershoot);
-        assert_eq!(0.0, mix_params.overshoot);
-        assert_eq!(0.4, mix_params.throttle);
-        assert_eq!(0.4, outputs[FL]);
-        assert_eq!(0.4, outputs[FR]);
-        assert_eq!(0.420_584_89, outputs[REAR]);
-        assert_eq!(0.3, outputs[S0]);
-
-        commands.yaw = 1.0;
-        let outputs = mix_tricopter(commands, range, &mut mix_params);
-        assert_eq!(0.0, mix_params.undershoot);
-        assert_abs_diff_eq!(0.0, mix_params.overshoot, epsilon = EPSILON);
-        assert_eq!(0.4, mix_params.throttle);
-        assert_eq!(0.4, outputs[FL]);
-        assert_eq!(0.4, outputs[FR]);
-        assert_abs_diff_eq!(0.8, outputs[REAR], epsilon = EPSILON);
-        assert_eq!(1.0, outputs[S0]);
-    }
-}
-#[cfg(test)]
-mod quadcopter_tests {
-    #![allow(clippy::float_cmp)]
-    use super::*;
-
-    #[test]
-    fn test_nominal_hover() {
-        let commands = MotorMixerCommands { throttle: 0.5, roll: 0.0, pitch: 0.0, yaw: 0.0 };
-        let range = MotorOutputRange { min: 0.0, max: 1.0 };
-        let mut params = MotorMixerParameters::default();
-
-        let outputs = mix_quad_x(commands, range, &mut params);
-
-        // In a perfect hover, all motors should match throttle value
-        assert_eq!(outputs, [0.5, 0.5, 0.5, 0.5]);
-        assert_eq!(params.overshoot, 0.0);
-        assert_eq!(params.undershoot, 0.0);
-    }
-
-    #[test]
-    #[allow(clippy::float_cmp)]
-    fn test_pure_roll_symmetry() {
-        let commands = MotorMixerCommands {
-            throttle: 0.5,
-            roll: 0.2, // Roll right means left side goes up, right side goes down
-            pitch: 0.0,
-            yaw: 0.0,
-        };
-        let range = MotorOutputRange { min: 0.0, max: 1.0 };
-        let mut params = MotorMixerParameters::default();
-
-        let outputs = mix_quad_x(commands, range, &mut params);
-
-        // Check right motors (0 and 1) decreased, left motors (2 and 3) increased
-        assert_eq!(outputs[0], 0.3); // BACK_RIGHT: 0.5 - 0.2
-        assert_eq!(outputs[1], 0.3); // FRONT_RIGHT: 0.5 - 0.2
-        assert_eq!(outputs[2], 0.7); // BACK_LEFT: 0.5 + 0.2
-        assert_eq!(outputs[3], 0.7); // FRONT_LEFT: 0.5 + 0.2
-    }
-
-    #[test]
-    fn test_yaw_saturation_at_max_throttle() {
-        // Force the mixer into top-end saturation
-        let commands = MotorMixerCommands {
-            throttle: 1.0, // Already at maximum limits
-            roll: 0.0,
-            pitch: 0.0,
-            yaw: 0.2, // Demanding positive (CW) yaw
-        };
-        let range = MotorOutputRange { min: 0.0, max: 1.0 };
-        let mut params = MotorMixerParameters::default();
-
-        let outputs = mix_quad_x(commands, range, &mut params);
-
-        // Total vertical thrust verification to prove no yaw jump occurred:
-        // Sum of baseline motors before yaw saturation compensation would have overflowed.
-        // With your strategy, the total thrust must remain perfectly balanced.
-        //let total_thrust: f32 = outputs.iter().sum();
-
-        // At max throttle, total thrust cap should scale correctly without blowing past max array ceilings
-        assert!(outputs[0] <= 1.0);
-        assert!(outputs[1] <= 1.0);
-        assert!(outputs[2] <= 1.0);
-        assert!(outputs[3] <= 1.0);
-
-        // Ensure the mixer detected the overshoot threat and logged it
-        assert!(params.overshoot > 0.0, "Expected overshoot metrics to capture boundary collisions");
-    }
-
-    #[test]
-    fn test_yaw_saturation_at_min_throttle() {
-        // Force the mixer into bottom-end saturation
-        let commands = MotorMixerCommands {
-            throttle: 0.0, // At minimum limit
-            roll: 0.0,
-            pitch: 0.0,
-            yaw: -0.3, // Demanding negative (CCW) yaw
-        };
-        let range = MotorOutputRange { min: 0.0, max: 1.0 };
-        let mut params = MotorMixerParameters::default();
-
-        let outputs = mix_quad_x(commands, range, &mut params);
-
-        // Ensure no motor drops below the absolute minimum allowed range line
-        assert!(outputs[0] >= 0.0);
-        assert!(outputs[1] >= 0.0);
-        assert!(outputs[2] >= 0.0);
-        assert!(outputs[3] >= 0.0);
-
-        // Ensure the mixer detected and tracked the undershoot limit condition
-        assert!(params.undershoot > 0.0, "Expected undershoot parameters to catch floor collisions");
-    }
-
-    #[test]
-    fn test_extreme_combined_saturation() {
-        // Extreme scenario: Full throttle, full pitch up, full roll right, full yaw
-        let commands = MotorMixerCommands { throttle: 1.0, roll: 0.5, pitch: 0.5, yaw: 0.5 };
-        let range = MotorOutputRange { min: 0.0, max: 1.0 };
-        let mut params = MotorMixerParameters::default();
-
-        let outputs = mix_quad_x(commands, range, &mut params);
-
-        // Verify all outputs remain tightly constrained inside your hardware envelope
-        for (i, &output) in outputs.iter().enumerate() {
-            assert!(output >= range.min && output <= range.max, "Motor {i} broke boundaries with value {output}");
-        }
-    }
-}
-
-#[cfg(test)]
-mod tricopter_tests {
-    #![allow(clippy::float_cmp)]
-    use super::*;
-
-    #[test]
-    fn test_nominal_hover_no_yaw() {
-        let commands = MotorMixerCommands {
-            throttle: 0.6,
-            roll: 0.0,
-            pitch: 0.0,
-            yaw: 0.0, // Servo centered
-        };
-        let range = MotorOutputRange { min: 0.0, max: 1.0 };
-        let mut params = MotorMixerParameters {
-            throttle: 0.0,
-            overshoot: 0.0,
-            undershoot: 0.0,
-            max_servo_angle_radians: core::f32::consts::FRAC_PI_6, // 30 degrees max tilt
-        };
-
-        let outputs = mix_tricopter(commands, range, &mut params);
-
-        // When yaw is 0.0, cos(0) = 1.0 All motors should receive the baseline throttle
-        assert_eq!(outputs[0], 0.6); // REAR
-        assert_eq!(outputs[1], 0.6); // FR
-        assert_eq!(outputs[2], 0.6); // FL
-        assert_eq!(outputs[3], 0.0); // SERVO centered
-    }
-
-    #[test]
-    fn test_tilt_compensation_increases_rear_motor() {
-        let commands = MotorMixerCommands {
-            throttle: 0.6,
-            roll: 0.0,
-            pitch: 0.0,
-            yaw: 1.0, // Hard yaw command, maximizing servo tilt angle
-        };
-        let range = MotorOutputRange { min: 0.0, max: 1.0 };
-        let mut params = MotorMixerParameters {
-            throttle: 0.0,
-            overshoot: 0.0,
-            undershoot: 0.0,
-            max_servo_angle_radians: core::f32::consts::FRAC_PI_6, // 30 degrees max tilt
-        };
-
-        let outputs = mix_tricopter(commands, range, &mut params);
-
-        // Because the tail servo tilts, the rear motor loses vertical thrust component.
-        // The mixer must increase the rear motor's raw value (> 0.6) to compensate.
-        assert!(outputs[0] > 0.6, "Expected rear motor power ({}) to increase to compensate for tilt loss", outputs[0]);
-        assert_eq!(outputs[3], 1.0); // Servo channel correctly maps yaw command
-    }
-
-    #[test]
-    fn test_rear_motor_overshoot_saturation() {
-        let commands = MotorMixerCommands {
-            throttle: 0.9,
-            roll: 0.0,
-            pitch: -0.2, // Pitch down (stick forward) demands more rear motor output
-            yaw: 1.0,    // Tilt demands even more rear power
-        };
-        let range = MotorOutputRange { min: 0.0, max: 1.0 };
-        let mut params = MotorMixerParameters {
-            throttle: 0.0,
-            overshoot: 0.0,
-            undershoot: 0.0,
-            max_servo_angle_radians: core::f32::consts::FRAC_PI_6,
-        };
-
-        let outputs = mix_tricopter(commands, range, &mut params);
-
-        // Ensure the rear motor is safely clamped to the maximum allowed limit
-        assert_eq!(outputs[0], range.max);
-
-        // Ensure overshoot is caught and logged as a positive error distance
-        assert!(params.overshoot > 0.0);
-    }
-
-    #[test]
-    fn test_front_motor_undershoot_compensation() {
-        let commands = MotorMixerCommands {
-            throttle: 0.1, // Near the bottom floor
-            roll: 0.3,     // Sharp roll right drops Front Right significantly
-            pitch: 0.0,
-            yaw: 0.0,
-        };
-        let range = MotorOutputRange { min: 0.05, max: 1.0 }; // Hardware floor set to 0.05
-        let mut params = MotorMixerParameters {
-            throttle: 0.0,
-            overshoot: 0.0,
-            undershoot: 0.0,
-            max_servo_angle_radians: core::f32::consts::FRAC_PI_6,
-        };
-
-        let outputs = mix_tricopter(commands, range, &mut params);
-
-        // Verify that no ESC-driven motor outputs drop below the absolute hardware range floor
-        assert!(outputs[0] >= range.min);
-        assert!(outputs[1] >= range.min);
-        assert!(outputs[2] >= range.min);
-
-        // The system should detect that the front right motor threatened to clip the floor
-        assert!(params.undershoot > 0.0);
-    }
-}
-
-#[cfg(test)]
-mod hexacopter_tests {
-    #![allow(clippy::float_cmp)]
-    use super::*;
-
-    #[test]
-    fn test_nominal_hover() {
-        let commands = MotorMixerCommands { throttle: 0.5, roll: 0.0, pitch: 0.0, yaw: 0.0 };
-        let range = MotorOutputRange { min: 0.0, max: 1.0 };
-        let mut params = MotorMixerParameters::default();
-
-        let outputs = mix_hex_x(commands, range, &mut params);
-
-        // In a static hover with no inputs, all 6 motors must match throttle
-        assert_eq!(outputs, [0.5, 0.5, 0.5, 0.5, 0.5, 0.5]);
-        assert_eq!(params.overshoot, 0.0);
-        assert_eq!(params.undershoot, 0.0);
-    }
-
-    #[test]
-    fn test_pure_pitch_distribution() {
-        let commands = MotorMixerCommands {
-            throttle: 0.5,
-            roll: 0.0,
-            pitch: 0.2, // Pitch up (stick back) demands more front power, drops rear power
-            yaw: 0.0,
-        };
-        let range = MotorOutputRange { min: 0.0, max: 1.0 };
-        let mut params = MotorMixerParameters::default();
-
-        let outputs = mix_hex_x(commands, range, &mut params);
-
-        // SIN60 is 0.8660254. 0.2 * 0.8660254 = 0.17320508
-        // Rear motors (0 and 2) decrease by ~0.1732 -> ~0.3268
-        // Front motors (1 and 3) increase by ~0.1732 -> ~0.6732
-        // Center motors (4 and 5) must remain perfectly flat at 0.5
-        assert!((outputs[0] - 0.326_794_92).abs() < 1e-5);
-        assert!((outputs[1] - 0.673_205_08).abs() < 1e-5);
-        assert!((outputs[2] - 0.326_794_92).abs() < 1e-5);
-        assert!((outputs[3] - 0.673_205_08).abs() < 1e-5);
-        assert_eq!(outputs[4], 0.5);
-        assert_eq!(outputs[5], 0.5);
-    }
-
-    #[test]
-    fn test_roll_saturation_compensation() {
-        // Push the right side into complete top-end saturation
-        let commands = MotorMixerCommands {
-            throttle: 0.9,
-            roll: 0.3, // Roll right demands left side to spin up, right side to drop
-            pitch: 0.0,
-            yaw: 0.0,
-        };
-        let range = MotorOutputRange { min: 0.0, max: 1.0 };
-        let mut params = MotorMixerParameters::default();
-
-        let outputs = mix_hex_x(commands, range, &mut params);
-
-        // Verify no motor overflows the hardware ceiling
-        for (i, &output) in outputs.iter().enumerate() {
-            assert!(
-                output >= range.min && output <= range.max,
-                "Motor {i} broke boundaries under roll saturation: {output}"
-            );
-        }
-
-        // Fix: Because the code resets params.overshoot to 0.0 before the yaw block finishes,
-        // we instead verify that the throttle tracking value was scaled down to absorb the error.
-        assert!(
-            params.throttle < 0.9,
-            "Expected mixer to automatically reduce throttle (was {}) to prevent roll saturation",
-            params.throttle
-        );
-    }
-
-    #[test]
-    fn test_yaw_saturation_at_limits() {
-        // Force a bottom-end floor saturation using maximum yaw at high base throttle
-        let commands = MotorMixerCommands {
-            throttle: 0.9,
-            roll: 0.0,
-            pitch: 0.0,
-            yaw: 0.5, // Strong positive (CW) yaw -> CW motors drop, CCW motors rise
-        };
-        let range = MotorOutputRange { min: 0.0, max: 1.0 };
-        let mut params = MotorMixerParameters::default();
-
-        let outputs = mix_hex_x(commands, range, &mut params);
-
-        // Verify that the final safety guard successfully clamped everything inside bounds
-        for output in outputs {
-            assert!(output >= range.min && output <= range.max);
-        }
-
-        // Your advanced compensation logic should have populated under/overshoot distances
-        assert!(
-            params.overshoot > 0.0 || params.undershoot > 0.0,
-            "Expected yaw framework to capture boundary collisions"
-        );
-    }
-
-    #[test]
-    fn test_extreme_multi_axis_clipping() {
-        // Torture test: full throttle, full roll, full pitch, full yaw simultaneously
-        let commands = MotorMixerCommands { throttle: 1.0, roll: 0.5, pitch: 0.5, yaw: -0.5 };
-        let range = MotorOutputRange { min: 0.02, max: 0.98 }; // Dynamic tight boundaries
-        let mut params = MotorMixerParameters::default();
-
-        let outputs = mix_hex_x(commands, range, &mut params);
-
-        // Ensure all 6 motors stay perfectly inside the tight threshold box
-        for (i, &output) in outputs.iter().enumerate() {
-            assert!(output >= range.min, "Motor {i} went below floor: {output}");
-            assert!(output <= range.max, "Motor {i} blew past ceiling: {output}");
-        }
-    }
-}
-
-#[cfg(test)]
-mod hybrid_octo_tests {
-    use super::*;
-
-    #[test]
-    #[allow(clippy::float_cmp)]
-    fn test_nominal_hover() {
-        let commands = MotorMixerCommands { throttle: 0.6, roll: 0.0, pitch: 0.0, yaw: 0.0 };
-        let range = MotorOutputRange { min: 0.0, max: 1.0 };
-        let mut params = OctoMixerParameters {
-            throttle: 0.0,
-            overshoot: 0.0,
-            undershoot: 0.0,
-            large_prop_authority: 0.05,
-            small_prop_idle_throttle: 0.1,
-            small_prop_throttle_scale: 0.5,
-        };
-
-        let outputs = mix_octo_quad_x(commands, range, &mut params);
-
-        // Large props (0-3) should match the full master throttle request exactly
-        assert_eq!(outputs[0], 0.6);
-        assert_eq!(outputs[1], 0.6);
-        assert_eq!(outputs[2], 0.6);
-        assert_eq!(outputs[3], 0.6);
-
-        // Small props (4-7) should match the scaled base throttle + idle offset:
-        // (0.6 * 0.5) + 0.1 = 0.4
-        assert_eq!(outputs[4], 0.4);
-        assert_eq!(outputs[5], 0.4);
-        assert_eq!(outputs[6], 0.4);
-        assert_eq!(outputs[7], 0.4);
-    }
-
-    #[test]
-    fn test_asymmetric_attitude_authority() {
-        let commands = MotorMixerCommands {
-            throttle: 0.6,
-            roll: 0.2, // Sudden sharp roll command
-            pitch: 0.0,
-            yaw: 0.0,
-        };
-        let range = MotorOutputRange { min: 0.0, max: 1.0 };
-        let mut params = OctoMixerParameters {
-            throttle: 0.0,
-            overshoot: 0.0,
-            undershoot: 0.0,
-            large_prop_authority: 0.05, // Only 5% bleed into large props
-            small_prop_idle_throttle: 0.1,
-            small_prop_throttle_scale: 0.5,
-        };
-
-        let outputs = mix_octo_quad_x(commands, range, &mut params);
-
-        // Verify Large props barely reacted (0.05 * 0.2 = 0.01 change)
-        // Right side (0, 1) drops from 0.6 to 0.59. Left side (2, 3) rises to 0.61.
-        assert!((outputs[0] - 0.59).abs() < 1e-5);
-        assert!((outputs[1] - 0.59).abs() < 1e-5);
-        assert!((outputs[2] - 0.61).abs() < 1e-5);
-        assert!((outputs[3] - 0.61).abs() < 1e-5);
-
-        // Verify Small props reacted with 100% authority (1.0 * 0.2 = 0.20 change)
-        // Right side baseline was 0.4 -> drops to 0.2. Left side baseline was 0.4 -> rises to 0.6.
-        assert!((outputs[4] - 0.2).abs() < 1e-5);
-        assert!((outputs[5] - 0.2).abs() < 1e-5);
-        assert!((outputs[6] - 0.6).abs() < 1e-5);
-        assert!((outputs[7] - 0.6).abs() < 1e-5);
-    }
-
-    #[test]
-    #[allow(clippy::float_cmp)]
-    fn test_small_prop_idle_gate_protection() {
-        // Force an extreme roll response that would normally force a motor to zero or stop
-        let commands = MotorMixerCommands {
-            throttle: 0.1, // Near zero throttle
-            roll: 0.4,     // Heavy roll right command
-            pitch: 0.0,
-            yaw: 0.0,
-        };
-        // Set hardware minimum safety floor to 0.05
-        let range = MotorOutputRange { min: 0.05, max: 1.0 };
-        let mut params = OctoMixerParameters {
-            throttle: 0.0,
-            overshoot: 0.0,
-            undershoot: 0.0,
-            large_prop_authority: 0.0,      // Large props locked entirely out of maneuvering
-            small_prop_idle_throttle: 0.15, // High reactive idle padding
-            small_prop_throttle_scale: 0.5,
-        };
-
-        let outputs = mix_octo_quad_x(commands, range, &mut params);
-
-        // Small right props baseline: (0.1 * 0.5) + 0.15 = 0.20
-        // Roll right subtracts 0.4 -> 0.20 - 0.40 = -0.20
-        // The hard clamp inside the mixer must catch this and keep it securely locked to the floor
-        assert_eq!(outputs[4], range.min);
-        assert_eq!(outputs[5], range.min);
-    }
-
-    #[test]
-    fn test_yaw_saturation_on_maneuvering_props() {
-        // Push the active small motors into saturation boundaries
-        let commands = MotorMixerCommands {
-            throttle: 0.9,
-            roll: 0.0,
-            pitch: 0.0,
-            yaw: 0.5, // Demanding clockwise yaw
-        };
-        let range = MotorOutputRange { min: 0.0, max: 1.0 };
-        let mut params = OctoMixerParameters {
-            throttle: 0.0,
-            overshoot: 0.0,
-            undershoot: 0.0,
-            large_prop_authority: 0.0,
-            small_prop_idle_throttle: 0.1,
-            small_prop_throttle_scale: 0.5,
-        };
-
-        let outputs = mix_octo_quad_x(commands, range, &mut params);
-
-        // Verify every single one of the 8 output channels was successfully constrained within limits
-        for output in outputs {
-            assert!(output >= range.min && output <= range.max);
-        }
-
-        // The mixer should detect that the small maneuvering motors hit clipping thresholds
-        assert!(
-            params.overshoot > 0.0 || params.undershoot > 0.0,
-            "Expected saturation limits to capture boundary collisions"
-        );
-    }
-}
-
-#[test]
-#[allow(clippy::similar_names)]
-#[allow(clippy::float_cmp)]
-fn test_standard_octocopter_fallback_behavior() {
-    let commands = MotorMixerCommands { throttle: 0.6, roll: 0.1, pitch: 0.1, yaw: 0.0 };
-    let range = MotorOutputRange { min: 0.0, max: 1.0 };
-
-    // Configure parameters to make the hybrid framework behave exactly
-    // like a standard, uniform octocopter.
-    let mut params = OctoMixerParameters {
-        throttle: 0.0,
-        overshoot: 0.0,
-        undershoot: 0.0,
-        large_prop_authority: 1.0,
-        small_prop_throttle_scale: 1.0, // Set to 1.0 to match large props
-        small_prop_idle_throttle: 0.0,
-    };
-
-    let outputs = mix_octo_quad_x(commands, range, &mut params);
-
-    // Calculate expected outputs for the Large Prop group (0-3)
-    let expected_large_br = 0.6 - (0.1 + 0.1); // 0.4
-    let expected_large_fr = 0.6 - (0.1 - 0.1); // 0.6
-    let expected_large_bl = 0.6 + (0.1 - 0.1); // 0.6
-    let expected_large_fl = 0.6 + (0.1 + 0.1); // 0.8
-
-    assert!((outputs[0] - expected_large_br).abs() < 1e-5);
-    assert!((outputs[1] - expected_large_fr).abs() < 1e-5);
-    assert!((outputs[2] - expected_large_bl).abs() < 1e-5);
-    assert!((outputs[3] - expected_large_fl).abs() < 1e-5);
-
-    // Calculate expected outputs for the Small Prop group (4-7)
-    // With small_prop_throttle_scale = 1.0, the small props must output
-    // the EXACT same values as their corresponding large prop counterparts.
-    assert_eq!(outputs[4], outputs[0]); // Small BR == Large BR
-    assert_eq!(outputs[5], outputs[1]); // Small FR == Large FR
-    assert_eq!(outputs[6], outputs[2]); // Small BL == Large BL
-    assert_eq!(outputs[7], outputs[3]); // Small FL == Large FL
 }
