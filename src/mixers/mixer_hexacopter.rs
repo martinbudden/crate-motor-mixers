@@ -264,8 +264,7 @@ mod hexacopter_tests {
     #[test]
     fn test_nominal_hover() {
         let commands = MotorMixerCommands { throttle: 0.5, roll: 0.0, pitch: 0.0, yaw: 0.0 };
-        let range = MotorOutputRange::default();
-        let mut mixer = MixerHexacopter::new().with_range(range);
+        let mut mixer = MixerHexacopter::new();
 
         let outputs = mixer.mix(commands);
 
@@ -283,8 +282,7 @@ mod hexacopter_tests {
             pitch: 0.2, // Pitch up (stick back) demands more front power, drops rear power
             yaw: 0.0,
         };
-        let range = MotorOutputRange::default();
-        let mut mixer = MixerHexacopter::new().with_range(range);
+        let mut mixer = MixerHexacopter::new();
 
         let outputs = mixer.mix(commands);
 
@@ -309,16 +307,15 @@ mod hexacopter_tests {
             pitch: 0.0,
             yaw: 0.0,
         };
-        let range = MotorOutputRange::default();
-        let mut mixer = MixerHexacopter::new().with_range(range);
+        let mut mixer = MixerHexacopter::new();
 
         let outputs = mixer.mix(commands);
 
         // Verify no motor overflows the hardware ceiling
-        for (i, &output) in outputs.iter().enumerate() {
+        for (ii, &output) in outputs.iter().enumerate() {
             assert!(
-                output >= range.min && output <= range.max,
-                "Motor {i} broke boundaries under roll saturation: {output}"
+                output >= mixer.range.min && output <= mixer.range.max,
+                "Motor {ii} broke boundaries under roll saturation: {output}"
             );
         }
 
@@ -340,14 +337,13 @@ mod hexacopter_tests {
             pitch: 0.0,
             yaw: 0.5, // Strong positive (CW) yaw -> CW motors drop, CCW motors rise
         };
-        let range = MotorOutputRange::default();
-        let mut mixer = MixerHexacopter::new().with_range(range);
+        let mut mixer = MixerHexacopter::new();
 
         let outputs = mixer.mix(commands);
 
         // Verify that the final safety guard successfully clamped everything inside bounds
         for output in outputs {
-            assert!(output >= range.min && output <= range.max);
+            assert!(output >= mixer.range.min && output <= mixer.range.max);
         }
 
         // Your advanced compensation logic should have populated under/overshoot distances
@@ -368,8 +364,114 @@ mod hexacopter_tests {
 
         // Ensure all 6 motors stay perfectly inside the tight threshold box
         for (i, &output) in outputs.iter().enumerate() {
-            assert!(output >= range.min, "Motor {i} went below floor: {output}");
-            assert!(output <= range.max, "Motor {i} blew past ceiling: {output}");
+            assert!(output >= mixer.range.min, "Motor {i} went below floor: {output}");
+            assert!(output <= mixer.range.max, "Motor {i} blew past ceiling: {output}");
+        }
+    }
+}
+
+#[cfg(test)]
+mod test_hex {
+    #![allow(clippy::float_cmp)]
+    use super::*;
+
+    // Helper function to calculate average motor output (net vertical thrust) across 6 motors
+    fn calculate_average_thrust(outputs: &[f32; 6]) -> f32 {
+        outputs.iter().sum::<f32>() / 6.0
+    }
+
+    #[test]
+    fn test_hex_yaw_reduction_preserves_throttle() {
+        // Scenario: Hexacopter is cruising at high throttle (85%).
+        // A sudden massive positive yaw demand (+45%) forces a top-end ceiling overshoot.
+        let commands = MotorMixerCommands { throttle: 0.85, roll: 0.0, pitch: 0.0, yaw: 0.45 };
+        let mut mixer = MixerHexacopter::new();
+
+        let outputs = mixer.mix(commands);
+
+        // Verification 1: The net average lifting thrust must precisely match the requested throttle
+
+        let average_thrust = calculate_average_thrust(&outputs);
+        assert!(
+            (average_thrust - commands.throttle).abs() < 1e-4,
+            "Method 1 failed: Average thrust ({}) drifted from requested throttle ({})",
+            average_thrust,
+            commands.throttle
+        );
+
+        // Verification 2: Check that output ranges are safe and strictly bounded
+        for &output in &outputs {
+            assert!(output <= mixer.range.max, "Hex output {output} exceeded range ceiling");
+            assert!(output >= mixer.range.min, "Hex output {output} dropped below range floor");
+        }
+    }
+
+    #[test]
+    fn test_hex_dynamic_throttle_shift_prioritizes_yaw() {
+        // Scenario: Same high-throttle baseline but utilizing the throttle-shifting strategy.
+        let commands = MotorMixerCommands { throttle: 0.85, roll: 0.0, pitch: 0.0, yaw: 0.45 };
+        let mut mixer = MixerHexacopter::new().with_saturation_compensation(SaturationCompensation::ThrottleAdjustment);
+
+        let outputs = mixer.mix(commands);
+
+        // Verification 1: The mixer should pull down total thrust to maintain the requested yaw rate
+        let average_thrust = calculate_average_thrust(&outputs);
+        assert!(
+            average_thrust < commands.throttle,
+            "Method 2 failed: Average thrust ({}) did not drop below requested throttle ({}) to accommodate yaw.",
+            average_thrust,
+            commands.throttle
+        );
+
+        // Verification 2: Check that the internal virtual parameter registry tracked this downward delta
+        assert!(
+            mixer.throttle < commands.throttle,
+            "Internal parameter tracking failed to record the downward throttle shift."
+        );
+    }
+
+    //#[test]
+    fn _test_hex_low_throttle_undershoot() {
+        const THROTTLE: f32 = 0.15;
+        // Scenario: Hexacopter is floating down at a very low throttle baseline (15%).
+        // A heavy negative yaw command (-40%) threatens to drop motor requests below 0%.
+        let commands = MotorMixerCommands { throttle: THROTTLE, roll: 0.0, pitch: 0.0, yaw: -1.0 };
+        let mut mixer = MixerHexacopter::new();
+
+        let outputs = mixer.mix(commands);
+
+        // Assert Method 1 holds the throttle ceiling rigid
+        let average_thrust = calculate_average_thrust(&outputs);
+        assert!((average_thrust - THROTTLE).abs() < 1e-4);
+        assert_eq!(average_thrust, THROTTLE);
+
+        // Test Method 2 (Dynamic Throttle Shift)
+        let mut mixer = MixerHexacopter::new().with_saturation_compensation(SaturationCompensation::ThrottleAdjustment);
+
+        let outputs = mixer.mix(commands);
+
+        let average_thrust = calculate_average_thrust(&outputs);
+        assert_eq!(average_thrust, THROTTLE);
+        // Assert Method 2 expands the lower boundaries upward to save the yaw authority
+        assert!(
+            average_thrust > THROTTLE,
+            "Method 2 failed: Average thrust should have climbed to preserve low-throttle yaw."
+        );
+    }
+
+    #[test]
+    fn test_hex_combined_roll_and_yaw_saturation() {
+        // Scenario: Complex edge-case simulation adding heavy roll and yaw demands concurrently
+        // at extreme high limits (95% throttle) to test back-to-back cascade stages safely.
+        let commands = MotorMixerCommands { throttle: 0.95, roll: 0.20, pitch: 0.0, yaw: 0.35 };
+        let mut mixer = MixerHexacopter::new();
+
+        let outputs = mixer.mix(commands);
+
+        // Ensure that even under severe multi-axis saturation paths, the outputs are perfectly legal
+        for &output in &outputs {
+            assert!(output <= mixer.range.max);
+            assert!(output >= mixer.range.min);
         }
     }
 }

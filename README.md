@@ -2,19 +2,30 @@
 
 `motor-mixers` is a Rust crate that implements motor mixing and actuator driving for robotics and arial vehicles.
 
-**Motor mixing** is the mathematical process used in robotics, drones, and radio-controlled vehicles to translate high-level movement commands
-(such as desired throttle, roll, pitch, and yaw) into individual motor speeds or angles.
+**Motor mixing** is the process used to translate movement commands (ie throttle, roll, pitch, and yaw)
+into individual motor speeds and/or servo angles.
 
-**Actuator driving** is the subsequent hardware-abstraction step where the outputs from the mixer are serialized into specific electronic signals
-(like digital packets or timed pulses) and sent to a motor driver or Electronic Speed Controller (ESC).
+**Actuator driving** is the subsequent step where the outputs from the mixer are serialized into specific electronic signals
+(like digital packets or timed pulses) and sent to a motor driver or an Electronic Speed Controller (ESC).
 
-`motor-mixers` supports **PWM** (Pulse-Width Modulation) for DC motors and standard servos, as well as bidirectional **`Dshot`** for modern brushless ESCs.
+`motor-mixers` supports **PWM** (Pulse-Width Modulation), for DC motors and servos, and **bidirectional Dshot** for ESCs.
 
-When using bidirectional `Dshot`, `motor-mixers` supports **dynamic idle control**.
+This crate is `no_std`, `no alloc`, and the Minimum Supported Rust Version (MSRV) is `Rust 1.89`.
+
+## Dynamic Idle Control
+
+When using **bidirectional Dshot**, `motor-mixers` supports **dynamic idle control**.
+
 This feature protects against ESC desynchronization caused by "windmilling" during aggressive maneuvers,
 and increases braking authority by maintaining a minimum RPM floor.
 
-This crate is `no_std`, no alloc and Minimum Supported Rust Version (MSRV) is `Rust 1.89`.
+## Motor Saturation, Yaw Jumps and Yaw Washouts
+
+* Yaw Jump this is when, at high throttle, an aggressive yaw manoeuver can cause a multirotor to unexpectedly balloon upwards (or jump).
+
+* Yaw washout is when, at high throttle, an aggressive roll or pitch manoeuver can result in an uncommanded spin.
+
+`motor-mixers` has settings to deal with both these occurrences.
 
 ## Hardware supported
 

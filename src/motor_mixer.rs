@@ -248,7 +248,7 @@ impl MotorMixer {
     /// Calculate and output motor mix.
     /// It is typically called at frequency of between 500Hz and 1000Hz.
     pub async fn output_to_motors(&mut self, commands_dps: MotorMixerMessage) {
-        const MIXER_OUTPUT_SCALE_FACTOR: f32 = 1000.0;
+        const DPS_TO_SIGNED_UNIT_INTERVAL: f32 = 0.001;
 
         // ALWAYS write 0.0 to the motors if they are not switched on, as a safety precaution
         if !self.motors_is_on() || !self.motors_is_armed() {
@@ -256,14 +256,16 @@ impl MotorMixer {
             self.driver.write_to_motors(self.outputs).await;
             return;
         }
+
         let commands = MotorMixerCommands {
             throttle: commands_dps.throttle,
-            // scale roll, pitch, and yaw from DPS range to [-1.0F, 1.0F]
-            roll: commands_dps.roll_dps * MIXER_OUTPUT_SCALE_FACTOR,
-            pitch: commands_dps.pitch_dps * MIXER_OUTPUT_SCALE_FACTOR,
-            yaw: commands_dps.yaw_dps * MIXER_OUTPUT_SCALE_FACTOR,
+            // scale roll, pitch, and yaw from DPS to the signed unit interval, [-1.0, 1.0].
+            roll: commands_dps.roll_dps * DPS_TO_SIGNED_UNIT_INTERVAL,
+            pitch: commands_dps.pitch_dps * DPS_TO_SIGNED_UNIT_INTERVAL,
+            yaw: commands_dps.yaw_dps * DPS_TO_SIGNED_UNIT_INTERVAL,
         };
         self.mix(commands);
+
         self.driver.write_to_motors(self.outputs).await;
     }
 }

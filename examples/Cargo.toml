@@ -1,6 +1,5 @@
 [package]
 name = "motor-mixers-examples"
-version = "0.1.0"
 edition = "2024"
 rust-version = "1.89"
 authors = ["Martin Budden"]
@@ -110,8 +109,3 @@ path = "src/motor_driver_rp_quad_pwm.rs"
 [[bin]]
 name = "motor_mixer_rp"
 path = "src/motor_mixer_rp.rs"
-
-[profile.release]
-debug = 2
-lto = false
-opt-level = 2
