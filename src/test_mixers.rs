@@ -3,108 +3,10 @@
 use crate::{
     {MotorMixerCommands, MotorMixerParameters, MotorOutputRange},
     {
-        mix_hex_x, mix_octo_quad_x, mix_quad_x, mix_tricopter,
+        mix_hex_x, mix_octo_quad_x, mix_quad_x,
         mixer_config::{OctoMixerParameters, YawCompensationStrategy},
     },
 };
-
-#[cfg(test)]
-mod tricopter_tests2 {
-    use super::*;
-
-    /*  impl Default for MotorMixerParameters {
-        fn default() -> Self {
-            Self {
-                throttle: 0.0,
-                overshoot: 0.0,
-                undershoot: 0.0,
-                max_servo_angle_radians: 40.0f32.to_radians(), // Default 40 degree tilt authority
-            }
-        }
-    }*/
-
-    #[test]
-    fn test_tricopter_servo_mapping() {
-        let commands = MotorMixerCommands {
-            throttle: 50.0,
-            roll: 0.0,
-            pitch: 0.0,
-            yaw: 0.5, // 50% right yaw stick
-        };
-        let range = MotorOutputRange { min: 0.0, max: 1.0 };
-        let mut params = MotorMixerParameters {
-            strategy: YawCompensationStrategy::YawReduction,
-            max_servo_angle_radians: 60.0f32.to_radians(),
-            ..Default::default()
-        };
-
-        let outputs = mix_tricopter(commands, range, &mut params);
-
-        // Verification: The 4th array position (index 3) must map completely untouched to the tail servo
-        assert_eq!(outputs[3], commands.yaw, "Servo channel failed to pass through raw yaw stick input.");
-    }
-
-    #[test]
-    fn test_tricopter_rear_overshoot_under_yaw_tilt() {
-        // Scenario: Operating at very high throttle (95%). A heavy yaw stick command is input.
-        // As the tail motor tilts, the cosine compensation calculation multiplies the requested
-        // rear motor load upward, forcing it past the maximum boundary limit.
-        let commands = MotorMixerCommands { throttle: 0.95, roll: 0.0, pitch: 0.0, yaw: 0.4 };
-        let range = MotorOutputRange::default();
-
-        // Test Method 1 (Yaw Reduction)
-        let mut params = MotorMixerParameters {
-            strategy: YawCompensationStrategy::YawReduction,
-            max_servo_angle_radians: 60.0f32.to_radians(),
-            ..Default::default()
-        };
-        let outputs = mix_tricopter(commands, range, &mut params);
-
-        // Assert rear motor is safely bound to max limits
-        assert!(outputs[0] <= range.max);
-
-        // Test Method 2 (Dynamic Throttle Shift)
-        let mut params = MotorMixerParameters {
-            strategy: YawCompensationStrategy::DynamicThrottleShift,
-            max_servo_angle_radians: 60.0f32.to_radians(),
-            ..Default::default()
-        };
-        let outputs = mix_tricopter(commands, range, &mut params);
-
-        // Method 2 will pull down front motor commands to offset the lifting discrepancy
-        let average = (outputs[0] + outputs[1] + outputs[2]) / 3.0;
-        assert_eq!(outputs[0], 1.0);
-        assert!((outputs[1] - 0.91).abs() < 1e-4);
-        assert!((outputs[2] - 0.91).abs() < 1e-4);
-        assert!(
-            average < commands.throttle,
-            "Method 2 failed: Did not shift overall engine baseline downward during tail tilt overflow."
-        );
-    }
-
-    #[test]
-    fn test_tricopter_low_throttle_front_undershoot() {
-        // Scenario: Floating descending at 10% throttle, with strong pitch inputs pushing
-        // front motor configurations past the range floor limits.
-        let commands = MotorMixerCommands {
-            throttle: 10.0,
-            roll: 0.0,
-            pitch: -300.0, // Aggressive forward pitch
-            yaw: 0.0,
-        };
-        let range = MotorOutputRange::default();
-
-        let mut params =
-            MotorMixerParameters { strategy: YawCompensationStrategy::DynamicThrottleShift, ..Default::default() };
-        let outputs = mix_tricopter(commands, range, &mut params);
-
-        // Assert all physical motor tracks are perfectly legally constrained inside the FPU
-        for &output in &outputs[0..3] {
-            assert!(output >= range.min, "Tricopter motor dropped below structural range floor");
-            assert!(output <= range.max, "Tricopter motor exceeded range ceiling");
-        }
-    }
-}
 
 
 #[cfg(test)]

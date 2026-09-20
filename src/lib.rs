@@ -21,6 +21,7 @@
 
 mod drivers;
 pub mod dshot_rp;
+mod mixers;
 
 mod dynamic_idle_controller;
 
@@ -28,7 +29,6 @@ mod mixer_commands;
 
 mod motor_driver;
 
-mod mixer_calculations;
 mod mixer_common;
 mod mixer_config;
 mod motor_mixer;
@@ -39,17 +39,13 @@ mod rpm_notch_filters_state_machine;
 pub use mixer_commands::{MotorMixerCommands, MotorMixerMessage};
 
 pub use mixer_config::{
-    MixerConfig, MixerType, MotorConfig, MotorDeviceConfig, MotorMixerParameters, MotorOutputRange, MotorProtocol,
-    ProtocolFamily, ServoConfig, ServoDeviceConfig,
+    MixerConfig, MixerType, MotorConfig, MotorDeviceConfig, MotorOutputRange, MotorProtocol, ProtocolFamily,
+    ServoConfig, ServoDeviceConfig,
 };
 
 pub use motor_driver::MotorDriver;
 
 pub use drivers::{MotorDriverDshot, MotorDriverPwm};
-
-pub use mixer_calculations::{
-    mix_airplane, mix_bicopter, mix_hex_x, mix_octo_quad_x, mix_quad_x, mix_tricopter, mix_wing,
-};
 
 pub use mixer_common::{
     DshotCommands, MAX_SUPPORTED_MOTOR_COUNT, MotorFrequencies, MotorMixerCommon, MotorOutputFilters, MotorOutputs,
@@ -60,5 +56,3 @@ pub use motor_mixer::MotorMixer;
 pub use rpm_notch_filters::{RpmNotchFilterBank, RpmNotchFilterBankConfig, RpmNotchFilterFrequencies, RpmNotchFilters};
 
 pub use dynamic_idle_controller::{DynamicIdleController, DynamicIdleControllerConfig, RpmHz};
-#[cfg(test)]
-mod test_mixers;

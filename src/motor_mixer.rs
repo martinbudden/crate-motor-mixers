@@ -1,5 +1,5 @@
 use super::{
-    MixerConfig, MixerType, MotorConfig, MotorMixerCommands, MotorMixerMessage,
+    MixerConfig, MotorConfig, MotorMixerCommands, MotorMixerMessage,
     motor_driver::MotorDriver,
     {MotorFrequencies, MotorMixerCommon, MotorOutputs},
 };
@@ -56,49 +56,7 @@ impl MotorMixer {
             pitch: commands_dps.pitch_dps * MIXER_OUTPUT_SCALE_FACTOR,
             yaw: commands_dps.yaw_dps * MIXER_OUTPUT_SCALE_FACTOR,
         };
-        self.common.set_throttle_command(self.common.mix_params.throttle);
-        match self.common.mixer_type {
-            MixerType::Tricopter => {
-                let outputs = &crate::mix_tricopter(commands, self.common.range, &mut self.common.mix_params);
-                for (ii, output) in outputs.iter().enumerate().take(self.common.output_count()) {
-                    self.common.outputs[ii] = self.common.output_filters[ii].update(*output);
-                }
-            }
-
-            MixerType::Bicopter => {
-                let outputs = &crate::mix_bicopter(commands);
-                for (ii, output) in outputs.iter().enumerate().take(self.common.output_count()) {
-                    self.common.outputs[ii] = self.common.output_filters[ii].update(*output);
-                }
-            }
-            MixerType::FlyingWingSinglePropeller => {
-                let outputs = &crate::mix_wing(commands);
-                for (ii, output) in outputs.iter().enumerate().take(self.common.output_count()) {
-                    self.common.outputs[ii] = self.common.output_filters[ii].update(*output);
-                }
-            }
-            #[cfg(feature = "eight_motors")]
-            MixerType::HexX => {
-                let outputs = &crate::mix_tricopter(commands, self.common.range, &mut self.common.mix_params);
-                for (ii, output) in outputs.iter().enumerate().take(self.common.output_count()) {
-                    self.common.outputs[ii] = self.common.output_filters[ii].update(*output);
-                }
-            }
-            MixerType::AirplaneSinglePropeller => {
-                let outputs = &crate::mix_airplane(commands);
-                for (ii, output) in outputs.iter().enumerate().take(self.common.output_count()) {
-                    self.common.outputs[ii] = self.common.output_filters[ii].update(*output);
-                }
-            }
-
-            _ => {
-                let outputs = &crate::mix_quad_x(commands, self.common.range, &mut self.common.mix_params);
-                for (ii, output) in outputs.iter().enumerate().take(self.common.motor_count()) {
-                    self.common.outputs[ii] = self.common.output_filters[ii].update(*output);
-                }
-            }
-        }
-
+        self.common.mix(commands);
         self.driver.write_to_motors(self.common.outputs).await;
     }
 }

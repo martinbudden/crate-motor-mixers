@@ -1,35 +1,49 @@
 use core::ops::{Deref, DerefMut};
 
+use crate::{
+    MotorMixerCommands,
+    mixers::{
+        MixerAirplane, MixerBicopter, MixerHexacopter, MixerOctocopter, MixerQuadcopter, MixerTricopter, MixerWing,
+    },
+};
 use dshot_codec::DshotCommand;
 use signal_filters::SlewRateLimiterf32;
 
-use super::{MixerConfig, MixerType, MotorConfig, MotorMixerParameters, MotorOutputRange};
+use super::{MixerConfig, MixerType, MotorConfig};
 
 #[cfg(feature = "eight_motors")]
 pub const MAX_SUPPORTED_MOTOR_COUNT: usize = 8;
 #[cfg(not(feature = "eight_motors"))]
 pub const MAX_SUPPORTED_MOTOR_COUNT: usize = 4;
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Mixer {
+    Wing(MixerWing),
+    Airplane(MixerAirplane),
+    Bicopter(MixerBicopter),
+    Tricopter(MixerTricopter),
+    Quadcopter(MixerQuadcopter),
+    Hexacopter(MixerHexacopter),
+    Octocopter(MixerOctocopter),
+}
+
 /// Common properties of all motor mixers.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MotorMixerCommon {
     pub outputs: MotorOutputs,
     pub output_filters: MotorOutputFilters,
-    pub mixer_type: MixerType,
+    pub mixer: Mixer,
     pub motor_count: u8,
     pub output_denominator: u8,
     output_count: u8,
-    pub mixer_config: MixerConfig,
-    pub motor_config: MotorConfig,
-    mixer_parameters: MotorMixerParameters,
+    //pub mixer_config: MixerConfig,
+    //pub motor_config: MotorConfig,
     /// used for blackbox recording.
     throttle_command: f32,
     motors_is_on: bool,
     motors_is_armed: bool,
     /// reversed motors typically used to flip multi-rotor after a crash.
     motors_is_reversed: bool,
-    pub mix_params: MotorMixerParameters,
-    pub range: MotorOutputRange,
 }
 
 impl Default for MotorMixerCommon {
@@ -41,38 +55,51 @@ impl Default for MotorMixerCommon {
 impl MotorMixerCommon {
     /// Constructor.
     #[must_use]
-    pub const fn new(mixer_config: MixerConfig, motor_config: MotorConfig) -> Self {
-        let motor_count = match mixer_config.mixer_type {
-            MixerType::Tricopter | MixerType::CustomTri => 3,
-            MixerType::Bicopter | MixerType::DualCopter => 2,
-            MixerType::FlyingWingSinglePropeller | MixerType::AirplaneSinglePropeller | MixerType::SingleCopter => 1,
-            MixerType::Y6 | MixerType::HexP | MixerType::HexX | MixerType::HexH => 6,
-            MixerType::OctoQuadX | MixerType::OctoFlatP | MixerType::OctoFlatX | MixerType::OctoXp => 8,
-            _ => 4,
-        };
-        // output count includes servos.
-        let output_count = match mixer_config.mixer_type {
-            MixerType::FlyingWingSinglePropeller => 3,
-            MixerType::Y6 | MixerType::HexP | MixerType::HexX | MixerType::HexH => 6,
-            MixerType::OctoQuadX | MixerType::OctoFlatP | MixerType::OctoFlatX | MixerType::OctoXp => 8,
-            _ => 4,
+    pub const fn new(mixer_config: MixerConfig, _motor_config: MotorConfig) -> Self {
+        let (mixer, motor_count, output_count) = match mixer_config.mixer_type {
+            MixerType::FlyingWingSinglePropeller => {
+                (Mixer::Wing(MixerWing::new()), MixerWing::MOTOR_COUNT_U8, MixerWing::OUTPUT_COUNT_U8)
+            }
+            MixerType::AirplaneSinglePropeller => {
+                (Mixer::Airplane(MixerAirplane::new()), MixerAirplane::MOTOR_COUNT_U8, MixerAirplane::OUTPUT_COUNT_U8)
+            }
+            MixerType::Bicopter => {
+                (Mixer::Bicopter(MixerBicopter::new()), MixerBicopter::MOTOR_COUNT_U8, MixerBicopter::OUTPUT_COUNT_U8)
+            }
+            MixerType::Tricopter => (
+                Mixer::Tricopter(MixerTricopter::new()),
+                MixerTricopter::MOTOR_COUNT_U8,
+                MixerTricopter::OUTPUT_COUNT_U8,
+            ),
+            MixerType::HexX => (
+                Mixer::Hexacopter(MixerHexacopter::new()),
+                MixerHexacopter::MOTOR_COUNT_U8,
+                MixerHexacopter::OUTPUT_COUNT_U8,
+            ),
+            MixerType::OctoQuadX => (
+                Mixer::Octocopter(MixerOctocopter::new()),
+                MixerOctocopter::MOTOR_COUNT_U8,
+                MixerOctocopter::OUTPUT_COUNT_U8,
+            ),
+            _ => (
+                Mixer::Quadcopter(MixerQuadcopter::new()),
+                MixerQuadcopter::MOTOR_COUNT_U8,
+                MixerQuadcopter::OUTPUT_COUNT_U8,
+            ),
         };
         Self {
             outputs: MotorOutputs::new(),
             output_filters: MotorOutputFilters::new(),
-            mixer_type: mixer_config.mixer_type,
+            mixer,
             motor_count,
             output_denominator: 1,
             output_count,
-            mixer_config,
-            motor_config,
-            mixer_parameters: MotorMixerParameters::new(),
-            throttle_command: 0.0, // used for blackbox recording
+            //mixer_config,
+            //motor_config,
+            throttle_command: 0.0,
             motors_is_on: false,
             motors_is_armed: false,
-            motors_is_reversed: false, //reversed motors typically used to flip multi-rotor after a crash
-            mix_params: MotorMixerParameters::new(),
-            range: MotorOutputRange::new(),
+            motors_is_reversed: false,
         }
     }
 }
@@ -147,6 +174,57 @@ impl MotorMixerCommon {
         }
         self.output_count = 0;
         true
+    }
+}
+
+impl MotorMixerCommon {
+    pub fn mix(&mut self, commands: MotorMixerCommands) {
+        self.set_throttle_command(commands.throttle);
+
+        match &mut self.mixer {
+            Mixer::Airplane(_mixer) => {
+                let outputs = MixerAirplane::mix(commands);
+                for (ii, output) in outputs.iter().enumerate().take(self.output_count()) {
+                    self.outputs[ii] = self.output_filters[ii].update(*output);
+                }
+            }
+            Mixer::Wing(_mixer) => {
+                let outputs = MixerWing::mix(commands);
+                for (ii, output) in outputs.iter().enumerate().take(self.output_count()) {
+                    self.outputs[ii] = self.output_filters[ii].update(*output);
+                }
+            }
+            Mixer::Bicopter(_mixer) => {
+                let outputs = MixerBicopter::mix(commands);
+                for (ii, output) in outputs.iter().enumerate().take(self.output_count()) {
+                    self.outputs[ii] = self.output_filters[ii].update(*output);
+                }
+            }
+            Mixer::Tricopter(mixer) => {
+                let outputs = mixer.mix(commands);
+                for (ii, output) in outputs.iter().enumerate().take(self.output_count()) {
+                    self.outputs[ii] = self.output_filters[ii].update(*output);
+                }
+            }
+            Mixer::Quadcopter(mixer) => {
+                let outputs = mixer.mix(commands);
+                for (ii, output) in outputs.iter().enumerate().take(self.output_count()) {
+                    self.outputs[ii] = self.output_filters[ii].update(*output);
+                }
+            }
+            Mixer::Hexacopter(mixer) => {
+                let outputs = mixer.mix(commands);
+                for (ii, output) in outputs.iter().enumerate().take(self.output_count()) {
+                    self.outputs[ii] = self.output_filters[ii].update(*output);
+                }
+            }
+            Mixer::Octocopter(mixer) => {
+                let outputs = mixer.mix(commands);
+                for (ii, output) in outputs.iter().enumerate().take(self.output_count()) {
+                    self.outputs[ii] = self.output_filters[ii].update(*output);
+                }
+            }
+        }
     }
 }
 
@@ -268,6 +346,31 @@ impl DerefMut for MotorOutputFilters {
         &mut self.0
     }
 }
+/// Parameters to mix function.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct MotorSaturation {
+    /// Possibly adjusted throttle value for recording by blackbox.
+    pub throttle: f32,
+    /// Used by test code.
+    pub undershoot: f32,
+    /// Used by test code.
+    pub overshoot: f32,
+}
+
+impl Default for MotorSaturation {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl MotorSaturation {
+    /// Constructor.
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { throttle: 0.0, undershoot: 0.0, overshoot: 0.0 }
+    }
+}
+
 #[cfg(test)]
 mod test_traits {
     use super::*;
@@ -280,20 +383,20 @@ mod test_traits {
         is_full::<MotorMixerCommon>();
         is_full::<MotorOutputs>();
         is_full::<DshotCommands>();
+        is_full::<MotorFrequencies>();
         is_full::<MotorOutputFilters>();
+        is_full::<MotorSaturation>();
     }
 }
 
 #[cfg(test)]
 mod test {
-    use crate::MixerType;
-
     use super::*;
     #[test]
     fn new() {
         let mixer_config = MixerConfig::new();
         let motor_config = MotorConfig::new();
         let mixer = MotorMixerCommon::new(mixer_config, motor_config);
-        assert_eq!(MixerType::QuadX, mixer.mixer_type);
+        assert_eq!(1, mixer.output_denominator);
     }
 }
