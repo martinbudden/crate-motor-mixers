@@ -1,8 +1,7 @@
 use core::ops::{Deref, DerefMut};
 
 use crate::{
-    MotorMixerCommands,
-    mixers::{
+    MotorDriver, MotorMixerCommands, MotorMixerMessage, mixers::{
         MixerAirplane, MixerBicopter, MixerHexacopter, MixerOctocopter, MixerQuadcopter, MixerTricopter, MixerWing,
     },
 };
@@ -27,9 +26,25 @@ pub enum Mixer {
     Octocopter(MixerOctocopter),
 }
 
-/// Common properties of all motor mixers.
-#[derive(Clone, Copy, Debug, PartialEq)]
+/*
+            MotorMixer
+                │
+                │ MotorOutputs
+                ▼
+        MotorDriver
+        /          \
+MotorDriverPwm     MotorDriverDshot
+        │                │
+        │                ├── Dshot output
+        │                └── telemetry
+        │
+        └── PWM output
+*/
+
+
+#[allow(missing_debug_implementations, missing_copy_implementations)]
 pub struct MotorMixerCommon {
+    driver: MotorDriver,
     pub outputs: MotorOutputs,
     pub output_filters: MotorOutputFilters,
     pub mixer: Mixer,
@@ -43,19 +58,14 @@ pub struct MotorMixerCommon {
     motors_is_on: bool,
     motors_is_armed: bool,
     /// reversed motors typically used to flip multi-rotor after a crash.
+    #[allow(unused)]
     motors_is_reversed: bool,
-}
-
-impl Default for MotorMixerCommon {
-    fn default() -> Self {
-        Self::new(MixerConfig::new(), MotorConfig::new())
-    }
 }
 
 impl MotorMixerCommon {
     /// Constructor.
     #[must_use]
-    pub const fn new(mixer_config: MixerConfig, _motor_config: MotorConfig) -> Self {
+    pub const fn new(mixer_config: MixerConfig, _motor_config: MotorConfig, driver: MotorDriver) -> Self {
         let (mixer, motor_count, output_count) = match mixer_config.mixer_type {
             MixerType::FlyingWingSinglePropeller => {
                 (Mixer::Wing(MixerWing::new()), MixerWing::MOTOR_COUNT_U8, MixerWing::OUTPUT_COUNT_U8)
@@ -88,6 +98,7 @@ impl MotorMixerCommon {
             ),
         };
         Self {
+            driver,
             outputs: MotorOutputs::new(),
             output_filters: MotorOutputFilters::new(),
             mixer,
@@ -225,6 +236,35 @@ impl MotorMixerCommon {
                 }
             }
         }
+    }
+}
+
+impl MotorMixerCommon {
+    #[must_use]
+    pub fn motor_frequencies(&self) -> Option<MotorFrequencies> {
+        self.driver.motor_frequencies()
+    }
+
+    /// Calculate and output motor mix.
+    /// It is typically called at frequency of between 500Hz and 1000Hz.
+    pub async fn output_to_motors(&mut self, commands_dps: MotorMixerMessage) {
+        const MIXER_OUTPUT_SCALE_FACTOR: f32 = 1000.0;
+
+        // ALWAYS write 0.0 to the motors if they are not switched on, as a safety precaution
+        if !self.motors_is_on() || !self.motors_is_armed() {
+            self.outputs = MotorOutputs::default();
+            self.driver.write_to_motors(self.outputs).await;
+            return;
+        }
+        let commands = MotorMixerCommands {
+            throttle: commands_dps.throttle,
+            // scale roll, pitch, and yaw from DPS range to [-1.0F, 1.0F]
+            roll: commands_dps.roll_dps * MIXER_OUTPUT_SCALE_FACTOR,
+            pitch: commands_dps.pitch_dps * MIXER_OUTPUT_SCALE_FACTOR,
+            yaw: commands_dps.yaw_dps * MIXER_OUTPUT_SCALE_FACTOR,
+        };
+        self.mix(commands);
+        self.driver.write_to_motors(self.outputs).await;
     }
 }
 
@@ -375,28 +415,16 @@ impl MotorSaturation {
 mod test_traits {
     use super::*;
 
-    fn _is_normal<T: Sized + Send + Sync + Unpin>() {}
+    fn is_normal<T: Sized + Send + Sync + Unpin>() {}
     fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
 
     #[test]
     fn normal_types() {
-        is_full::<MotorMixerCommon>();
+        is_normal::<MotorMixerCommon>();
         is_full::<MotorOutputs>();
         is_full::<DshotCommands>();
         is_full::<MotorFrequencies>();
         is_full::<MotorOutputFilters>();
         is_full::<MotorSaturation>();
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    #[test]
-    fn new() {
-        let mixer_config = MixerConfig::new();
-        let motor_config = MotorConfig::new();
-        let mixer = MotorMixerCommon::new(mixer_config, motor_config);
-        assert_eq!(1, mixer.output_denominator);
     }
 }

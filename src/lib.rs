@@ -31,7 +31,6 @@ mod motor_driver;
 
 mod mixer_common;
 mod mixer_config;
-mod motor_mixer;
 
 mod rpm_notch_filters;
 mod rpm_notch_filters_state_machine;
@@ -50,8 +49,6 @@ pub use drivers::{MotorDriverDshot, MotorDriverPwm};
 pub use mixer_common::{
     DshotCommands, MAX_SUPPORTED_MOTOR_COUNT, MotorFrequencies, MotorMixerCommon, MotorOutputFilters, MotorOutputs,
 };
-
-pub use motor_mixer::MotorMixer;
 
 pub use rpm_notch_filters::{RpmNotchFilterBank, RpmNotchFilterBankConfig, RpmNotchFilterFrequencies, RpmNotchFilters};
 

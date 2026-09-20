@@ -13,7 +13,7 @@ use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use {defmt_rtt as _, panic_probe as _};
 
-use motor_mixers::{MixerConfig, MotorConfig, MotorDriver, MotorDriverDshot, MotorMixer, MotorMixerMessage};
+use motor_mixers::{MixerConfig, MotorConfig, MotorDriver, MotorDriverDshot, MotorMixerMessage};
 
 #[cfg(feature = "rp")]
 use embassy_rp::{bind_interrupts, clocks::clk_sys_freq, peripherals::PIO1, pio::InterruptHandler};
