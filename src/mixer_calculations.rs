@@ -608,3 +608,219 @@ pub fn mix_octo_quad_x(
 
     outputs
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::float_cmp)]
+    use approx::assert_abs_diff_eq;
+
+    use super::*;
+
+    #[test]
+    fn test_mixer_quad_x_roll() {
+        const EPSILON: f32 = 0.000_000_1;
+        let mut commands = MotorMixerCommands::default();
+        let range = MotorOutputRange::default();
+        let mut mix_params = MotorMixerParameters::default();
+
+        let mut outputs = mix_quad_x(commands, range, &mut mix_params);
+
+        assert_eq!(0.0, mix_params.undershoot);
+        assert_eq!(0.0, mix_params.overshoot);
+        assert_eq!(0.0, mix_params.throttle);
+        assert_eq!(0.0, outputs[0]);
+        assert_eq!(0.0, outputs[1]);
+        assert_eq!(0.0, outputs[2]);
+        assert_eq!(0.0, outputs[3]);
+
+        commands.throttle = 0.4;
+        commands.roll = 0.3;
+        outputs = mix_quad_x(commands, range, &mut mix_params);
+        assert_eq!(0.0, mix_params.undershoot);
+        assert_eq!(0.0, mix_params.overshoot);
+        assert_eq!(0.4, mix_params.throttle);
+        assert_abs_diff_eq!(0.1, outputs[0], epsilon = EPSILON); // throttle - commands.roll
+        assert_abs_diff_eq!(0.1, outputs[1], epsilon = EPSILON); // throttle - commands.roll
+        assert_abs_diff_eq!(0.7, outputs[2], epsilon = EPSILON); // throttle + commands.roll
+        assert_abs_diff_eq!(0.7, outputs[3], epsilon = EPSILON); // throttle + commands.roll
+
+        commands.throttle = 0.8;
+        commands.roll = 0.3;
+        outputs = mix_quad_x(commands, range, &mut mix_params);
+        assert_eq!(0.0, mix_params.undershoot);
+        assert_eq!(0.0, mix_params.overshoot);
+        assert_eq!(0.8, mix_params.throttle);
+        assert_eq!(0.5, outputs[0]); // throttle - commands.roll
+        assert_eq!(0.5, outputs[1]); // throttle - commands.roll
+        assert_eq!(1.0, outputs[2]); // throttle + commands.roll
+        assert_eq!(1.0, outputs[3]); // throttle + commands.roll
+
+        commands.throttle = 0.1;
+        commands.roll = 0.3;
+        outputs = mix_quad_x(commands, range, &mut mix_params);
+        assert_eq!(0.0, mix_params.undershoot);
+        assert_eq!(0.0, mix_params.overshoot);
+        assert_eq!(0.1, mix_params.throttle);
+        assert_eq!(0.0, outputs[0]); // throttle - commands.roll
+        assert_eq!(0.0, outputs[1]); // throttle - commands.roll
+        assert_eq!(0.4, outputs[2]); // throttle + commands.roll
+        assert_eq!(0.4, outputs[3]); // throttle + commands.roll
+    }
+    #[test]
+    fn test_mixer_quad_x_pitch() {
+        const EPSILON: f32 = 0.000_000_1;
+        let mut commands = MotorMixerCommands::default();
+        let range = MotorOutputRange::default();
+        let mut mix_params = MotorMixerParameters::default();
+
+        commands.throttle = 0.4;
+        commands.pitch = 0.3;
+        let mut outputs = mix_quad_x(commands, range, &mut mix_params);
+        assert_eq!(0.0, mix_params.undershoot);
+        assert_eq!(0.0, mix_params.overshoot);
+        assert_eq!(0.4, mix_params.throttle);
+        assert_abs_diff_eq!(0.1, outputs[0], epsilon = EPSILON); // throttle - commands.pitch
+        assert_abs_diff_eq!(0.7, outputs[1], epsilon = EPSILON); // throttle + commands.pitch
+        assert_abs_diff_eq!(0.1, outputs[2], epsilon = EPSILON); // throttle - commands.pitch
+        assert_abs_diff_eq!(0.7, outputs[3], epsilon = EPSILON); // throttle + commands.pitch
+
+        commands.throttle = 0.8;
+        commands.pitch = 0.3;
+        outputs = mix_quad_x(commands, range, &mut mix_params);
+        assert_eq!(0.0, mix_params.undershoot);
+        assert_eq!(0.0, mix_params.overshoot); // pitch overshoot is ignored
+        assert_eq!(0.8, mix_params.throttle);
+        assert_eq!(0.5, outputs[0]); // throttle - commands.pitch
+        assert_eq!(1.0, outputs[1]); // throttle + commands.pitch
+        assert_eq!(0.5, outputs[2]); // throttle - commands.pitch
+        assert_eq!(1.0, outputs[3]); // throttle + commands.pitch
+
+        commands.throttle = 0.1;
+        commands.pitch = 0.3;
+        outputs = mix_quad_x(commands, range, &mut mix_params);
+        assert_eq!(0.0, mix_params.undershoot);
+        assert_eq!(0.0, mix_params.overshoot); // pitch overshoot is ignored
+        assert_eq!(0.1, mix_params.throttle);
+        assert_eq!(0.0, outputs[0]); // throttle - commands.pitch
+        assert_eq!(0.4, outputs[1]); // throttle + commands.pitch
+        assert_eq!(0.0, outputs[2]); // throttle - commands.pitch
+        assert_eq!(0.4, outputs[3]); // throttle + commands.pitch
+    }
+    #[test]
+    fn test_mixer_quad_x_yaw() {
+        const EPSILON: f32 = 0.000_000_1;
+        let mut commands = MotorMixerCommands::default();
+        let mut range = MotorOutputRange::default();
+        let mut mix_params = MotorMixerParameters::default();
+
+        commands.throttle = 0.4;
+        commands.yaw = 0.3;
+        let mut outputs = mix_quad_x(commands, range, &mut mix_params);
+        assert_eq!(0.0, mix_params.undershoot);
+        assert_eq!(0.0, mix_params.overshoot);
+        assert_eq!(0.4, mix_params.throttle);
+        assert_abs_diff_eq!(0.7, outputs[0], epsilon = EPSILON); // throttle + commands.yaw
+        assert_abs_diff_eq!(0.1, outputs[1], epsilon = EPSILON); // throttle - commands.yaw
+        assert_abs_diff_eq!(0.1, outputs[2], epsilon = EPSILON); // throttle - commands.yaw
+        assert_abs_diff_eq!(0.7, outputs[3], epsilon = EPSILON); // throttle + commands.yaw
+
+        // this will give an undershoot of -0.1, so commands.yaw should be adjusted to 0.2
+        commands.throttle = 0.4;
+        commands.yaw = 0.3;
+        range.min = 0.2;
+        outputs = mix_quad_x(commands, range, &mut mix_params);
+        assert_abs_diff_eq!(0.1, mix_params.undershoot, epsilon = EPSILON);
+        assert_eq!(0.0, mix_params.overshoot);
+        //assert_eq!(0.5, mix_params.throttle);
+        assert_eq!(0.6, outputs[0]); // throttle + commands.yaw
+        assert_eq!(0.2, outputs[1]); // throttle - commands.yaw
+        assert_eq!(0.2, outputs[2]); // throttle - commands.yaw
+        assert_eq!(0.6, outputs[3]); // throttle + commands.yaw
+
+        // this will give an undershoot of -0.1, so commands.yaw should be adjusted to -0.2
+        commands.throttle = 0.4;
+        commands.yaw = -0.3;
+        range.min = 0.2;
+        outputs = mix_quad_x(commands, range, &mut mix_params);
+        assert_abs_diff_eq!(0.1, mix_params.undershoot, epsilon = EPSILON);
+        assert_eq!(0.0, mix_params.overshoot);
+        //assert_eq!(0.5, mix_params.throttle);
+        assert_eq!(0.2, outputs[0]); // throttle + commands.yaw
+        assert_eq!(0.6, outputs[1]); // throttle - commands.yaw
+        assert_eq!(0.6, outputs[2]); // throttle - commands.yaw
+        assert_eq!(0.2, outputs[3]); // throttle + commands.yaw
+
+        // this will give an overshoot of 0.1, so commands.yaw should be adjusted to 0.2
+        commands.throttle = 0.8;
+        commands.yaw = 0.3;
+        range.min = 0.0;
+        outputs = mix_quad_x(commands, range, &mut mix_params);
+        assert_eq!(0.0, mix_params.undershoot);
+        assert_abs_diff_eq!(0.1, mix_params.overshoot, epsilon = EPSILON);
+        //assert_eq!(0.7, mix_params.throttle);
+        assert_eq!(1.0, outputs[0]); // throttle + commands.yaw
+        assert_eq!(0.6, outputs[1]); // throttle - commands.yaw
+        assert_eq!(0.6, outputs[2]); // throttle - commands.yaw
+        assert_eq!(1.0, outputs[3]); // throttle + commands.yaw
+
+        // this will give an overshoot of 0.1, so commands.yaw should be adjusted to -0.2
+        commands.throttle = 0.8;
+        commands.yaw = -0.3;
+        range.min = 0.0;
+        outputs = mix_quad_x(commands, range, &mut mix_params);
+        assert_eq!(0.0, mix_params.undershoot);
+        assert_abs_diff_eq!(0.1, mix_params.overshoot, epsilon = EPSILON);
+        //assert_eq!(0.7, mix_params.throttle);
+        assert_eq!(0.6, outputs[0]); // throttle + commands.yaw
+        assert_eq!(1.0, outputs[1]); // throttle - commands.yaw
+        assert_eq!(1.0, outputs[2]); // throttle - commands.yaw
+        assert_eq!(0.6, outputs[3]); // throttle + commands.yaw
+    }
+    #[test]
+    fn test_mixer_tricopter() {
+        const REAR: usize = 0;
+        const FR: usize = 1;
+        const FL: usize = 2;
+        const S0: usize = 3;
+        const EPSILON: f32 = 0.000_000_1;
+        let mut commands = MotorMixerCommands::default();
+        let range = MotorOutputRange { min: 0.1, max: 1.0 };
+        let mut mix_params = MotorMixerParameters {
+            strategy: YawCompensationStrategy::DynamicThrottleShift,
+            max_servo_angle_radians: 60.0f32.to_radians(),
+            throttle: 0.0,
+            undershoot: 0.0,
+            overshoot: 0.0,
+        };
+
+        commands.throttle = 0.4;
+        let outputs = mix_tricopter(commands, range, &mut mix_params);
+        assert_eq!(0.0, mix_params.undershoot);
+        assert_eq!(0.0, mix_params.overshoot);
+        assert_eq!(0.4, mix_params.throttle);
+        assert_eq!(0.4, outputs[FL]);
+        assert_eq!(0.4, outputs[FR]);
+        assert_eq!(0.4, outputs[REAR]);
+        assert_eq!(0.0, outputs[S0]);
+
+        commands.yaw = 0.3;
+        let outputs = mix_tricopter(commands, range, &mut mix_params);
+        assert_eq!(0.0, mix_params.undershoot);
+        assert_eq!(0.0, mix_params.overshoot);
+        assert_eq!(0.4, mix_params.throttle);
+        assert_eq!(0.4, outputs[FL]);
+        assert_eq!(0.4, outputs[FR]);
+        assert_eq!(0.420_584_89, outputs[REAR]);
+        assert_eq!(0.3, outputs[S0]);
+
+        commands.yaw = 1.0;
+        let outputs = mix_tricopter(commands, range, &mut mix_params);
+        assert_eq!(0.0, mix_params.undershoot);
+        assert_abs_diff_eq!(0.0, mix_params.overshoot, epsilon = EPSILON);
+        assert_eq!(0.4, mix_params.throttle);
+        assert_eq!(0.4, outputs[FL]);
+        assert_eq!(0.4, outputs[FR]);
+        assert_abs_diff_eq!(0.8, outputs[REAR], epsilon = EPSILON);
+        assert_eq!(1.0, outputs[S0]);
+    }
+}
