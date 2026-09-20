@@ -39,7 +39,7 @@ pub use mixer_commands::{MotorMixerCommands, MotorMixerMessage};
 
 pub use mixer_config::{
     MixerConfig, MixerType, MotorConfig, MotorDeviceConfig, MotorOutputRange, MotorProtocol, ProtocolFamily,
-    ServoConfig, ServoDeviceConfig, YawCompensationStrategy,
+    ServoConfig, ServoDeviceConfig, SaturationCompensation,
 };
 
 pub use motor_driver::MotorDriver;

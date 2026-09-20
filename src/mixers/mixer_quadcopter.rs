@@ -9,7 +9,7 @@
 //! checking for overshoot and undershoot, and corrections
 //! applied to avoid unwanted jumps.
 
-use crate::{MotorMixerCommands, MotorOutputRange, MotorSaturation, YawCompensationStrategy};
+use crate::{MotorMixerCommands, MotorOutputRange, MotorSaturation, SaturationCompensation};
 
 /// Classic X-configuration quadcopter.
 /// Includes overflow and yaw-jump compensation.
@@ -40,7 +40,7 @@ use crate::{MotorMixerCommands, MotorOutputRange, MotorSaturation, YawCompensati
 pub struct MixerQuadcopter {
     range: MotorOutputRange,
     saturation: MotorSaturation,
-    strategy: YawCompensationStrategy,
+    saturation_compensation: SaturationCompensation,
 }
 
 impl Default for MixerQuadcopter {
@@ -61,7 +61,7 @@ impl MixerQuadcopter {
         Self {
             range: MotorOutputRange::new(),
             saturation: MotorSaturation::new(),
-            strategy: YawCompensationStrategy::YawReduction,
+            saturation_compensation: SaturationCompensation::YawReduction,
         }
     }
     /// Set the range of a newly constructed tricopter.
@@ -70,10 +70,10 @@ impl MixerQuadcopter {
         self.set_range(range);
         self
     }
-    /// Set the strategy of a newly constructed tricopter.
+    /// Set the saturation compensation of a newly constructed tricopter.
     #[must_use]
-    pub const fn with_strategy(mut self, strategy: YawCompensationStrategy) -> Self {
-        self.set_strategy(strategy);
+    pub const fn with_saturation_compensation(mut self, saturation_compensation: SaturationCompensation) -> Self {
+        self.set_saturation_compensation(saturation_compensation);
         self
     }
 }
@@ -87,12 +87,12 @@ impl MixerQuadcopter {
         self.range
     }
 
-    pub const fn set_strategy(&mut self, strategy: YawCompensationStrategy) {
-        self.strategy = strategy;
+    pub const fn set_saturation_compensation(&mut self, saturation_compensation: SaturationCompensation) {
+        self.saturation_compensation = saturation_compensation;
     }
     #[must_use]
-    pub const fn strategy(self) -> YawCompensationStrategy {
-        self.strategy
+    pub const fn saturation_compensation(self) -> SaturationCompensation {
+        self.saturation_compensation
     }
 
     #[must_use]
@@ -150,12 +150,12 @@ impl MixerQuadcopter {
 
         // Apply unified compensation block if a boundary constraint was triggered.
         if self.saturation.undershoot > 0.0 || self.saturation.overshoot > 0.0 {
-            let compensation = match self.strategy {
-                YawCompensationStrategy::DynamicThrottleShift => {
+            let compensation = match self.saturation_compensation {
+                SaturationCompensation::ThrottleAdjustment => {
                     self.saturation.throttle += self.saturation.undershoot - self.saturation.overshoot;
                     self.saturation.undershoot + self.saturation.overshoot
                 }
-                YawCompensationStrategy::YawReduction => self.saturation.undershoot.max(self.saturation.overshoot),
+                SaturationCompensation::YawReduction => self.saturation.undershoot.max(self.saturation.overshoot),
             };
 
             // This boolean mapping avoids pipeline-stalling branches and heavy FPU multiplications,

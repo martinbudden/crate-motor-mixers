@@ -1,4 +1,4 @@
-use crate::{MotorMixerCommands, MotorOutputRange, MotorSaturation, YawCompensationStrategy};
+use crate::{MotorMixerCommands, MotorOutputRange, MotorSaturation, SaturationCompensation};
 
 /// X-configuration hexacopter.
 /// With automatic dynamic roll, pitch, and yaw overflow management.
@@ -29,7 +29,7 @@ use crate::{MotorMixerCommands, MotorOutputRange, MotorSaturation, YawCompensati
 pub struct MixerHexacopter {
     range: MotorOutputRange,
     saturation: MotorSaturation,
-    strategy: YawCompensationStrategy,
+    saturation_compensation: SaturationCompensation,
 }
 
 impl Default for MixerHexacopter {
@@ -50,7 +50,7 @@ impl MixerHexacopter {
         Self {
             range: MotorOutputRange::new(),
             saturation: MotorSaturation::new(),
-            strategy: YawCompensationStrategy::YawReduction,
+            saturation_compensation: SaturationCompensation::YawReduction,
         }
     }
     /// Set the range of a newly constructed tricopter.
@@ -59,10 +59,10 @@ impl MixerHexacopter {
         self.set_range(range);
         self
     }
-    /// Set the strategy of a newly constructed tricopter.
+    /// Set the saturation compensation of a newly constructed tricopter.
     #[must_use]
-    pub const fn with_strategy(mut self, strategy: YawCompensationStrategy) -> Self {
-        self.set_strategy(strategy);
+    pub const fn with_saturation_compensation(mut self, saturation_compensation: SaturationCompensation) -> Self {
+        self.set_saturation_compensation(saturation_compensation);
         self
     }
 }
@@ -76,12 +76,12 @@ impl MixerHexacopter {
         self.range
     }
 
-    pub const fn set_strategy(&mut self, strategy: YawCompensationStrategy) {
-        self.strategy = strategy;
+    pub const fn set_saturation_compensation(&mut self, saturation_compensation: SaturationCompensation) {
+        self.saturation_compensation = saturation_compensation;
     }
     #[must_use]
-    pub const fn strategy(self) -> YawCompensationStrategy {
-        self.strategy
+    pub const fn saturation_compensation(self) -> SaturationCompensation {
+        self.saturation_compensation
     }
 
     #[must_use]
@@ -210,12 +210,12 @@ impl MixerHexacopter {
         }
 
         if self.saturation.undershoot > 0.0 || self.saturation.overshoot > 0.0 {
-            let compensation = match self.strategy {
-                YawCompensationStrategy::DynamicThrottleShift => {
+            let compensation = match self.saturation_compensation {
+                SaturationCompensation::ThrottleAdjustment => {
                     self.saturation.throttle += self.saturation.undershoot - self.saturation.overshoot;
                     self.saturation.undershoot + self.saturation.overshoot
                 }
-                YawCompensationStrategy::YawReduction => self.saturation.undershoot.max(self.saturation.overshoot),
+                SaturationCompensation::YawReduction => self.saturation.undershoot.max(self.saturation.overshoot),
             };
 
             if commands.yaw >= 0.0 {
@@ -294,10 +294,10 @@ mod hexacopter_tests {
         // Rear motors (0 and 2) decrease by ~0.1732 -> ~0.3268
         // Front motors (1 and 3) increase by ~0.1732 -> ~0.6732
         // Center motors (4 and 5) must remain perfectly flat at 0.5
-        assert!((outputs[0] - 0.326_794_92).abs() < 1e-5);
-        assert!((outputs[1] - 0.673_205_08).abs() < 1e-5);
-        assert!((outputs[2] - 0.326_794_92).abs() < 1e-5);
-        assert!((outputs[3] - 0.673_205_08).abs() < 1e-5);
+        assert!((outputs[0] - 0.326_794_9).abs() < 1e-5);
+        assert!((outputs[1] - 0.673_205_1).abs() < 1e-5);
+        assert!((outputs[2] - 0.326_794_9).abs() < 1e-5);
+        assert!((outputs[3] - 0.673_205_1).abs() < 1e-5);
         assert_eq!(outputs[4], 0.5);
         assert_eq!(outputs[5], 0.5);
     }

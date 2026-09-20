@@ -36,12 +36,12 @@ impl MotorOutputRange {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum YawCompensationStrategy {
-    /// Method 1: Dynamically reduces yaw rate to preserve throttle and attitude stabilization.
+pub enum SaturationCompensation {
+    /// Method 1: reduces yaw rate to preserve throttle and attitude stabilization.
     #[default]
     YawReduction,
-    /// Method 2: Shifts the throttle baseline up or down to maximize requested yaw authority.
-    DynamicThrottleShift,
+    /// Method 2: adjusts throttle baseline up or down to maximize yaw authority.
+    ThrottleAdjustment,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -362,7 +362,7 @@ mod test_traits {
 
     #[test]
     fn normal_types() {
-        is_full::<YawCompensationStrategy>();
+        is_full::<SaturationCompensation>();
         is_full::<MixerConfig>();
         is_full::<MotorDeviceConfig>();
         is_full::<MotorConfig>();

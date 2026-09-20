@@ -1,4 +1,4 @@
-use crate::{MotorMixerCommands, MotorOutputRange, MotorSaturation, YawCompensationStrategy};
+use crate::{MotorMixerCommands, MotorOutputRange, MotorSaturation, SaturationCompensation};
 #[allow(unused)]
 use vqm::MathMethods; // Required for .cos()
 
@@ -33,8 +33,8 @@ use vqm::MathMethods; // Required for .cos()
 pub struct MixerTricopter {
     range: MotorOutputRange,
     saturation: MotorSaturation,
-    strategy: YawCompensationStrategy,
-    pub max_servo_angle_radians: f32,
+    saturation_compensation: SaturationCompensation,
+    max_servo_angle_radians: f32,
 }
 
 impl Default for MixerTricopter {
@@ -55,7 +55,7 @@ impl MixerTricopter {
         Self {
             range: MotorOutputRange::new(),
             saturation: MotorSaturation::new(),
-            strategy: YawCompensationStrategy::YawReduction,
+            saturation_compensation: SaturationCompensation::YawReduction,
             max_servo_angle_radians: 30.0f32.to_radians(),
         }
     }
@@ -65,16 +65,22 @@ impl MixerTricopter {
         self.set_range(range);
         self
     }
-    /// Set the strategy of a newly constructed tricopter.
+    /// Set the saturation compensation of a newly constructed tricopter.
     #[must_use]
-    pub const fn with_strategy(mut self, strategy: YawCompensationStrategy) -> Self {
-        self.set_strategy(strategy);
+    pub const fn with_saturation_compensation(mut self, saturation_compensation: SaturationCompensation) -> Self {
+        self.set_saturation_compensation(saturation_compensation);
         self
     }
-    /// Set the max servo angle of a newly constructed tricopter.
+    /// Set the max servo angle of a newly constructed tricopter, in radians.
     #[must_use]
     pub const fn with_max_servo_angle_radians(mut self, max_servo_angle_radians: f32) -> Self {
         self.set_max_servo_angle_radians(max_servo_angle_radians);
+        self
+    }
+    /// Set the max servo angle of a newly constructed tricopter, in radians.
+    #[must_use]
+    pub const fn with_max_servo_angle_degrees(mut self, max_servo_angle_degrees: f32) -> Self {
+        self.set_max_servo_angle_radians(max_servo_angle_degrees.to_radians());
         self
     }
 }
@@ -88,12 +94,12 @@ impl MixerTricopter {
         self.range
     }
 
-    pub const fn set_strategy(&mut self, strategy: YawCompensationStrategy) {
-        self.strategy = strategy;
+    pub const fn set_saturation_compensation(&mut self, saturation_compensation: SaturationCompensation) {
+        self.saturation_compensation = saturation_compensation;
     }
     #[must_use]
-    pub const fn strategy(self) -> YawCompensationStrategy {
-        self.strategy
+    pub const fn saturation_compensation(self) -> SaturationCompensation {
+        self.saturation_compensation
     }
 
     pub const fn set_max_servo_angle_radians(&mut self, max_servo_angle_radians: f32) {
@@ -155,8 +161,8 @@ impl MixerTricopter {
 
         // Centralized Saturated Thrust Compensation Block
         if self.saturation.overshoot > 0.0 || self.saturation.undershoot > 0.0 {
-            match self.strategy {
-                YawCompensationStrategy::DynamicThrottleShift => {
+            match self.saturation_compensation {
+                SaturationCompensation::ThrottleAdjustment => {
                     // Adjust tracked virtual throttle baseline and apply raw deltas
                     self.saturation.throttle += self.saturation.undershoot - self.saturation.overshoot;
 
@@ -164,7 +170,7 @@ impl MixerTricopter {
                     outputs[FL] = outputs[FL] - self.saturation.overshoot + self.saturation.undershoot;
                     outputs[REAR] += self.saturation.undershoot;
                 }
-                YawCompensationStrategy::YawReduction => {
+                SaturationCompensation::YawReduction => {
                     // Symmetrically damp the overshoot or undershoot impact using max violation bounds.
                     // This acts to prioritize attitude hold without modifying the internal throttle parameter.
                     let max_violation = self.saturation.overshoot.max(self.saturation.undershoot);
@@ -199,6 +205,7 @@ mod test_traits {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::float_cmp)]
     use super::*;
     use approx::assert_abs_diff_eq;
 
@@ -213,11 +220,10 @@ mod tests {
         let range = MotorOutputRange { min: 0.1, max: 1.0 };
         let mut mixer = MixerTricopter::new()
             .with_range(range)
-            .with_strategy(YawCompensationStrategy::DynamicThrottleShift)
-            .with_max_servo_angle_radians(60.0f32.to_radians());
-        let mut commands = MotorMixerCommands::default();
+            .with_saturation_compensation(SaturationCompensation::ThrottleAdjustment)
+            .with_max_servo_angle_degrees(60.0);
+        let mut commands = MotorMixerCommands::new().with_throttle(0.4);
 
-        commands.throttle = 0.4;
         let outputs = mixer.mix(commands);
         let mix_params = mixer.saturation();
         assert_eq!(0.0, mix_params.undershoot);
@@ -236,7 +242,7 @@ mod tests {
         assert_eq!(0.4, mix_params.throttle);
         assert_eq!(0.4, outputs[FL]);
         assert_eq!(0.4, outputs[FR]);
-        assert_eq!(0.420_584_89, outputs[REAR]);
+        assert_eq!(0.420_584_9, outputs[REAR]);
         assert_eq!(0.3, outputs[S0]);
 
         commands.yaw = 1.0;

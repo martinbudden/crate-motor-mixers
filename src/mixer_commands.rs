@@ -23,6 +23,30 @@ impl MotorMixerCommands {
     pub const fn new() -> Self {
         Self { roll: 0.0, pitch: 0.0, yaw: 0.0, throttle: 0.0 }
     }
+    /// Set the roll of a newly constructed command.
+    #[must_use]
+    pub const fn with_roll(mut self, roll: f32) -> Self {
+        self.roll = roll;
+        self
+    }
+    /// Set the pitch of a newly constructed command.
+    #[must_use]
+    pub const fn with_pitch(mut self, pitch: f32) -> Self {
+        self.pitch = pitch;
+        self
+    }
+    /// Set the yaw of a newly constructed command.
+    #[must_use]
+    pub const fn with_yaw(mut self, yaw: f32) -> Self {
+        self.yaw = yaw;
+        self
+    }
+    /// Set the throttle of a newly constructed command.
+    #[must_use]
+    pub const fn with_throttle(mut self, throttle: f32) -> Self {
+        self.throttle = throttle;
+        self
+    }
 }
 
 /// Commands in the DPS range (ie `[-2000.0, 2000.0]`), for roll, pitch and yaw.<br>

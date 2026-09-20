@@ -1,4 +1,4 @@
-use crate::{MotorMixerCommands, MotorOutputRange, MotorSaturation, YawCompensationStrategy};
+use crate::{MotorMixerCommands, MotorOutputRange, MotorSaturation, SaturationCompensation};
 
 /// X-configuration octocopter.
 ///
@@ -49,7 +49,7 @@ use crate::{MotorMixerCommands, MotorOutputRange, MotorSaturation, YawCompensati
 pub struct MixerOctocopter {
     range: MotorOutputRange,
     saturation: MotorSaturation,
-    strategy: YawCompensationStrategy,
+    saturation_compensation: SaturationCompensation,
     /// **Attitude/Momentum parameter**. It dictates how much steering control (torque) is allocated to the large props
     /// ie what fraction of attitude commands spill into the large lifting props [0.0 to 1.0].
     /// Setting this to 0.0 means large props handle ONLY lift; 0.1 means they help a tiny bit.
@@ -82,7 +82,7 @@ impl MixerOctocopter {
         Self {
             range: MotorOutputRange::new(),
             saturation: MotorSaturation::new(),
-            strategy: YawCompensationStrategy::YawReduction,
+            saturation_compensation: SaturationCompensation::YawReduction,
             // Default values for standard octocopter behavior.
             large_prop_authority: 1.0,      // 100% active authority on large props
             small_prop_throttle_scale: 1.0, // Identical base throttle matching large props
@@ -95,10 +95,10 @@ impl MixerOctocopter {
         self.set_range(range);
         self
     }
-    /// Set the strategy of a newly constructed tricopter.
+    /// Set the saturation compensation of a newly constructed tricopter.
     #[must_use]
-    pub const fn with_strategy(mut self, strategy: YawCompensationStrategy) -> Self {
-        self.set_strategy(strategy);
+    pub const fn with_saturation_compensation(mut self, saturation_compensation: SaturationCompensation) -> Self {
+        self.set_saturation_compensation(saturation_compensation);
         self
     }
     #[must_use]
@@ -127,12 +127,12 @@ impl MixerOctocopter {
         self.range
     }
 
-    pub const fn set_strategy(&mut self, strategy: YawCompensationStrategy) {
-        self.strategy = strategy;
+    pub const fn set_saturation_compensation(&mut self, saturation_compensation: SaturationCompensation) {
+        self.saturation_compensation = saturation_compensation;
     }
     #[must_use]
-    pub const fn strategy(self) -> YawCompensationStrategy {
-        self.strategy
+    pub const fn saturation_compensation(self) -> SaturationCompensation {
+        self.saturation_compensation
     }
     pub const fn set_large_prop_authority(&mut self, large_prop_authority: f32) {
         self.large_prop_authority = large_prop_authority;
@@ -171,7 +171,7 @@ impl MixerOctocopter {
 
         let mut outputs = [0.0f32; Self::OUTPUT_COUNT];
 
-        // 1. Distribute Raw Thrust.
+        // Distribute Raw Thrust.
         outputs[L_BACK_RIGHT] = commands.throttle;
         outputs[L_FRONT_RIGHT] = commands.throttle;
         outputs[L_BACK_LEFT] = commands.throttle;
@@ -184,7 +184,7 @@ impl MixerOctocopter {
         outputs[S_BACK_LEFT] = small_base_throttle;
         outputs[S_FRONT_LEFT] = small_base_throttle;
 
-        // 2. Apply Asymmetric Attacking Authority Weights.
+        // Apply Asymmetric Attacking Authority Weights.
         let large_authority = self.large_prop_authority;
 
         // Large Props
@@ -215,7 +215,7 @@ impl MixerOctocopter {
         outputs[S_BACK_LEFT] -= commands.yaw;
         outputs[S_FRONT_LEFT] += commands.yaw;
 
-        // 4. Yaw Saturation Verification (Scans ALL active motors, adjusting for large motor authority).
+        // Yaw Saturation Verification (Scans ALL active motors, adjusting for large motor authority).
         if commands.yaw > 0.0 {
             // Falling channels (check min floor violations)
             self.saturation.undershoot = (self.range.min - outputs[S_FRONT_RIGHT]).max(self.saturation.undershoot);
@@ -242,14 +242,14 @@ impl MixerOctocopter {
             self.saturation.overshoot = (outputs[L_BACK_LEFT] - self.range.max).max(self.saturation.overshoot);
         }
 
-        // 5. Apply unified compensation block across both small and large sets.
+        // Apply unified compensation block across both small and large sets.
         if self.saturation.undershoot > 0.0 || self.saturation.overshoot > 0.0 {
-            let compensation = match self.strategy {
-                YawCompensationStrategy::DynamicThrottleShift => {
+            let compensation = match self.saturation_compensation {
+                SaturationCompensation::ThrottleAdjustment => {
                     self.saturation.throttle += self.saturation.undershoot - self.saturation.overshoot;
                     self.saturation.undershoot + self.saturation.overshoot
                 }
-                YawCompensationStrategy::YawReduction => self.saturation.undershoot.max(self.saturation.overshoot),
+                SaturationCompensation::YawReduction => self.saturation.undershoot.max(self.saturation.overshoot),
             };
 
             if commands.yaw >= 0.0 {
@@ -277,7 +277,7 @@ impl MixerOctocopter {
             }
         }
 
-        // 6. Final safety guard to protect all 8 outputs from precision rounding leaks.
+        // Final safety guard to protect all 8 outputs from precision rounding leaks.
         for output in &mut outputs {
             *output = output.clamp(self.range.min, self.range.max);
         }
@@ -309,7 +309,7 @@ mod hybrid_octo_tests {
         let range = MotorOutputRange::default();
         let mut mixer = MixerOctocopter::new()
             .with_range(range)
-            .with_strategy(YawCompensationStrategy::DynamicThrottleShift)
+            .with_saturation_compensation(SaturationCompensation::ThrottleAdjustment)
             .with_large_prop_authority(0.05)
             .with_small_prop_idle_throttle(0.1)
             .with_small_prop_throttle_scale(0.5);
@@ -341,7 +341,7 @@ mod hybrid_octo_tests {
         let range = MotorOutputRange::default();
         let mut mixer = MixerOctocopter::new()
             .with_range(range)
-            .with_strategy(YawCompensationStrategy::DynamicThrottleShift)
+            .with_saturation_compensation(SaturationCompensation::ThrottleAdjustment)
             .with_large_prop_authority(0.05)
             .with_small_prop_idle_throttle(0.1)
             .with_small_prop_throttle_scale(0.5);
@@ -377,7 +377,7 @@ fn test_small_prop_idle_gate_protection() {
     let range = MotorOutputRange { min: 0.05, max: 1.0 };
     let mut mixer = MixerOctocopter::new()
         .with_range(range)
-        .with_strategy(YawCompensationStrategy::DynamicThrottleShift)
+        .with_saturation_compensation(SaturationCompensation::ThrottleAdjustment)
         .with_large_prop_authority(0.0)
         .with_small_prop_idle_throttle(0.15)
         .with_small_prop_throttle_scale(0.5);
@@ -403,7 +403,7 @@ fn test_yaw_saturation_on_maneuvering_props() {
     let range = MotorOutputRange::default();
     let mut mixer = MixerOctocopter::new()
         .with_range(range)
-        .with_strategy(YawCompensationStrategy::DynamicThrottleShift)
+        .with_saturation_compensation(SaturationCompensation::ThrottleAdjustment)
         .with_large_prop_authority(0.0)
         .with_small_prop_idle_throttle(0.1)
         .with_small_prop_throttle_scale(0.5);
@@ -434,7 +434,7 @@ fn test_standard_octocopter_fallback_behavior() {
     // like a standard, uniform octocopter.
     let mut mixer = MixerOctocopter::new()
         .with_range(range)
-        .with_strategy(YawCompensationStrategy::DynamicThrottleShift)
+        .with_saturation_compensation(SaturationCompensation::ThrottleAdjustment)
         .with_large_prop_authority(1.0)
         .with_small_prop_throttle_scale(1.0)
         .with_small_prop_idle_throttle(0.0);
