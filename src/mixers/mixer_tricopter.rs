@@ -1,4 +1,4 @@
-use crate::{MotorMixerCommands, MotorOutputRange, MotorSaturation, SaturationCompensation};
+use crate::{MotorMixerCommands, MotorOutputRange, SaturationCompensation};
 #[allow(unused)]
 use vqm::MathMethods; // Required for .cos()
 
@@ -32,7 +32,10 @@ use vqm::MathMethods; // Required for .cos()
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MixerTricopter {
     range: MotorOutputRange,
-    saturation: MotorSaturation,
+    /// Possibly adjusted throttle value for recording by blackbox.
+    pub throttle: f32,
+    pub undershoot: f32,
+    pub overshoot: f32,
     saturation_compensation: SaturationCompensation,
     max_servo_angle_radians: f32,
 }
@@ -54,7 +57,9 @@ impl MixerTricopter {
     pub const fn new() -> Self {
         Self {
             range: MotorOutputRange::new(),
-            saturation: MotorSaturation::new(),
+            throttle: 0.0,
+            undershoot: 0.0,
+            overshoot: 0.0,
             saturation_compensation: SaturationCompensation::YawReduction,
             max_servo_angle_radians: 30.0f32.to_radians(),
         }
@@ -109,11 +114,6 @@ impl MixerTricopter {
     pub const fn max_servo_angle_radians(self) -> f32 {
         self.max_servo_angle_radians
     }
-
-    #[must_use]
-    pub const fn saturation(self) -> MotorSaturation {
-        self.saturation
-    }
 }
 
 impl MixerTricopter {
@@ -128,9 +128,9 @@ impl MixerTricopter {
         const TWO_THIRDS: f32 = 2.0 / 3.0;
         const FOUR_THIRDS: f32 = 4.0 / 3.0;
 
-        self.saturation.throttle = commands.throttle;
-        self.saturation.overshoot = 0.0;
-        self.saturation.undershoot = 0.0;
+        self.throttle = commands.throttle;
+        self.overshoot = 0.0;
+        self.undershoot = 0.0;
 
         // Calculate physical servo tilt angle based on current yaw demands.
         let pivot_angle_radians = commands.yaw * self.max_servo_angle_radians;
@@ -139,7 +139,7 @@ impl MixerTricopter {
         let cos_tilt = pivot_angle_radians.cos().max(0.1); // cos(84 degrees) ~ 0.1
 
         // Base mixing distribution applying the 1/3 and 2/3 center-of-mass geometric rules.
-        let mut outputs: [f32; 4] = [
+        let mut outputs: [f32; Self::OUTPUT_COUNT] = [
             (commands.throttle - FOUR_THIRDS * commands.pitch) / cos_tilt,
             commands.throttle - commands.roll + TWO_THIRDS * commands.pitch,
             commands.throttle + commands.roll + TWO_THIRDS * commands.pitch,
@@ -149,31 +149,31 @@ impl MixerTricopter {
         // Check for Rear Motor Top-End Saturation (Overshoot).
         // Front motors are unlikely to overshoot since there are two of them and there is no yaw-related attenuation.
         if outputs[REAR] > self.range.max {
-            self.saturation.overshoot = outputs[REAR] - self.range.max;
+            self.overshoot = outputs[REAR] - self.range.max;
             outputs[REAR] = self.range.max;
         }
 
         // Check for Front Motor Bottom-End Saturation (Undershoot).
         let min_front = outputs[FL].min(outputs[FR]);
         if min_front < self.range.min {
-            self.saturation.undershoot = self.range.min - min_front;
+            self.undershoot = self.range.min - min_front;
         }
 
         // Centralized Saturated Thrust Compensation Block
-        if self.saturation.overshoot > 0.0 || self.saturation.undershoot > 0.0 {
+        if self.overshoot > 0.0 || self.undershoot > 0.0 {
             match self.saturation_compensation {
                 SaturationCompensation::ThrottleAdjustment => {
                     // Adjust tracked virtual throttle baseline and apply raw deltas
-                    self.saturation.throttle += self.saturation.undershoot - self.saturation.overshoot;
+                    self.throttle += self.undershoot - self.overshoot;
 
-                    outputs[FR] = outputs[FR] - self.saturation.overshoot + self.saturation.undershoot;
-                    outputs[FL] = outputs[FL] - self.saturation.overshoot + self.saturation.undershoot;
-                    outputs[REAR] += self.saturation.undershoot;
+                    outputs[FR] = outputs[FR] - self.overshoot + self.undershoot;
+                    outputs[FL] = outputs[FL] - self.overshoot + self.undershoot;
+                    outputs[REAR] += self.undershoot;
                 }
                 SaturationCompensation::YawReduction => {
                     // Symmetrically damp the overshoot or undershoot impact using max violation bounds.
                     // This acts to prioritize attitude hold without modifying the internal throttle parameter.
-                    let max_violation = self.saturation.overshoot.max(self.saturation.undershoot);
+                    let max_violation = self.overshoot.max(self.undershoot);
 
                     outputs[FR] -= max_violation;
                     outputs[FL] -= max_violation;
@@ -225,10 +225,9 @@ mod tests {
         let mut commands = MotorMixerCommands::new().with_throttle(0.4);
 
         let outputs = mixer.mix(commands);
-        let mix_params = mixer.saturation();
-        assert_eq!(0.0, mix_params.undershoot);
-        assert_eq!(0.0, mix_params.overshoot);
-        assert_eq!(0.4, mix_params.throttle);
+        assert_eq!(0.0, mixer.undershoot);
+        assert_eq!(0.0, mixer.overshoot);
+        assert_eq!(0.4, mixer.throttle);
         assert_eq!(0.4, outputs[FL]);
         assert_eq!(0.4, outputs[FR]);
         assert_eq!(0.4, outputs[REAR]);
@@ -236,10 +235,9 @@ mod tests {
 
         commands.yaw = 0.3;
         let outputs = mixer.mix(commands);
-        let mix_params = mixer.saturation();
-        assert_eq!(0.0, mix_params.undershoot);
-        assert_eq!(0.0, mix_params.overshoot);
-        assert_eq!(0.4, mix_params.throttle);
+        assert_eq!(0.0, mixer.undershoot);
+        assert_eq!(0.0, mixer.overshoot);
+        assert_eq!(0.4, mixer.throttle);
         assert_eq!(0.4, outputs[FL]);
         assert_eq!(0.4, outputs[FR]);
         assert_eq!(0.420_584_9, outputs[REAR]);
@@ -247,10 +245,9 @@ mod tests {
 
         commands.yaw = 1.0;
         let outputs = mixer.mix(commands);
-        let mix_params = mixer.saturation();
-        assert_eq!(0.0, mix_params.undershoot);
-        assert_abs_diff_eq!(0.0, mix_params.overshoot, epsilon = EPSILON);
-        assert_eq!(0.4, mix_params.throttle);
+        assert_eq!(0.0, mixer.undershoot);
+        assert_abs_diff_eq!(0.0, mixer.overshoot, epsilon = EPSILON);
+        assert_eq!(0.4, mixer.throttle);
         assert_eq!(0.4, outputs[FL]);
         assert_eq!(0.4, outputs[FR]);
         assert_abs_diff_eq!(0.8, outputs[REAR], epsilon = EPSILON);

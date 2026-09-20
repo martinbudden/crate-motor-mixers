@@ -1,4 +1,4 @@
-use crate::{MotorMixerCommands, MotorOutputRange, MotorSaturation, SaturationCompensation};
+use crate::{MotorMixerCommands, MotorOutputRange, SaturationCompensation};
 
 /// X-configuration octocopter.
 ///
@@ -48,7 +48,10 @@ use crate::{MotorMixerCommands, MotorOutputRange, MotorSaturation, SaturationCom
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MixerOctocopter {
     range: MotorOutputRange,
-    saturation: MotorSaturation,
+    /// Possibly adjusted throttle value for recording by blackbox.
+    pub throttle: f32,
+    pub undershoot: f32,
+    pub overshoot: f32,
     saturation_compensation: SaturationCompensation,
     /// **Attitude/Momentum parameter**. It dictates how much steering control (torque) is allocated to the large props
     /// ie what fraction of attitude commands spill into the large lifting props [0.0 to 1.0].
@@ -81,7 +84,9 @@ impl MixerOctocopter {
     pub const fn new() -> Self {
         Self {
             range: MotorOutputRange::new(),
-            saturation: MotorSaturation::new(),
+            throttle: 0.0,
+            undershoot: 0.0,
+            overshoot: 0.0,
             saturation_compensation: SaturationCompensation::YawReduction,
             // Default values for standard octocopter behavior.
             large_prop_authority: 1.0,      // 100% active authority on large props
@@ -143,11 +148,6 @@ impl MixerOctocopter {
     pub const fn set_small_prop_throttle_scale(&mut self, small_prop_throttle_scale: f32) {
         self.small_prop_throttle_scale = small_prop_throttle_scale;
     }
-
-    #[must_use]
-    pub const fn saturation(self) -> MotorSaturation {
-        self.saturation
-    }
 }
 
 impl MixerOctocopter {
@@ -165,9 +165,9 @@ impl MixerOctocopter {
         const S_BACK_LEFT: usize = 6;
         const S_FRONT_LEFT: usize = 7;
 
-        self.saturation.throttle = commands.throttle;
-        self.saturation.overshoot = 0.0;
-        self.saturation.undershoot = 0.0;
+        self.throttle = commands.throttle;
+        self.overshoot = 0.0;
+        self.undershoot = 0.0;
 
         let mut outputs = [0.0f32; Self::OUTPUT_COUNT];
 
@@ -218,38 +218,38 @@ impl MixerOctocopter {
         // Yaw Saturation Verification (Scans ALL active motors, adjusting for large motor authority).
         if commands.yaw > 0.0 {
             // Falling channels (check min floor violations)
-            self.saturation.undershoot = (self.range.min - outputs[S_FRONT_RIGHT]).max(self.saturation.undershoot);
-            self.saturation.undershoot = (self.range.min - outputs[S_BACK_LEFT]).max(self.saturation.undershoot);
-            self.saturation.undershoot = (self.range.min - outputs[L_FRONT_RIGHT]).max(self.saturation.undershoot);
-            self.saturation.undershoot = (self.range.min - outputs[L_BACK_LEFT]).max(self.saturation.undershoot);
+            self.undershoot = (self.range.min - outputs[S_FRONT_RIGHT]).max(self.undershoot);
+            self.undershoot = (self.range.min - outputs[S_BACK_LEFT]).max(self.undershoot);
+            self.undershoot = (self.range.min - outputs[L_FRONT_RIGHT]).max(self.undershoot);
+            self.undershoot = (self.range.min - outputs[L_BACK_LEFT]).max(self.undershoot);
 
             // Rising channels (check max ceiling violations)
-            self.saturation.overshoot = (outputs[S_BACK_RIGHT] - self.range.max).max(self.saturation.overshoot);
-            self.saturation.overshoot = (outputs[S_FRONT_LEFT] - self.range.max).max(self.saturation.overshoot);
-            self.saturation.overshoot = (outputs[L_BACK_RIGHT] - self.range.max).max(self.saturation.overshoot);
-            self.saturation.overshoot = (outputs[L_FRONT_LEFT] - self.range.max).max(self.saturation.overshoot);
+            self.overshoot = (outputs[S_BACK_RIGHT] - self.range.max).max(self.overshoot);
+            self.overshoot = (outputs[S_FRONT_LEFT] - self.range.max).max(self.overshoot);
+            self.overshoot = (outputs[L_BACK_RIGHT] - self.range.max).max(self.overshoot);
+            self.overshoot = (outputs[L_FRONT_LEFT] - self.range.max).max(self.overshoot);
         } else if commands.yaw < 0.0 {
             // Falling channels
-            self.saturation.undershoot = (self.range.min - outputs[S_BACK_RIGHT]).max(self.saturation.undershoot);
-            self.saturation.undershoot = (self.range.min - outputs[S_FRONT_LEFT]).max(self.saturation.undershoot);
-            self.saturation.undershoot = (self.range.min - outputs[L_BACK_RIGHT]).max(self.saturation.undershoot);
-            self.saturation.undershoot = (self.range.min - outputs[L_FRONT_LEFT]).max(self.saturation.undershoot);
+            self.undershoot = (self.range.min - outputs[S_BACK_RIGHT]).max(self.undershoot);
+            self.undershoot = (self.range.min - outputs[S_FRONT_LEFT]).max(self.undershoot);
+            self.undershoot = (self.range.min - outputs[L_BACK_RIGHT]).max(self.undershoot);
+            self.undershoot = (self.range.min - outputs[L_FRONT_LEFT]).max(self.undershoot);
 
             // Rising channels
-            self.saturation.overshoot = (outputs[S_FRONT_RIGHT] - self.range.max).max(self.saturation.overshoot);
-            self.saturation.overshoot = (outputs[S_BACK_LEFT] - self.range.max).max(self.saturation.overshoot);
-            self.saturation.overshoot = (outputs[L_FRONT_RIGHT] - self.range.max).max(self.saturation.overshoot);
-            self.saturation.overshoot = (outputs[L_BACK_LEFT] - self.range.max).max(self.saturation.overshoot);
+            self.overshoot = (outputs[S_FRONT_RIGHT] - self.range.max).max(self.overshoot);
+            self.overshoot = (outputs[S_BACK_LEFT] - self.range.max).max(self.overshoot);
+            self.overshoot = (outputs[L_FRONT_RIGHT] - self.range.max).max(self.overshoot);
+            self.overshoot = (outputs[L_BACK_LEFT] - self.range.max).max(self.overshoot);
         }
 
         // Apply unified compensation block across both small and large sets.
-        if self.saturation.undershoot > 0.0 || self.saturation.overshoot > 0.0 {
+        if self.undershoot > 0.0 || self.overshoot > 0.0 {
             let compensation = match self.saturation_compensation {
                 SaturationCompensation::ThrottleAdjustment => {
-                    self.saturation.throttle += self.saturation.undershoot - self.saturation.overshoot;
-                    self.saturation.undershoot + self.saturation.overshoot
+                    self.throttle += self.undershoot - self.overshoot;
+                    self.undershoot + self.overshoot
                 }
-                SaturationCompensation::YawReduction => self.saturation.undershoot.max(self.saturation.overshoot),
+                SaturationCompensation::YawReduction => self.undershoot.max(self.overshoot),
             };
 
             if commands.yaw >= 0.0 {
@@ -314,7 +314,7 @@ mod hybrid_octo_tests {
             .with_small_prop_idle_throttle(0.1)
             .with_small_prop_throttle_scale(0.5);
 
-        let mut outputs = mixer.mix(commands);
+        let outputs = mixer.mix(commands);
 
         // Large props (0-3) should match the full master throttle request exactly
         assert_eq!(outputs[0], 0.6);
@@ -346,7 +346,7 @@ mod hybrid_octo_tests {
             .with_small_prop_idle_throttle(0.1)
             .with_small_prop_throttle_scale(0.5);
 
-        let mut outputs = mixer.mix(commands);
+        let outputs = mixer.mix(commands);
 
         // Verify Large props barely reacted (0.05 * 0.2 = 0.01 change)
         // Right side (0, 1) drops from 0.6 to 0.59. Left side (2, 3) rises to 0.61.
@@ -382,7 +382,7 @@ fn test_small_prop_idle_gate_protection() {
         .with_small_prop_idle_throttle(0.15)
         .with_small_prop_throttle_scale(0.5);
 
-    let mut outputs = mixer.mix(commands);
+    let outputs = mixer.mix(commands);
 
     // Small right props baseline: (0.1 * 0.5) + 0.15 = 0.20
     // Roll right subtracts 0.4 -> 0.20 - 0.40 = -0.20
@@ -408,8 +408,7 @@ fn test_yaw_saturation_on_maneuvering_props() {
         .with_small_prop_idle_throttle(0.1)
         .with_small_prop_throttle_scale(0.5);
 
-    let mut outputs = mixer.mix(commands);
-    let params = mixer.saturation();
+    let outputs = mixer.mix(commands);
 
     // Verify every single one of the 8 output channels was successfully constrained within limits
     for output in outputs {
@@ -418,7 +417,7 @@ fn test_yaw_saturation_on_maneuvering_props() {
 
     // The mixer should detect that the small maneuvering motors hit clipping thresholds
     assert!(
-        params.overshoot > 0.0 || params.undershoot > 0.0,
+        mixer.overshoot > 0.0 || mixer.undershoot > 0.0,
         "Expected saturation limits to capture boundary collisions"
     );
 }
@@ -439,7 +438,7 @@ fn test_standard_octocopter_fallback_behavior() {
         .with_small_prop_throttle_scale(1.0)
         .with_small_prop_idle_throttle(0.0);
 
-    let mut outputs = mixer.mix(commands);
+    let outputs = mixer.mix(commands);
 
     // Calculate expected outputs for the Large Prop group (0-3)
     let expected_large_br = 0.6 - (0.1 + 0.1); // 0.4
@@ -455,8 +454,8 @@ fn test_standard_octocopter_fallback_behavior() {
     // Calculate expected outputs for the Small Prop group (4-7)
     // With small_prop_throttle_scale = 1.0, the small props must output
     // the EXACT same values as their corresponding large prop counterparts.
-    //assert_eq!(outputs[4], outputs[0]); // Small BR == Large BR
-    //assert_eq!(outputs[5], outputs[1]); // Small FR == Large FR
-    //assert_eq!(outputs[6], outputs[2]); // Small BL == Large BL
+    assert_eq!(outputs[4], outputs[0]); // Small BR == Large BR
+    assert_eq!(outputs[5], outputs[1]); // Small FR == Large FR
+    assert_eq!(outputs[6], outputs[2]); // Small BL == Large BL
     assert_eq!(outputs[7], outputs[3]); // Small FL == Large FL
 }

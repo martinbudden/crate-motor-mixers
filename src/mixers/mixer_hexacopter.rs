@@ -1,4 +1,4 @@
-use crate::{MotorMixerCommands, MotorOutputRange, MotorSaturation, SaturationCompensation};
+use crate::{MotorMixerCommands, MotorOutputRange, SaturationCompensation};
 
 /// X-configuration hexacopter.
 /// With automatic dynamic roll, pitch, and yaw overflow management.
@@ -28,7 +28,10 @@ use crate::{MotorMixerCommands, MotorOutputRange, MotorSaturation, SaturationCom
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MixerHexacopter {
     range: MotorOutputRange,
-    saturation: MotorSaturation,
+    /// Possibly adjusted throttle value for recording by blackbox.
+    pub throttle: f32,
+    pub undershoot: f32,
+    pub overshoot: f32,
     saturation_compensation: SaturationCompensation,
 }
 
@@ -49,7 +52,9 @@ impl MixerHexacopter {
     pub const fn new() -> Self {
         Self {
             range: MotorOutputRange::new(),
-            saturation: MotorSaturation::new(),
+            throttle: 0.0,
+            undershoot: 0.0,
+            overshoot: 0.0,
             saturation_compensation: SaturationCompensation::YawReduction,
         }
     }
@@ -83,11 +88,6 @@ impl MixerHexacopter {
     pub const fn saturation_compensation(self) -> SaturationCompensation {
         self.saturation_compensation
     }
-
-    #[must_use]
-    pub const fn saturation(self) -> MotorSaturation {
-        self.saturation
-    }
 }
 
 impl MixerHexacopter {
@@ -115,9 +115,9 @@ impl MixerHexacopter {
             commands.throttle,                          // CENTER_LEFT
         ];
 
-        self.saturation.throttle = commands.throttle;
-        self.saturation.overshoot = 0.0;
-        self.saturation.undershoot = 0.0;
+        self.throttle = commands.throttle;
+        self.overshoot = 0.0;
+        self.undershoot = 0.0;
 
         // Clamp initial pitch adjustments to preserve axis symmetry safely.
         // (Note: Center motors are skipped here since they have no pitch element).
@@ -137,28 +137,28 @@ impl MixerHexacopter {
         // If we have overshoot caused by roll we cannot just clamp the output, since this will affect the yaw.
         if commands.roll > 0.0 {
             // Rolling right means left motors go up (check max), right motors drop (check min).
-            self.saturation.undershoot = (self.range.min - outputs[BACK_RIGHT]).max(self.saturation.undershoot);
-            self.saturation.undershoot = (self.range.min - outputs[FRONT_RIGHT]).max(self.saturation.undershoot);
-            self.saturation.undershoot = (self.range.min - outputs[CENTER_RIGHT]).max(self.saturation.undershoot);
+            self.undershoot = (self.range.min - outputs[BACK_RIGHT]).max(self.undershoot);
+            self.undershoot = (self.range.min - outputs[FRONT_RIGHT]).max(self.undershoot);
+            self.undershoot = (self.range.min - outputs[CENTER_RIGHT]).max(self.undershoot);
 
-            self.saturation.overshoot = (outputs[BACK_LEFT] - self.range.max).max(self.saturation.overshoot);
-            self.saturation.overshoot = (outputs[FRONT_LEFT] - self.range.max).max(self.saturation.overshoot);
-            self.saturation.overshoot = (outputs[CENTER_LEFT] - self.range.max).max(self.saturation.overshoot);
+            self.overshoot = (outputs[BACK_LEFT] - self.range.max).max(self.overshoot);
+            self.overshoot = (outputs[FRONT_LEFT] - self.range.max).max(self.overshoot);
+            self.overshoot = (outputs[CENTER_LEFT] - self.range.max).max(self.overshoot);
         } else if commands.roll < 0.0 {
             // Rolling left means right motors go up (check max), left motors drop (check min).
-            self.saturation.undershoot = (self.range.min - outputs[BACK_LEFT]).max(self.saturation.undershoot);
-            self.saturation.undershoot = (self.range.min - outputs[FRONT_LEFT]).max(self.saturation.undershoot);
-            self.saturation.undershoot = (self.range.min - outputs[CENTER_LEFT]).max(self.saturation.undershoot);
+            self.undershoot = (self.range.min - outputs[BACK_LEFT]).max(self.undershoot);
+            self.undershoot = (self.range.min - outputs[FRONT_LEFT]).max(self.undershoot);
+            self.undershoot = (self.range.min - outputs[CENTER_LEFT]).max(self.undershoot);
 
-            self.saturation.overshoot = (outputs[BACK_RIGHT] - self.range.max).max(self.saturation.overshoot);
-            self.saturation.overshoot = (outputs[FRONT_RIGHT] - self.range.max).max(self.saturation.overshoot);
-            self.saturation.overshoot = (outputs[CENTER_RIGHT] - self.range.max).max(self.saturation.overshoot);
+            self.overshoot = (outputs[BACK_RIGHT] - self.range.max).max(self.overshoot);
+            self.overshoot = (outputs[FRONT_RIGHT] - self.range.max).max(self.overshoot);
+            self.overshoot = (outputs[CENTER_RIGHT] - self.range.max).max(self.overshoot);
         }
 
-        if self.saturation.undershoot > 0.0 || self.saturation.overshoot > 0.0 {
+        if self.undershoot > 0.0 || self.overshoot > 0.0 {
             // Roll uses Method 2 style shifting inherently in the original codebase layout
-            let roll_delta = self.saturation.undershoot + self.saturation.overshoot;
-            self.saturation.throttle += self.saturation.undershoot - self.saturation.overshoot;
+            let roll_delta = self.undershoot + self.overshoot;
+            self.throttle += self.undershoot - self.overshoot;
 
             if commands.roll >= 0.0 {
                 outputs[BACK_RIGHT] += SIN30 * roll_delta;
@@ -187,35 +187,35 @@ impl MixerHexacopter {
         outputs[CENTER_LEFT] += commands.yaw;
 
         // Reset parameter tracking registers specifically for the Yaw calculation pass.
-        self.saturation.overshoot = 0.0;
-        self.saturation.undershoot = 0.0;
+        self.overshoot = 0.0;
+        self.undershoot = 0.0;
 
         // Yaw Overflow/Undershoot Compensation.
         if commands.yaw > 0.0 {
-            self.saturation.undershoot = (self.range.min - outputs[BACK_RIGHT]).max(self.saturation.undershoot);
-            self.saturation.undershoot = (self.range.min - outputs[BACK_LEFT]).max(self.saturation.undershoot);
-            self.saturation.undershoot = (self.range.min - outputs[CENTER_RIGHT]).max(self.saturation.undershoot);
+            self.undershoot = (self.range.min - outputs[BACK_RIGHT]).max(self.undershoot);
+            self.undershoot = (self.range.min - outputs[BACK_LEFT]).max(self.undershoot);
+            self.undershoot = (self.range.min - outputs[CENTER_RIGHT]).max(self.undershoot);
 
-            self.saturation.overshoot = (outputs[FRONT_RIGHT] - self.range.max).max(self.saturation.overshoot);
-            self.saturation.overshoot = (outputs[FRONT_LEFT] - self.range.max).max(self.saturation.overshoot);
-            self.saturation.overshoot = (outputs[CENTER_LEFT] - self.range.max).max(self.saturation.overshoot);
+            self.overshoot = (outputs[FRONT_RIGHT] - self.range.max).max(self.overshoot);
+            self.overshoot = (outputs[FRONT_LEFT] - self.range.max).max(self.overshoot);
+            self.overshoot = (outputs[CENTER_LEFT] - self.range.max).max(self.overshoot);
         } else if commands.yaw < 0.0 {
-            self.saturation.undershoot = (self.range.min - outputs[FRONT_RIGHT]).max(self.saturation.undershoot);
-            self.saturation.undershoot = (self.range.min - outputs[FRONT_LEFT]).max(self.saturation.undershoot);
-            self.saturation.undershoot = (self.range.min - outputs[CENTER_LEFT]).max(self.saturation.undershoot);
+            self.undershoot = (self.range.min - outputs[FRONT_RIGHT]).max(self.undershoot);
+            self.undershoot = (self.range.min - outputs[FRONT_LEFT]).max(self.undershoot);
+            self.undershoot = (self.range.min - outputs[CENTER_LEFT]).max(self.undershoot);
 
-            self.saturation.overshoot = (outputs[BACK_RIGHT] - self.range.max).max(self.saturation.overshoot);
-            self.saturation.overshoot = (outputs[BACK_LEFT] - self.range.max).max(self.saturation.overshoot);
-            self.saturation.overshoot = (outputs[CENTER_RIGHT] - self.range.max).max(self.saturation.overshoot);
+            self.overshoot = (outputs[BACK_RIGHT] - self.range.max).max(self.overshoot);
+            self.overshoot = (outputs[BACK_LEFT] - self.range.max).max(self.overshoot);
+            self.overshoot = (outputs[CENTER_RIGHT] - self.range.max).max(self.overshoot);
         }
 
-        if self.saturation.undershoot > 0.0 || self.saturation.overshoot > 0.0 {
+        if self.undershoot > 0.0 || self.overshoot > 0.0 {
             let compensation = match self.saturation_compensation {
                 SaturationCompensation::ThrottleAdjustment => {
-                    self.saturation.throttle += self.saturation.undershoot - self.saturation.overshoot;
-                    self.saturation.undershoot + self.saturation.overshoot
+                    self.throttle += self.undershoot - self.overshoot;
+                    self.undershoot + self.overshoot
                 }
-                SaturationCompensation::YawReduction => self.saturation.undershoot.max(self.saturation.overshoot),
+                SaturationCompensation::YawReduction => self.undershoot.max(self.overshoot),
             };
 
             if commands.yaw >= 0.0 {
@@ -267,13 +267,12 @@ mod hexacopter_tests {
         let range = MotorOutputRange::default();
         let mut mixer = MixerHexacopter::new().with_range(range);
 
-        let mut outputs = mixer.mix(commands);
-        let params = mixer.saturation();
+        let outputs = mixer.mix(commands);
 
         // In a static hover with no inputs, all 6 motors must match throttle
         assert_eq!(outputs, [0.5, 0.5, 0.5, 0.5, 0.5, 0.5]);
-        assert_eq!(params.overshoot, 0.0);
-        assert_eq!(params.undershoot, 0.0);
+        assert_eq!(mixer.overshoot, 0.0);
+        assert_eq!(mixer.undershoot, 0.0);
     }
 
     #[test]
@@ -287,8 +286,7 @@ mod hexacopter_tests {
         let range = MotorOutputRange::default();
         let mut mixer = MixerHexacopter::new().with_range(range);
 
-        let mut outputs = mixer.mix(commands);
-        let mix_params = mixer.saturation();
+        let outputs = mixer.mix(commands);
 
         // SIN60 is 0.8660254. 0.2 * 0.8660254 = 0.17320508
         // Rear motors (0 and 2) decrease by ~0.1732 -> ~0.3268
@@ -314,8 +312,7 @@ mod hexacopter_tests {
         let range = MotorOutputRange::default();
         let mut mixer = MixerHexacopter::new().with_range(range);
 
-        let mut outputs = mixer.mix(commands);
-        let params = mixer.saturation();
+        let outputs = mixer.mix(commands);
 
         // Verify no motor overflows the hardware ceiling
         for (i, &output) in outputs.iter().enumerate() {
@@ -325,12 +322,12 @@ mod hexacopter_tests {
             );
         }
 
-        // Fix: Because the code resets params.overshoot to 0.0 before the yaw block finishes,
+        // Fix: Because the code resets mixer.overshoot to 0.0 before the yaw block finishes,
         // we instead verify that the throttle tracking value was scaled down to absorb the error.
         assert!(
-            params.throttle < 0.9,
+            mixer.throttle < 0.9,
             "Expected mixer to automatically reduce throttle (was {}) to prevent roll saturation",
-            params.throttle
+            mixer.throttle
         );
     }
 
@@ -346,8 +343,7 @@ mod hexacopter_tests {
         let range = MotorOutputRange::default();
         let mut mixer = MixerHexacopter::new().with_range(range);
 
-        let mut outputs = mixer.mix(commands);
-        let params = mixer.saturation();
+        let outputs = mixer.mix(commands);
 
         // Verify that the final safety guard successfully clamped everything inside bounds
         for output in outputs {
@@ -356,7 +352,7 @@ mod hexacopter_tests {
 
         // Your advanced compensation logic should have populated under/overshoot distances
         assert!(
-            params.overshoot > 0.0 || params.undershoot > 0.0,
+            mixer.overshoot > 0.0 || mixer.undershoot > 0.0,
             "Expected yaw framework to capture boundary collisions"
         );
     }
@@ -368,8 +364,7 @@ mod hexacopter_tests {
         let range = MotorOutputRange { min: 0.02, max: 0.98 }; // Dynamic tight boundaries
         let mut mixer = MixerHexacopter::new().with_range(range);
 
-        let mut outputs = mixer.mix(commands);
-        let mix_params = mixer.saturation();
+        let outputs = mixer.mix(commands);
 
         // Ensure all 6 motors stay perfectly inside the tight threshold box
         for (i, &output) in outputs.iter().enumerate() {

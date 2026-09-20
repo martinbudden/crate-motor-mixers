@@ -33,6 +33,18 @@ impl MotorOutputRange {
     pub const fn new() -> Self {
         Self { min: 0.0, max: 1.0 }
     }
+    /// Set the min of a newly constructed range.
+    #[must_use]
+    pub const fn with_min(mut self, min: f32) -> Self {
+        self.min = min;
+        self
+    }
+    /// Set the max of a newly constructed range.
+    #[must_use]
+    pub const fn with_max(mut self, max: f32) -> Self {
+        self.max = max;
+        self
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

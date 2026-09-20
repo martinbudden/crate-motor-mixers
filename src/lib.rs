@@ -39,7 +39,7 @@ pub use mixer_commands::{MotorMixerCommands, MotorMixerMessage};
 
 pub use mixer_config::{
     MixerConfig, MixerType, MotorConfig, MotorDeviceConfig, MotorOutputRange, MotorProtocol, ProtocolFamily,
-    ServoConfig, ServoDeviceConfig, SaturationCompensation,
+    SaturationCompensation, ServoConfig, ServoDeviceConfig,
 };
 
 pub use motor_driver::MotorDriver;
@@ -48,7 +48,6 @@ pub use drivers::{MotorDriverDshot, MotorDriverPwm};
 
 pub use motor_mixer::{
     DshotCommands, MAX_SUPPORTED_MOTOR_COUNT, MotorFrequencies, MotorMixer, MotorOutputFilters, MotorOutputs,
-    MotorSaturation,
 };
 
 pub use rpm_notch_filters::{RpmNotchFilterBank, RpmNotchFilterBankConfig, RpmNotchFilterFrequencies, RpmNotchFilters};

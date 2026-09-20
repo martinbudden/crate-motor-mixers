@@ -386,31 +386,6 @@ impl DerefMut for MotorOutputFilters {
         &mut self.0
     }
 }
-/// Parameters to mix function.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MotorSaturation {
-    /// Possibly adjusted throttle value for recording by blackbox.
-    pub throttle: f32,
-    /// Used by test code.
-    pub undershoot: f32,
-    /// Used by test code.
-    pub overshoot: f32,
-}
-
-impl Default for MotorSaturation {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl MotorSaturation {
-    /// Constructor.
-    #[must_use]
-    pub const fn new() -> Self {
-        Self { throttle: 0.0, undershoot: 0.0, overshoot: 0.0 }
-    }
-}
-
 #[cfg(test)]
 mod test_traits {
     use super::*;
@@ -425,6 +400,5 @@ mod test_traits {
         is_full::<DshotCommands>();
         is_full::<MotorFrequencies>();
         is_full::<MotorOutputFilters>();
-        is_full::<MotorSaturation>();
     }
 }
