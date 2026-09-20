@@ -395,7 +395,7 @@ pub fn mix_hex_x(commands: MotorMixerCommands, range: MotorOutputRange, params: 
     params.overshoot = 0.0;
     params.undershoot = 0.0;
 
-    // --- STAGE 2: Yaw Overflow/Undershoot Compensation ---
+    // Yaw Overflow/Undershoot Compensation.
     if commands.yaw > 0.0 {
         params.undershoot = (range.min - outputs[BACK_RIGHT]).max(params.undershoot);
         params.undershoot = (range.min - outputs[BACK_LEFT]).max(params.undershoot);
@@ -499,8 +499,6 @@ pub fn mix_octo_quad_x(
     range: MotorOutputRange,
     params: &mut OctoMixerParameters,
 ) -> [f32; 8] {
-    // NOTE: motor array indices are zero-based, whereas motor numbering in the diagram above is one-based.
-
     // Large Prop Indices (QuadX positions)
     const MOTOR_COUNT: usize = 8;
     const L_BACK_RIGHT: usize = 0;
@@ -520,8 +518,7 @@ pub fn mix_octo_quad_x(
 
     let mut outputs = [0.0f32; MOTOR_COUNT];
 
-    // Distribute Raw Thrust.
-    // Large props get the entire master throttle command.
+    // 1. Distribute Raw Thrust.
     outputs[L_BACK_RIGHT] = commands.throttle;
     outputs[L_FRONT_RIGHT] = commands.throttle;
     outputs[L_BACK_LEFT] = commands.throttle;
@@ -534,74 +531,102 @@ pub fn mix_octo_quad_x(
     outputs[S_BACK_LEFT] = small_base_throttle;
     outputs[S_FRONT_LEFT] = small_base_throttle;
 
-    // Apply Asymmetric Attacking Authority
-    let large_authority = params.large_prop_authority; // eg 5% authority
+    // 2. Apply Asymmetric Attacking Authority Weights.
+    let large_authority = params.large_prop_authority; 
 
-    // Large Props (minimal reaction to maintain peak efficiency and avoid high-inertia spin changes).
+    // Large Props
     outputs[L_BACK_RIGHT] -= large_authority * (commands.roll + commands.pitch);
     outputs[L_FRONT_RIGHT] -= large_authority * (commands.roll - commands.pitch);
     outputs[L_BACK_LEFT] += large_authority * (commands.roll - commands.pitch);
     outputs[L_FRONT_LEFT] += large_authority * (commands.roll + commands.pitch);
 
-    // Small Props (100% reaction authority for rapid attitude response).
+    // Small Props
     outputs[S_BACK_RIGHT] -= commands.roll + commands.pitch;
     outputs[S_FRONT_RIGHT] -= commands.roll - commands.pitch;
     outputs[S_BACK_LEFT] += commands.roll - commands.pitch;
     outputs[S_FRONT_LEFT] += commands.roll + commands.pitch;
 
-    // Clamp Roll/Pitch adjustments on all 8 motors.
+    // Clamp Roll/Pitch adjustments across all 8 motors to keep initial axis symmetry.
     for output in &mut outputs {
         *output = output.clamp(range.min, range.max);
     }
 
-    // Inject Yaw requests.
-    // Large props (minimal or zero yaw authority to avoid heavy high-inertia spin changes).
+    // 3. Inject Yaw requests.
     outputs[L_BACK_RIGHT] += large_authority * commands.yaw;
     outputs[L_FRONT_RIGHT] -= large_authority * commands.yaw;
     outputs[L_BACK_LEFT] -= large_authority * commands.yaw;
     outputs[L_FRONT_LEFT] += large_authority * commands.yaw;
 
-    // Small props handle 100% of the active yaw rotational counter-torque execution.
     outputs[S_BACK_RIGHT] += commands.yaw;
     outputs[S_FRONT_RIGHT] -= commands.yaw;
     outputs[S_BACK_LEFT] -= commands.yaw;
     outputs[S_FRONT_LEFT] += commands.yaw;
 
-    // Yaw Saturation Verification (Targeting the highly active small motors).
-    // Positive Yaw increases S_BACK_RIGHT and S_FRONT_LEFT (4 and 7), drops S_FRONT_RIGHT and S_BACK_LEFT (5 and 6).
+    // 4. Yaw Saturation Verification (Scans ALL active motors, adjusting for large motor authority).
     if commands.yaw > 0.0 {
+        // Falling channels (check min floor violations)
         params.undershoot = (range.min - outputs[S_FRONT_RIGHT]).max(params.undershoot);
         params.undershoot = (range.min - outputs[S_BACK_LEFT]).max(params.undershoot);
+        params.undershoot = (range.min - outputs[L_FRONT_RIGHT]).max(params.undershoot);
+        params.undershoot = (range.min - outputs[L_BACK_LEFT]).max(params.undershoot);
 
+        // Rising channels (check max ceiling violations)
         params.overshoot = (outputs[S_BACK_RIGHT] - range.max).max(params.overshoot);
         params.overshoot = (outputs[S_FRONT_LEFT] - range.max).max(params.overshoot);
-
-        if commands.yaw - params.undershoot - params.overshoot > 0.0 {
-            let yaw_delta = params.undershoot + params.overshoot;
-            outputs[S_BACK_RIGHT] -= yaw_delta;
-            outputs[S_FRONT_RIGHT] += yaw_delta;
-            outputs[S_BACK_LEFT] += yaw_delta;
-            outputs[S_FRONT_LEFT] -= yaw_delta;
-            params.throttle += params.undershoot - params.overshoot;
-        }
+        params.overshoot = (outputs[L_BACK_RIGHT] - range.max).max(params.overshoot);
+        params.overshoot = (outputs[L_FRONT_LEFT] - range.max).max(params.overshoot);
     } else if commands.yaw < 0.0 {
+        // Falling channels
         params.undershoot = (range.min - outputs[S_BACK_RIGHT]).max(params.undershoot);
         params.undershoot = (range.min - outputs[S_FRONT_LEFT]).max(params.undershoot);
+        params.undershoot = (range.min - outputs[L_BACK_RIGHT]).max(params.undershoot);
+        params.undershoot = (range.min - outputs[L_FRONT_LEFT]).max(params.undershoot);
 
+        // Rising channels
         params.overshoot = (outputs[S_FRONT_RIGHT] - range.max).max(params.overshoot);
         params.overshoot = (outputs[S_BACK_LEFT] - range.max).max(params.overshoot);
+        params.overshoot = (outputs[L_FRONT_RIGHT] - range.max).max(params.overshoot);
+        params.overshoot = (outputs[L_BACK_LEFT] - range.max).max(params.overshoot);
+    }
 
-        if commands.yaw + params.undershoot + params.overshoot < 0.0 {
-            let yaw_delta = params.undershoot + params.overshoot;
-            outputs[S_BACK_RIGHT] += yaw_delta;
-            outputs[S_FRONT_RIGHT] -= yaw_delta;
-            outputs[S_BACK_LEFT] -= yaw_delta;
-            outputs[S_FRONT_LEFT] += yaw_delta;
-            params.throttle += params.undershoot - params.overshoot;
+    // 5. Apply unified compensation block across both small and large sets.
+    if params.undershoot > 0.0 || params.overshoot > 0.0 {
+        let compensation = match params.strategy {
+            YawCompensationStrategy::DynamicThrottleShift => {
+                params.throttle += params.undershoot - params.overshoot;
+                params.undershoot + params.overshoot
+            }
+            YawCompensationStrategy::YawReduction => {
+                params.undershoot.max(params.overshoot)
+            }
+        };
+
+        if commands.yaw >= 0.0 {
+            // Apply 100% compensation to active small motors
+            outputs[S_BACK_RIGHT]  -= compensation;
+            outputs[S_FRONT_RIGHT] += compensation;
+            outputs[S_BACK_LEFT]   += compensation;
+            outputs[S_FRONT_LEFT]  -= compensation;
+
+            // Apply scaled compensation to large motors matching their configured authority
+            outputs[L_BACK_RIGHT]  -= compensation * large_authority;
+            outputs[L_FRONT_RIGHT] += compensation * large_authority;
+            outputs[L_BACK_LEFT]   += compensation * large_authority;
+            outputs[L_FRONT_LEFT]  -= compensation * large_authority;
+        } else {
+            outputs[S_BACK_RIGHT]  += compensation;
+            outputs[S_FRONT_RIGHT] -= compensation;
+            outputs[S_BACK_LEFT]   -= compensation;
+            outputs[S_FRONT_LEFT]  += compensation;
+
+            outputs[L_BACK_RIGHT]  += compensation * large_authority;
+            outputs[L_FRONT_RIGHT] -= compensation * large_authority;
+            outputs[L_BACK_LEFT]   -= compensation * large_authority;
+            outputs[L_FRONT_LEFT]  += compensation * large_authority;
         }
     }
 
-    // Final clamp to protect outputs from precision leaks.
+    // 6. Final safety guard to protect all 8 outputs from precision rounding leaks.
     for output in &mut outputs {
         *output = output.clamp(range.min, range.max);
     }
@@ -711,7 +736,7 @@ mod tests {
         const EPSILON: f32 = 0.000_000_1;
         let mut commands = MotorMixerCommands::default();
         let mut range = MotorOutputRange::default();
-        let mut mix_params = MotorMixerParameters::default();
+        let mut mix_params = MotorMixerParameters { strategy: YawCompensationStrategy::DynamicThrottleShift, ..Default::default() };
 
         commands.throttle = 0.4;
         commands.yaw = 0.3;
@@ -731,7 +756,7 @@ mod tests {
         outputs = mix_quad_x(commands, range, &mut mix_params);
         assert_abs_diff_eq!(0.1, mix_params.undershoot, epsilon = EPSILON);
         assert_eq!(0.0, mix_params.overshoot);
-        //assert_eq!(0.5, mix_params.throttle);
+        assert_eq!(0.5, mix_params.throttle);
         assert_eq!(0.6, outputs[0]); // throttle + commands.yaw
         assert_eq!(0.2, outputs[1]); // throttle - commands.yaw
         assert_eq!(0.2, outputs[2]); // throttle - commands.yaw
@@ -744,7 +769,7 @@ mod tests {
         outputs = mix_quad_x(commands, range, &mut mix_params);
         assert_abs_diff_eq!(0.1, mix_params.undershoot, epsilon = EPSILON);
         assert_eq!(0.0, mix_params.overshoot);
-        //assert_eq!(0.5, mix_params.throttle);
+        assert_eq!(0.5, mix_params.throttle);
         assert_eq!(0.2, outputs[0]); // throttle + commands.yaw
         assert_eq!(0.6, outputs[1]); // throttle - commands.yaw
         assert_eq!(0.6, outputs[2]); // throttle - commands.yaw
@@ -757,7 +782,7 @@ mod tests {
         outputs = mix_quad_x(commands, range, &mut mix_params);
         assert_eq!(0.0, mix_params.undershoot);
         assert_abs_diff_eq!(0.1, mix_params.overshoot, epsilon = EPSILON);
-        //assert_eq!(0.7, mix_params.throttle);
+        assert_eq!(0.7, mix_params.throttle);
         assert_eq!(1.0, outputs[0]); // throttle + commands.yaw
         assert_eq!(0.6, outputs[1]); // throttle - commands.yaw
         assert_eq!(0.6, outputs[2]); // throttle - commands.yaw
@@ -770,7 +795,7 @@ mod tests {
         outputs = mix_quad_x(commands, range, &mut mix_params);
         assert_eq!(0.0, mix_params.undershoot);
         assert_abs_diff_eq!(0.1, mix_params.overshoot, epsilon = EPSILON);
-        //assert_eq!(0.7, mix_params.throttle);
+        assert_eq!(0.7, mix_params.throttle);
         assert_eq!(0.6, outputs[0]); // throttle + commands.yaw
         assert_eq!(1.0, outputs[1]); // throttle - commands.yaw
         assert_eq!(1.0, outputs[2]); // throttle - commands.yaw
@@ -1340,4 +1365,3 @@ fn test_standard_octocopter_fallback_behavior() {
     assert_eq!(outputs[6], outputs[2]); // Small BL == Large BL
     assert_eq!(outputs[7], outputs[3]); // Small FL == Large FL
 }
-
