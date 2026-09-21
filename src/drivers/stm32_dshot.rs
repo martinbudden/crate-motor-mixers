@@ -11,7 +11,7 @@ pub struct MotorDriverDshot {
 
 impl MotorDriverDshot {
     #[must_use]
-    pub const fn new() -> Self {
+    pub fn new(_dshot_speed: dshot_codec::DshotSpeed, _motor_pole_count: u16) -> Self {
         Self { motor_frequencies: MotorFrequencies::new() }
     }
 }

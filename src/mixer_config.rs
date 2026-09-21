@@ -122,115 +122,9 @@ impl MixerConfig {
     }
 }
 
-/*/// PWM (analog) or Dshot (digital).
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[repr(u8)]
-pub enum ProtocolFamily {
-    Unknown = 0,
-    Pwm = 1,
-    Dshot = 2,
-}*/
-
-/// Motor protocol.
-/// Betaflight compatible values.
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
-#[repr(u8)]
-pub enum MotorProtocol {
-    #[default]
-    Pwm = 0,
-    OneShot125 = 1,
-    OneShot42 = 2,
-    MultiShot = 3,
-    Brushed = 4,
-    Dshot150 = 5,
-    Dshot300 = 6,
-    Dshot600 = 7,
-    Proshot1000 = 8,
-    Disabled = 9,
-}
-
-impl TryFrom<u8> for MotorProtocol {
-    type Error = ();
-
-    /// Validating conversion from `u8` to `MotorProtocol`. Invalid values return error.
-    fn try_from(value: u8) -> Result<Self, ()> {
-        let default = Self::default();
-        if value == default as u8 {
-            Ok(default)
-        } else {
-            let ret = Self::from_u8(value);
-            if ret == default { Err(()) } else { Ok(ret) }
-        }
-    }
-}
-
-impl MotorProtocol {
-    /// Forgiving conversion from `u8` to `MotorProtocol`, converts invalid values to default.
-    #[must_use]
-    pub fn from_u8(value: u8) -> Self {
-        match value {
-            0 => Self::Pwm,
-            1 => Self::OneShot125,
-            2 => Self::OneShot42,
-            3 => Self::MultiShot,
-            4 => Self::Brushed,
-            5 => Self::Dshot150,
-            6 => Self::Dshot300,
-            7 => Self::Dshot600,
-            8 => Self::Proshot1000,
-            9 => Self::Disabled,
-            _ => Self::default(),
-        }
-    }
-}
-
-#[allow(clippy::struct_excessive_bools)]
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
-pub struct MotorDeviceConfig {
-    /// The update rate of motor outputs (50-498Hz).
-    pub motor_pwm_rate: u16,
-    pub motor_protocol: MotorProtocol,
-    /// Active-High vs Active-Low. Useful for brushed FCs converted for brushless operation.
-    pub motor_inversion: u8,
-    pub use_continuous_update: u8,
-    pub use_burst_dshot: u8,
-    pub use_dshot_telemetry: u8,
-    pub use_dshot_edt: u8,
-}
-
-#[cfg(feature = "storage")]
-impl PostcardValue<'_> for MotorDeviceConfig {}
-
-impl Default for MotorDeviceConfig {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl MotorDeviceConfig {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self {
-            motor_pwm_rate: 480, // 16000 for brushed
-            motor_protocol: MotorProtocol::Dshot300,
-            motor_inversion: 0,
-            use_continuous_update: 1,
-            use_burst_dshot: 0,
-            use_dshot_telemetry: 0,
-            use_dshot_edt: 0,
-        }
-    }
-    pub fn set_motor_protocol(&mut self, motor_protocol: u8) {
-        self.motor_protocol = MotorProtocol::from_u8(motor_protocol);
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 pub struct MotorConfig {
-    pub device: MotorDeviceConfig,
     /// percentage of the motor range added to the disarmed value to give the idle value.
     pub motor_idle: u16,
     // value of throttle at full power, can be set up to 2000.
@@ -253,73 +147,15 @@ impl Default for MotorConfig {
 }
 
 impl MotorConfig {
+    const DEFAULT_MOTOR_POLE_COUNT: u8 = 14;
     #[must_use]
     pub const fn new() -> Self {
         Self {
-            device: MotorDeviceConfig::new(),
             motor_idle: 550, // 700 for brushed
             max_throttle: 2000,
             min_command: 1000,
             kv: 1960,
-            motor_pole_count: 14,
-        }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
-pub struct ServoDeviceConfig {
-    /// PWM values, in milliseconds, common range is 1000-2000 (1ms to 2ms).
-    /// This is the value for servos when they should be in the middle. e.g. 1500.
-    pub servo_center_pulse: u16,
-    // The update rate of servo outputs, typically 50-498Hz.
-    pub servo_pwm_rate: u16,
-}
-
-#[cfg(feature = "storage")]
-impl PostcardValue<'_> for ServoDeviceConfig {}
-
-impl Default for ServoDeviceConfig {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ServoDeviceConfig {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self { servo_center_pulse: 1500, servo_pwm_rate: 50 }
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
-pub struct ServoConfig {
-    pub device: ServoDeviceConfig,
-    /// lowpass servo filter frequency selection; 1/1000ths of loop freq.
-    pub servo_lowpass_freq: u16,
-    // send tail servo correction pulses even when unarmed.
-    pub tri_unarmed_servo: u8,
-    pub channel_forwarding_start_channel: u8,
-}
-
-#[cfg(feature = "storage")]
-impl PostcardValue<'_> for ServoConfig {}
-
-impl Default for ServoConfig {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ServoConfig {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self {
-            device: ServoDeviceConfig::new(),
-            servo_lowpass_freq: 0,
-            tri_unarmed_servo: 0,
-            channel_forwarding_start_channel: 0,
+            motor_pole_count: Self::DEFAULT_MOTOR_POLE_COUNT,
         }
     }
 }
@@ -337,28 +173,19 @@ mod test_traits {
     #[test]
     fn normal_types() {
         is_full::<MixerConfig>();
-        is_full::<MotorDeviceConfig>();
         is_full::<MotorConfig>();
-        is_full::<ServoDeviceConfig>();
-        is_full::<ServoConfig>();
     }
     #[cfg(feature = "serde")]
     #[test]
     fn serde_types() {
         is_serde::<MixerConfig>();
-        is_serde::<MotorDeviceConfig>();
         is_serde::<MotorConfig>();
-        is_serde::<ServoDeviceConfig>();
-        is_serde::<ServoConfig>();
     }
     #[cfg(feature = "storage")]
     #[test]
     fn storage_types() {
         is_storage::<MixerConfig>();
-        is_storage::<MotorDeviceConfig>();
         is_storage::<MotorConfig>();
-        is_storage::<ServoDeviceConfig>();
-        is_storage::<ServoConfig>();
     }
 }
 

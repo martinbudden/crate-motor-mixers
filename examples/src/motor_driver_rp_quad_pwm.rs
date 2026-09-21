@@ -39,7 +39,6 @@ fn driver_rp() -> MotorDriverPwm {
     info!("System clock: {} Hz", sys_freq);
     info!("Starting motor-mixers Basic test");
 
-    // Initialize MotorDriverPwm on pins 0-3
     let config0 = PwmConfig::default();
     let config1 = PwmConfig::default();
     let frequency_hz = 50.0;

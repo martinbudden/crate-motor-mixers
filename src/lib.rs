@@ -25,9 +25,12 @@ mod mixers;
 
 mod dynamic_idle_controller;
 mod mixer_config;
+mod motor_device_config;
 mod motor_driver;
 mod motor_mixer;
 mod motor_output_filters;
+mod servo_config;
+
 mod rpm_notch_filters;
 mod rpm_notch_filters_state_machine;
 
@@ -36,12 +39,12 @@ pub use mixers::{MotorMixerCommands, MotorMixerMessage, MotorOutputRange, Satura
 
 pub use motor_driver::MotorDriver;
 
-pub use mixer_config::{
-    MixerConfig, MixerType, MotorConfig, MotorDeviceConfig, MotorProtocol, ServoConfig, ServoDeviceConfig,
-};
+pub use mixer_config::{MixerConfig, MixerType, MotorConfig};
+pub use motor_device_config::{MotorDeviceConfig, MotorProtocol};
 pub use motor_mixer::MotorMixer;
-pub use motor_output_filters::MotorOutputFilters;
+pub use servo_config::{ServoConfig, ServoDeviceConfig};
 
+pub use motor_output_filters::MotorOutputFilters;
 pub use rpm_notch_filters::{RpmNotchFilterBank, RpmNotchFilterBankConfig, RpmNotchFilterFrequencies, RpmNotchFilters};
 
 pub use dynamic_idle_controller::{DynamicIdleController, DynamicIdleControllerConfig, RpmHz};

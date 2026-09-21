@@ -13,10 +13,8 @@ use embassy_rp::{bind_interrupts, clocks::clk_sys_freq, peripherals::PIO1, pio::
 use embassy_time::{Duration, Timer};
 use {defmt_rtt as _, panic_probe as _};
 
-use motor_mixers::{
-    MotorDriverDshot,
-    dshot::{DshotCommand, DshotCommandFrame, DshotSpeed},
-};
+use dshot_codec::{DshotCommand, DshotCommandFrame, DshotSpeed};
+use motor_mixers::MotorDriverDshot;
 
 bind_interrupts!(struct Irqs {
     PIO1_IRQ_0 => InterruptHandler<PIO1>;

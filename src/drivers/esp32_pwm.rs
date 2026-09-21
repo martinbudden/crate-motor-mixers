@@ -26,6 +26,7 @@ impl MotorDriverPwm {
         ch1: LedcDriver<'static>,
         ch2: LedcDriver<'static>,
         ch3: LedcDriver<'static>,
+        u16: _frequency_hz,
     ) -> Self {
         Self { channels: [ch0, ch1, ch2, ch3] }
     }

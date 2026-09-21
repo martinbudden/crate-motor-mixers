@@ -17,7 +17,7 @@ impl MotorDriverPwm {
     #[allow(clippy::expect_used)]
     #[must_use]
     /// # Panics
-    pub fn new(pwm0: Pwm<'static>, pwm1: Pwm<'static>, frequency_hz: f32) -> Self {
+    pub fn new(pwm0: Pwm<'static>, pwm1: Pwm<'static>, frequency_hz: u16) -> Self {
         let (pwm0_a, pwm0_b) = pwm0.split();
         let (pwm1_a, pwm1_b) = pwm1.split();
 
@@ -26,7 +26,7 @@ impl MotorDriverPwm {
         let pwm1_a = pwm1_a.expect("PWM A must be configured");
         let pwm1_b = pwm1_b.expect("PWM B must be configured");
 
-        Self { pwm0_a, pwm0_b, pwm1_a, pwm1_b, frequency_hz }
+        Self { pwm0_a, pwm0_b, pwm1_a, pwm1_b, frequency_hz: f32::from(frequency_hz) }
     }
 
     #[inline]
