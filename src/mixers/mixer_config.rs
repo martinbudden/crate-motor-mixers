@@ -6,56 +6,6 @@ use {
     serde::{Deserialize, Serialize},
 };
 
-// parameters to mix function
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
-#[allow(missing_docs)]
-pub struct MotorOutputRange {
-    /// Minimum motor output, typically set to 5.5% to avoid ESC desynchronization,
-    /// may be set to zero if using dynamic idle control or brushed motors.
-    pub min: f32,
-    /// Maximum motor output, typically set to 1.0.
-    pub max: f32,
-}
-
-#[cfg(feature = "storage")]
-impl PostcardValue<'_> for MotorOutputRange {}
-
-impl Default for MotorOutputRange {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl MotorOutputRange {
-    /// Constructor.
-    #[must_use]
-    pub const fn new() -> Self {
-        Self { min: 0.0, max: 1.0 }
-    }
-    /// Set the min of a newly constructed range.
-    #[must_use]
-    pub const fn with_min(mut self, min: f32) -> Self {
-        self.min = min;
-        self
-    }
-    /// Set the max of a newly constructed range.
-    #[must_use]
-    pub const fn with_max(mut self, max: f32) -> Self {
-        self.max = max;
-        self
-    }
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum SaturationCompensation {
-    /// Method 1: reduces yaw rate to preserve throttle and attitude stabilization.
-    #[default]
-    YawReduction,
-    /// Method 2: adjusts throttle baseline up or down to maximize yaw authority.
-    ThrottleAdjustment,
-}
-
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 #[repr(u8)]
@@ -89,12 +39,25 @@ pub enum MixerType {
     CustomTri = 25,
     QuadX1234 = 26,
     OctoXp = 27,
-    // Don't forget to update COUNT if you add any new mixer types.
+}
+
+impl TryFrom<u8> for MixerType {
+    type Error = ();
+
+    /// Validating conversion from `u8` to `MixerType`. Invalid values return error.
+    fn try_from(value: u8) -> Result<Self, ()> {
+        let default = Self::default();
+        if value == default as u8 {
+            Ok(default)
+        } else {
+            let ret = Self::from_u8(value);
+            if ret == default { Err(()) } else { Ok(ret) }
+        }
+    }
 }
 
 impl MixerType {
-    pub const COUNT: u8 = 28;
-
+    /// Forgiving conversion from `u8` to `MixerType`, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {
@@ -109,7 +72,8 @@ impl MixerType {
             //9 => Self::Y4,
             #[cfg(feature = "eight_motors")]
             10 => Self::HexX,
-            //11 => Self::OctoQuadX,
+            #[cfg(feature = "eight_motors")]
+            11 => Self::OctoQuadX,
             //12 => Self::OctoFlatP,
             //13 => Self::OctoFlatX,
             14 => Self::AirplaneSinglePropeller,
@@ -128,14 +92,6 @@ impl MixerType {
             //27 => Self::OctoXp,
             _ => Self::default(),
         }
-    }
-}
-
-impl TryFrom<u8> for MixerType {
-    type Error = ();
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        if value < Self::COUNT { Ok(Self::from_u8(value)) } else { Err(()) }
     }
 }
 
@@ -191,12 +147,25 @@ pub enum MotorProtocol {
     Dshot600 = 7,
     Proshot1000 = 8,
     Disabled = 9,
-    // Don't forget to update COUNT if you add any new protocols.
+}
+
+impl TryFrom<u8> for MotorProtocol {
+    type Error = ();
+
+    /// Validating conversion from `u8` to `MotorProtocol`. Invalid values return error.
+    fn try_from(value: u8) -> Result<Self, ()> {
+        let default = Self::default();
+        if value == default as u8 {
+            Ok(default)
+        } else {
+            let ret = Self::from_u8(value);
+            if ret == default { Err(()) } else { Ok(ret) }
+        }
+    }
 }
 
 impl MotorProtocol {
-    pub const COUNT: u8 = 10;
-
+    /// Forgiving conversion from `u8` to `MotorProtocol`, converts invalid values to default.
     #[must_use]
     pub fn from_u8(value: u8) -> Self {
         match value {
@@ -212,14 +181,6 @@ impl MotorProtocol {
             9 => Self::Disabled,
             _ => Self::default(),
         }
-    }
-}
-
-impl TryFrom<u8> for MotorProtocol {
-    type Error = ();
-
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        if value < Self::COUNT { Ok(Self::from_u8(value)) } else { Err(()) }
     }
 }
 
@@ -374,7 +335,6 @@ mod test_traits {
 
     #[test]
     fn normal_types() {
-        is_full::<SaturationCompensation>();
         is_full::<MixerConfig>();
         is_full::<MotorDeviceConfig>();
         is_full::<MotorConfig>();

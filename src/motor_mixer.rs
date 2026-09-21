@@ -1,20 +1,13 @@
-use core::ops::{Deref, DerefMut};
+use dshot_codec::DshotCommand;
 
 use crate::{
-    MotorDriver, MotorMixerCommands, MotorMixerMessage,
+    MotorDriver,
     mixers::{
         MixerAirplane, MixerBicopter, MixerHexacopter, MixerOctocopter, MixerQuadcopter, MixerTricopter, MixerWing,
+        MotorFrequencies, MotorMixerCommands, MotorMixerMessage, MotorOutputFilters, MotorOutputs,
+        mixer_config::{MixerConfig, MixerType, MotorConfig},
     },
 };
-use dshot_codec::DshotCommand;
-use signal_filters::SlewRateLimiterf32;
-
-use super::{MixerConfig, MixerType, MotorConfig};
-
-#[cfg(feature = "eight_motors")]
-pub const MAX_SUPPORTED_MOTOR_COUNT: usize = 8;
-#[cfg(not(feature = "eight_motors"))]
-pub const MAX_SUPPORTED_MOTOR_COUNT: usize = 4;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Mixer {
@@ -193,45 +186,45 @@ impl MotorMixer {
         self.set_throttle_command(commands.throttle);
 
         match &mut self.mixer {
-            Mixer::Airplane(_mixer) => {
-                let outputs = MixerAirplane::mix(commands);
-                for (ii, output) in outputs.iter().enumerate().take(self.output_count()) {
+            Mixer::Airplane(mixer) => {
+                let outputs = mixer.mix(commands);
+                for (ii, output) in outputs.iter().enumerate().take(MixerAirplane::OUTPUT_COUNT) {
                     self.outputs[ii] = self.output_filters[ii].update(*output);
                 }
             }
-            Mixer::Wing(_mixer) => {
-                let outputs = MixerWing::mix(commands);
-                for (ii, output) in outputs.iter().enumerate().take(self.output_count()) {
+            Mixer::Wing(mixer) => {
+                let outputs = mixer.mix(commands);
+                for (ii, output) in outputs.iter().enumerate().take(MixerWing::OUTPUT_COUNT) {
                     self.outputs[ii] = self.output_filters[ii].update(*output);
                 }
             }
-            Mixer::Bicopter(_mixer) => {
-                let outputs = MixerBicopter::mix(commands);
-                for (ii, output) in outputs.iter().enumerate().take(self.output_count()) {
+            Mixer::Bicopter(mixer) => {
+                let outputs = mixer.mix(commands);
+                for (ii, output) in outputs.iter().enumerate().take(MixerBicopter::OUTPUT_COUNT) {
                     self.outputs[ii] = self.output_filters[ii].update(*output);
                 }
             }
             Mixer::Tricopter(mixer) => {
                 let outputs = mixer.mix(commands);
-                for (ii, output) in outputs.iter().enumerate().take(self.output_count()) {
+                for (ii, output) in outputs.iter().enumerate().take(MixerTricopter::OUTPUT_COUNT) {
                     self.outputs[ii] = self.output_filters[ii].update(*output);
                 }
             }
             Mixer::Quadcopter(mixer) => {
                 let outputs = mixer.mix(commands);
-                for (ii, output) in outputs.iter().enumerate().take(self.output_count()) {
+                for (ii, output) in outputs.iter().enumerate().take(MixerQuadcopter::OUTPUT_COUNT) {
                     self.outputs[ii] = self.output_filters[ii].update(*output);
                 }
             }
             Mixer::Hexacopter(mixer) => {
                 let outputs = mixer.mix(commands);
-                for (ii, output) in outputs.iter().enumerate().take(self.output_count()) {
+                for (ii, output) in outputs.iter().enumerate().take(MixerHexacopter::OUTPUT_COUNT) {
                     self.outputs[ii] = self.output_filters[ii].update(*output);
                 }
             }
             Mixer::Octocopter(mixer) => {
                 let outputs = mixer.mix(commands);
-                for (ii, output) in outputs.iter().enumerate().take(self.output_count()) {
+                for (ii, output) in outputs.iter().enumerate().take(MixerOctocopter::OUTPUT_COUNT) {
                     self.outputs[ii] = self.output_filters[ii].update(*output);
                 }
             }
@@ -245,162 +238,44 @@ impl MotorMixer {
         self.driver.motor_frequencies()
     }
 
-    /// Calculate and output motor mix.
+    pub async fn write_command_to_all_motors(&mut self, command: DshotCommand) {
+        self.driver.write_command_to_all_motors(command).await;
+    }
+
+    /// Calculate motor mix and output to motors.
     /// It is typically called at frequency of between 500Hz and 1000Hz.
-    pub async fn output_to_motors(&mut self, commands_dps: MotorMixerMessage) {
+    pub async fn output_to_motors(&mut self, commands: MotorMixerMessage) {
         const DPS_TO_SIGNED_UNIT_INTERVAL: f32 = 0.001;
 
-        // ALWAYS write 0.0 to the motors if they are not switched on, as a safety precaution
+        // ALWAYS write 0.0 to the motors if they are not switched on, as a safety precaution.
         if !self.motors_is_on() || !self.motors_is_armed() {
             self.outputs = MotorOutputs::default();
             self.driver.write_to_motors(self.outputs).await;
             return;
         }
 
-        let commands = MotorMixerCommands {
-            throttle: commands_dps.throttle,
+        let mixer_commands = MotorMixerCommands {
+            throttle: (commands.throttle).clamp(0.0, 1.0),
             // scale roll, pitch, and yaw from DPS to the signed unit interval, [-1.0, 1.0].
-            roll: commands_dps.roll_dps * DPS_TO_SIGNED_UNIT_INTERVAL,
-            pitch: commands_dps.pitch_dps * DPS_TO_SIGNED_UNIT_INTERVAL,
-            yaw: commands_dps.yaw_dps * DPS_TO_SIGNED_UNIT_INTERVAL,
+            roll: (commands.roll_dps * DPS_TO_SIGNED_UNIT_INTERVAL).clamp(-1.0, 1.0),
+            pitch: (commands.pitch_dps * DPS_TO_SIGNED_UNIT_INTERVAL).clamp(-1.0, 1.0),
+            yaw: (commands.yaw_dps * DPS_TO_SIGNED_UNIT_INTERVAL).clamp(-1.0, 1.0),
         };
-        self.mix(commands);
+        self.mix(mixer_commands);
 
         self.driver.write_to_motors(self.outputs).await;
     }
 }
 
-/// Struct containing array of motor outputs, one for each motor.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MotorOutputs(pub [f32; MAX_SUPPORTED_MOTOR_COUNT]);
-
-impl Default for MotorOutputs {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl MotorOutputs {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self([0.0; MAX_SUPPORTED_MOTOR_COUNT])
-    }
-}
-
-impl Deref for MotorOutputs {
-    type Target = [f32; MAX_SUPPORTED_MOTOR_COUNT];
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for MotorOutputs {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-/// Struct containing array of motor commands, one for each motor.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct DshotCommands(pub [DshotCommand; MAX_SUPPORTED_MOTOR_COUNT]);
-
-impl Default for DshotCommands {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl DshotCommands {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self([DshotCommand::MotorStop; MAX_SUPPORTED_MOTOR_COUNT])
-    }
-}
-
-impl Deref for DshotCommands {
-    type Target = [DshotCommand; MAX_SUPPORTED_MOTOR_COUNT];
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for DshotCommands {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-/// Array of motor rotation frequencies, one for each motor.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MotorFrequencies(pub [f32; MAX_SUPPORTED_MOTOR_COUNT]);
-
-impl MotorFrequencies {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self([0.0; MAX_SUPPORTED_MOTOR_COUNT])
-    }
-}
-
-impl Default for MotorFrequencies {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Deref for MotorFrequencies {
-    type Target = [f32; MAX_SUPPORTED_MOTOR_COUNT];
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for MotorFrequencies {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct MotorOutputFilters(pub [SlewRateLimiterf32; MAX_SUPPORTED_MOTOR_COUNT]);
-
-impl MotorOutputFilters {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self([SlewRateLimiterf32::new(); MAX_SUPPORTED_MOTOR_COUNT])
-    }
-}
-
-impl Default for MotorOutputFilters {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Deref for MotorOutputFilters {
-    type Target = [SlewRateLimiterf32; MAX_SUPPORTED_MOTOR_COUNT];
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for MotorOutputFilters {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
 #[cfg(test)]
 mod test_traits {
     use super::*;
 
     fn is_normal<T: Sized + Send + Sync + Unpin>() {}
-    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
+    //fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
 
     #[test]
     fn normal_types() {
         is_normal::<MotorMixer>();
-        is_full::<MotorOutputs>();
-        is_full::<DshotCommands>();
-        is_full::<MotorFrequencies>();
-        is_full::<MotorOutputFilters>();
     }
 }

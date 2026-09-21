@@ -1,7 +1,7 @@
 #![cfg(not(any(feature = "esp32", rp, feature = "stm32")))]
 use dshot_codec::DshotCommand;
 
-use crate::{DshotCommands, MotorFrequencies, MotorOutputs};
+use crate::mixers::{DshotCommands, MotorFrequencies, MotorOutputs};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct MotorDriverPwm;

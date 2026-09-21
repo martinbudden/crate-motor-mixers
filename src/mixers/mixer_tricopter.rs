@@ -1,4 +1,4 @@
-use crate::{MotorMixerCommands, MotorOutputRange, SaturationCompensation};
+use super::{MotorMixerCommands, MotorOutputRange, SaturationCompensation};
 #[allow(unused)]
 use vqm::MathMethods; // Required for .cos()
 

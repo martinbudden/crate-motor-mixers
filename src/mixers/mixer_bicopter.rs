@@ -1,8 +1,10 @@
-use crate::MotorMixerCommands;
+use super::{MotorMixerCommands, MotorOutputRange};
 
 /// Bicopter: two tilt-adjustable rotors.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct MixerBicopter {}
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct MixerBicopter {
+    range: MotorOutputRange,
+}
 
 impl MixerBicopter {
     pub const MOTOR_COUNT_U8: u8 = 1;
@@ -13,20 +15,41 @@ impl MixerBicopter {
     /// Constructor.
     #[must_use]
     pub const fn new() -> Self {
-        Self {}
+        Self { range: MotorOutputRange::new() }
+    }
+    /// Set the range of a newly constructed tricopter.
+    #[must_use]
+    pub const fn with_range(mut self, range: MotorOutputRange) -> Self {
+        self.set_range(range);
+        self
     }
 }
 
 impl MixerBicopter {
     #[inline]
+    pub const fn set_range(&mut self, range: MotorOutputRange) {
+        self.range = range;
+    }
+    #[inline]
     #[must_use]
-    pub const fn mix(commands: MotorMixerCommands) -> [f32; Self::OUTPUT_COUNT] {
-        let outputs: [f32; Self::OUTPUT_COUNT] = [
+    pub const fn range(self) -> MotorOutputRange {
+        self.range
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn mix(&mut self, commands: MotorMixerCommands) -> [f32; Self::OUTPUT_COUNT] {
+        let mut outputs: [f32; Self::OUTPUT_COUNT] = [
             commands.throttle + commands.roll, // motor left
             commands.throttle - commands.roll, // motor right
             commands.pitch - commands.yaw,     // servo left
             commands.pitch + commands.yaw,     // servo right
         ];
+
+        for output in &mut outputs {
+            *output = output.clamp(self.range.min, self.range.max);
+        }
+
         outputs
     }
 }
@@ -35,10 +58,10 @@ impl MixerBicopter {
 mod test_traits {
     use super::*;
 
-    fn is_full_eq<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq + Eq>() {}
+    fn is_full<T: Sized + Send + Sync + Unpin + Copy + Clone + Default + PartialEq>() {}
 
     #[test]
     fn normal_types() {
-        is_full_eq::<MixerBicopter>();
+        is_full::<MixerBicopter>();
     }
 }

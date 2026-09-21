@@ -21,34 +21,26 @@
 
 mod drivers;
 pub mod dshot_rp;
-mod mixers;
-
 mod dynamic_idle_controller;
-
-mod mixer_commands;
-
+mod mixers;
 mod motor_driver;
-
-mod mixer_config;
 mod motor_mixer;
-
 mod rpm_notch_filters;
 mod rpm_notch_filters_state_machine;
 
-pub use mixer_commands::{MotorMixerCommands, MotorMixerMessage};
-
-pub use mixer_config::{
-    MixerConfig, MixerType, MotorConfig, MotorDeviceConfig, MotorOutputRange, MotorProtocol, ProtocolFamily,
-    SaturationCompensation, ServoConfig, ServoDeviceConfig,
+pub use drivers::{MotorDriverDshot, MotorDriverPwm};
+pub use mixers::mixer_config::{
+    MixerConfig, MixerType, MotorConfig, MotorDeviceConfig, MotorProtocol, ProtocolFamily, ServoConfig,
+    ServoDeviceConfig,
 };
+pub use mixers::{
+    MAX_SUPPORTED_MOTOR_COUNT, MotorFrequencies, MotorMixerCommands, MotorMixerMessage, MotorOutputFilters,
+    MotorOutputRange, MotorOutputs, SaturationCompensation,
+};
+//pub use mixers::{MAX_SUPPORTED_MOTOR_COUNT, MotorFrequencies, MotorOutputRange, MotorOutputs,MotorMixerMessage};
 
 pub use motor_driver::MotorDriver;
-
-pub use drivers::{MotorDriverDshot, MotorDriverPwm};
-
-pub use motor_mixer::{
-    DshotCommands, MAX_SUPPORTED_MOTOR_COUNT, MotorFrequencies, MotorMixer, MotorOutputFilters, MotorOutputs,
-};
+pub use motor_mixer::MotorMixer;
 
 pub use rpm_notch_filters::{RpmNotchFilterBank, RpmNotchFilterBankConfig, RpmNotchFilterFrequencies, RpmNotchFilters};
 

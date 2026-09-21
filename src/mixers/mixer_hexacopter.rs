@@ -1,4 +1,4 @@
-use crate::{MotorMixerCommands, MotorOutputRange, SaturationCompensation};
+use super::{MotorMixerCommands, MotorOutputRange, SaturationCompensation};
 
 /// X-configuration hexacopter.
 /// With automatic dynamic roll, pitch, and yaw overflow management.

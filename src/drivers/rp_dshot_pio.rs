@@ -3,7 +3,7 @@ use embassy_time::{Duration, Timer};
 
 use dshot_codec::{DshotCommand, DshotCommandFrame, DshotError, DshotTelemetryFrame, GcrFrame};
 
-use crate::{DshotCommands, MotorFrequencies, MotorOutputs};
+use crate::mixers::{DshotCommands, MotorFrequencies, MotorOutputs};
 
 #[cfg(any(feature = "rp235xa", feature = "rp235xb"))]
 use embassy_rp::peripherals::PIO2;
