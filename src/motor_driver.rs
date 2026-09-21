@@ -1,10 +1,7 @@
 use dshot_codec::DshotCommand;
 use embassy_time::{Duration, Timer};
 
-use crate::{
-    drivers::{MotorDriverDshot, MotorDriverPwm},
-    mixers::{DshotCommands, MotorFrequencies, MotorOutputs},
-};
+use crate::drivers::{DshotCommands, MotorDriverDshot, MotorDriverPwm, MotorFrequencies, MotorOutputs};
 
 #[allow(missing_debug_implementations, missing_copy_implementations)]
 pub enum MotorDriver {

@@ -1,6 +1,6 @@
 #![cfg(feature = "stm32")]
 
-use crate::MotorOutputs;
+use super::MotorOutputs;
 
 use embassy_stm32::timer::{
     GeneralInstance4Channel,

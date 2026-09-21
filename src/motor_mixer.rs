@@ -1,11 +1,11 @@
 use dshot_codec::DshotCommand;
 
 use crate::{
-    MotorDriver,
+    MixerConfig, MixerType, MotorConfig, MotorDriver, MotorOutputFilters,
+    drivers::{MotorFrequencies, MotorOutputs},
     mixers::{
         MixerAirplane, MixerBicopter, MixerHexacopter, MixerOctocopter, MixerQuadcopter, MixerTricopter, MixerWing,
-        MotorFrequencies, MotorMixerCommands, MotorMixerMessage, MotorOutputFilters, MotorOutputs,
-        mixer_config::{MixerConfig, MixerType, MotorConfig},
+        MotorMixerCommands, MotorMixerMessage,
     },
 };
 

@@ -122,16 +122,17 @@ impl MixerConfig {
     }
 }
 
-/// PWM (analog) or Dshot (digital).
+/*/// PWM (analog) or Dshot (digital).
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
 pub enum ProtocolFamily {
     Unknown = 0,
     Pwm = 1,
     Dshot = 2,
-}
+}*/
 
 /// Motor protocol.
+/// Betaflight compatible values.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize, MaxSize))]
 #[repr(u8)]

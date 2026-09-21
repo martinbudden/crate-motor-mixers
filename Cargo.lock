@@ -1455,6 +1455,7 @@ dependencies = [
  "serde",
  "signal-filters",
  "vqm",
+ "xtensa-lx",
 ]
 
 [[package]]

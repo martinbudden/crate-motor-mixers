@@ -1,6 +1,6 @@
 #![cfg(rp)]
 
-use crate::MotorOutputs;
+use super::MotorOutputs;
 
 use embassy_rp::pwm::{Pwm, PwmOutput, SetDutyCycle};
 

@@ -1,6 +1,6 @@
 #![cfg(feature = "esp32")]
 
-use crate::MotorOutputs;
+use super::MotorOutputs;
 
 use esp_idf_hal::ledc::{Channel, LedcDriver, LedcTimerDriver, SpeedMode};
 

@@ -2,7 +2,7 @@ use core::ops::{Deref, DerefMut};
 
 use signal_filters::SlewRateLimiterf32;
 
-use super::MAX_SUPPORTED_MOTOR_COUNT;
+use crate::drivers::MAX_SUPPORTED_MOTOR_COUNT;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MotorOutputFilters(pub [SlewRateLimiterf32; MAX_SUPPORTED_MOTOR_COUNT]);

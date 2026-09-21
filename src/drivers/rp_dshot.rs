@@ -1,6 +1,6 @@
 use dshot_codec::DshotCommand;
 
-use crate::mixers::{DshotCommands, MotorFrequencies, MotorOutputs};
+use super::{DshotCommands, MotorFrequencies, MotorOutputs};
 
 #[cfg(rp)]
 use {
