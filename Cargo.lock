@@ -548,8 +548,7 @@ dependencies = [
 [[package]]
 name = "dshot-codec"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "538b525bec1b76c6eb1fa038d8ee3c1d482dfd31dfb4074a4bb14e9c0646551e"
+source = "git+https://github.com/martinbudden/crate-dshot-codec#76c31f17b7ebfaa2279228d3478932b67952d5cd"
 dependencies = [
  "num-traits",
  "rustc_version 0.4.1",
@@ -1438,7 +1437,7 @@ version = "0.1.6"
 dependencies = [
  "approx",
  "defmt",
- "dshot-codec 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "dshot-codec 0.1.0 (git+https://github.com/martinbudden/crate-dshot-codec)",
  "embassy-executor",
  "embassy-futures",
  "embassy-rp",

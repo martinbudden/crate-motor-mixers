@@ -54,11 +54,7 @@ impl Default for ServoConfig {
 impl ServoConfig {
     #[must_use]
     pub const fn new() -> Self {
-        Self {
-            servo_lowpass_freq: 0,
-            tri_unarmed_servo: 0,
-            channel_forwarding_start_channel: 0,
-        }
+        Self { servo_lowpass_freq: 0, tri_unarmed_servo: 0, channel_forwarding_start_channel: 0 }
     }
 }
 

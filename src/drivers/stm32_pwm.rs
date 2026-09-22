@@ -8,31 +8,31 @@ use embassy_stm32::timer::{
 };
 
 // TODO: sort out MotorDriverPwmGeneral for stm32 variant
-#[cfg(feature = "motors_t1")]
+#[cfg(feature = "pwm_t1")]
 pub type MotorDriverPwm = MotorDriverPwmGeneral<embassy_stm32::peripherals::TIM1>;
 
-#[cfg(feature = "motors_t3")]
+#[cfg(feature = "pwm_t3")]
 pub type MotorDriverPwm = MotorDriverPwmGeneral<embassy_stm32::peripherals::TIM3>;
 
-#[cfg(feature = "motors_t4")]
+#[cfg(feature = "pwm_t4")]
 pub type MotorDriverPwm = MotorDriverPwmGeneral<embassy_stm32::peripherals::TIM4>;
 
-#[cfg(feature = "motors_t5")]
+#[cfg(feature = "pwm_t5")]
 pub type MotorDriverPwm = MotorDriverPwmGeneral<embassy_stm32::peripherals::TIM5>;
 
-#[cfg(feature = "motors_t6")]
+#[cfg(feature = "pwm_t6")]
 pub type MotorDriverPwm = MotorDriverPwmGeneral<embassy_stm32::peripherals::TIM6>;
 
-#[cfg(feature = "motors_t7")]
+#[cfg(feature = "pwm_t7")]
 pub type MotorDriverPwm = MotorDriverPwmGeneral<embassy_stm32::peripherals::TIM7>;
 
-#[cfg(feature = "motors_t8")]
+#[cfg(feature = "pwm_t8")]
 pub type MotorDriverPwm = MotorDriverPwmGeneral<embassy_stm32::peripherals::TIM8>;
 
-#[cfg(feature = "motors_t3_t5")]
+#[cfg(feature = "pwm_t3_t5")]
 pub type MotorDriverPwm = MotorDriverPwmGeneral2<embassy_stm32::peripherals::TIM3, embassy_stm32::peripherals::TIM5>;
 
-#[cfg(feature = "motors_t4_t3")]
+#[cfg(feature = "pwm_t4_t3")]
 pub type MotorDriverPwm = MotorDriverPwmGeneral2<embassy_stm32::peripherals::TIM4, embassy_stm32::peripherals::TIM3>;
 
 #[allow(missing_debug_implementations, missing_copy_implementations)]

@@ -31,18 +31,26 @@ rustc_version = "0.4.1"
 #default = ["rp2040"]
 #default = ["rp235xa"]
 #default = ["rp235xa", "eight_motors"]
-#default = ["stm32", "motors_t4_t3"]
+#default = ["stm32", "pwm_t4_t3", "dshot_t8"]
 #default = ["esp32"]
 
-motors_t1 = []
-motors_t3 = []
-motors_t4 = []
-motors_t5 = []
-motors_t6 = []
-motors_t7 = []
-motors_t8 = []
-motors_t3_t5 = []
-motors_t4_t3 = []
+pwm_t1 = []
+pwm_t3 = []
+pwm_t4 = []
+pwm_t5 = []
+pwm_t6 = []
+pwm_t7 = []
+pwm_t8 = []
+pwm_t3_t5 = []
+pwm_t4_t3 = []
+dshot_t1 = []
+dshot_t2 = []
+dshot_t3 = []
+dshot_t4 = []
+dshot_t5 = []
+dshot_t6 = []
+dshot_t7 = []
+dshot_t8 = []
 eight_motors = []
 
 # Core backend features declared explicitly
@@ -60,6 +68,7 @@ rp235xb = ["embassy-rp/rp235xb"]
 stm32 = [
     "dep:embassy-stm32",
     "embassy-stm32/time-driver-tim2",
+    "embassy-stm32/unstable-pac", # required for port.gpio_bsrr()
     "embassy-executor/platform-cortex-m",   # <-- Explicitly satisfies the executor's platform check
     "embassy-executor/executor-thread",
 ]
@@ -90,8 +99,8 @@ defmt = { version = "1.0.1", optional = true }
 fixed = "=1.29" # last version that has MSRV 1.89
 #paste = "1.0.15"
 
-dshot-codec = { version = "0.1.0" }
-#dshot-codec = { git = "https://github.com/martinbudden/crate-dshot-codec" }
+#dshot-codec = { version = "0.1.0" }
+dshot-codec = { git = "https://github.com/martinbudden/crate-dshot-codec" }
 #dshot-codec = { path = "../dshot-codec"  }
 #vqm = { version = "0.1.16" }
 vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix" }
