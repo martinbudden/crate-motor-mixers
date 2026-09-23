@@ -11,6 +11,7 @@ use {
         peripherals::PIO1,
         pio::{InterruptHandler, PioPin},
     },
+    embassy_time::Timer,
 };
 
 #[cfg(all(rp, feature = "eight_motors"))]
@@ -40,7 +41,7 @@ impl MotorDriverDshot {
         pin2: Peri<'static, impl PioPin + 'static>,
         pin3: Peri<'static, impl PioPin + 'static>,
         dshot_speed: dshot_codec::DshotSpeed,
-        motor_pole_count: u16,
+        motor_pole_count: u8,
     ) -> Self {
         Self {
             motor_frequencies: MotorFrequencies::new(),
@@ -64,7 +65,7 @@ impl MotorDriverDshot {
         pin6: Peri<'static, impl PioPin + 'static>,
         pin7: Peri<'static, impl PioPin + 'static>,
         dshot_speed: dshot_codec::DshotSpeed,
-        motor_pole_count: u16,
+        motor_pole_count: u8,
     ) -> Self {
         Self {
             motor_frequencies: MotorFrequencies::new(),
@@ -118,9 +119,12 @@ impl MotorDriverDshot {
     #[allow(unused)]
     pub async fn write_command_to_all_motors(&mut self, command: DshotCommand) {
         #[cfg(rp)]
-        self.driver.write_command_to_all_motors(command).await;
-        #[cfg(all(rp, feature = "eight_motors"))]
-        self.driver_b.write_command_to_all_motors(commands[4..]).await;
+        for _ in 0..command.repetitions_required() {
+            self.driver.write_command_to_all_motors(command).await;
+            #[cfg(feature = "eight_motors")]
+            self.driver_b.write_command_to_all_motors(command).await;
+            Timer::after_micros(u64::from(command.delay_required_us())).await;
+        }
         #[cfg(not(rp))]
         {
             core::future::ready(()).await;

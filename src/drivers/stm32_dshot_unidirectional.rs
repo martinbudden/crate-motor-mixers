@@ -1,5 +1,4 @@
 #![cfg(feature = "stm32")]
-//#![allow(unused)]
 
 use embassy_stm32::{
     Peri, PeripheralType,
@@ -11,30 +10,31 @@ use embassy_stm32::{
         low_level::{RoundTo, Timer},
     },
 };
+use embassy_time::Timer as EmbassyTimer;
 
 use dshot_codec::{DshotCommand, DshotCommandFrame, DshotMotorMasks, DshotTiming, DshotWaveform};
 
 use super::{DshotCommands, MotorFrequencies, MotorOutputs};
 
 #[cfg(feature = "dshot_t1")]
-pub type MotorDriverDshot = MotorDriverDshotGeneral<'static, embassy_stm32::peripherals::TIM1>;
+pub type MotorDriverDshot = MotorDriverDshotUnidirectional<'static, embassy_stm32::peripherals::TIM1>;
 #[cfg(feature = "dshot_t2")]
-pub type MotorDriverDshot = MotorDriverDshotGeneral<'static, embassy_stm32::peripherals::TIM2>;
+pub type MotorDriverDshot = MotorDriverDshotUnidirectional<'static, embassy_stm32::peripherals::TIM2>;
 #[cfg(feature = "dshot_t3")]
-pub type MotorDriverDshot = MotorDriverDshotGeneral<'static, embassy_stm32::peripherals::TIM3>;
+pub type MotorDriverDshot = MotorDriverDshotUnidirectional<'static, embassy_stm32::peripherals::TIM3>;
 #[cfg(feature = "dshot_t4")]
-pub type MotorDriverDshot = MotorDriverDshotGeneral<'static, embassy_stm32::peripherals::TIM4>;
+pub type MotorDriverDshot = MotorDriverDshotUnidirectional<'static, embassy_stm32::peripherals::TIM4>;
 #[cfg(feature = "dshot_t5")]
-pub type MotorDriverDshot = MotorDriverDshotGeneral<'static, embassy_stm32::peripherals::TIM5>;
+pub type MotorDriverDshot = MotorDriverDshotUnidirectional<'static, embassy_stm32::peripherals::TIM5>;
 #[cfg(feature = "dshot_t6")]
-pub type MotorDriverDshot = MotorDriverDshotGeneral<'static, embassy_stm32::peripherals::TIM6>;
+pub type MotorDriverDshot = MotorDriverDshotUnidirectional<'static, embassy_stm32::peripherals::TIM6>;
 #[cfg(feature = "dshot_t7")]
-pub type MotorDriverDshot = MotorDriverDshotGeneral<'static, embassy_stm32::peripherals::TIM7>;
+pub type MotorDriverDshot = MotorDriverDshotUnidirectional<'static, embassy_stm32::peripherals::TIM7>;
 #[cfg(feature = "dshot_t8")]
-pub type MotorDriverDshot = MotorDriverDshotGeneral<'static, embassy_stm32::peripherals::TIM8>;
+pub type MotorDriverDshot = MotorDriverDshotUnidirectional<'static, embassy_stm32::peripherals::TIM8>;
 
 #[allow(missing_debug_implementations, missing_copy_implementations)]
-pub struct MotorDriverDshotGeneral<'d, T: BasicNoCr2Instance> {
+pub struct MotorDriverDshotUnidirectional<'d, T: BasicNoCr2Instance> {
     timer: Timer<'d, T>,
     dma: Channel<'d>,
 
@@ -49,7 +49,6 @@ pub struct MotorDriverDshotGeneral<'d, T: BasicNoCr2Instance> {
 
     masks: DshotMotorMasks,
     timing: DshotTiming,
-
     waveform: &'d mut DshotWaveform,
     motor_frequencies: MotorFrequencies,
     erpm_to_hz: f32,
@@ -69,9 +68,11 @@ pub struct MotorDriverDshotGeneral<'d, T: BasicNoCr2Instance> {
 //
 // Therefore moving the driver between executor contexts/threads does not
 // invalidate the pointer or violate Rust's ownership rules.
-unsafe impl<T: BasicNoCr2Instance> Send for MotorDriverDshotGeneral<'_, T> {}
+unsafe impl<T: BasicNoCr2Instance> Send for MotorDriverDshotUnidirectional<'_, T> {}
 
-impl<'d, T> MotorDriverDshotGeneral<'d, T>
+const MOTOR_COUNT: usize = 4;
+
+impl<'d, T> MotorDriverDshotUnidirectional<'d, T>
 where
     T: BasicNoCr2Instance + BasicInstance,
 {
@@ -139,16 +140,23 @@ where
             bsrr,
             masks,
             timing,
-            erpm_to_hz: 2.0 * (100.0 / SECONDS_PER_MINUTE) / f32::from(motor_pole_count),
             waveform,
             motor_frequencies: MotorFrequencies::new(),
+            erpm_to_hz: 2.0 * (100.0 / SECONDS_PER_MINUTE) / f32::from(motor_pole_count),
         }
+    }
+
+    #[inline]
+    pub async fn send_command_frames(&mut self, frames: [DshotCommandFrame; MOTOR_COUNT]) {
+        let packets = [frames[0].raw(), frames[1].raw(), frames[2].raw(), frames[3].raw()];
+        self.send_packets(packets).await;
     }
 
     /// Send four already-encoded DShot packets.
     ///
     /// The packets should be the 16-bit DShot words produced by `dshot-codec`.
-    pub async fn send_packets(&mut self, packets: [u16; 4]) {
+    #[inline]
+    pub async fn send_packets(&mut self, packets: [u16; MOTOR_COUNT]) {
         self.waveform.encode(packets, self.masks, self.timing);
         self.send().await;
     }
@@ -196,35 +204,41 @@ where
     }
 }
 
-impl<'d, T> MotorDriverDshotGeneral<'d, T>
+impl<'d, T> MotorDriverDshotUnidirectional<'d, T>
 where
     T: BasicNoCr2Instance + BasicInstance,
 {
     pub async fn write_to_motors(&mut self, outputs: MotorOutputs) {
-        let frame0 = DshotCommandFrame::from_throttle_bidirectional(outputs[0]);
-        let frame1 = DshotCommandFrame::from_throttle_bidirectional(outputs[1]);
-        let frame2 = DshotCommandFrame::from_throttle_bidirectional(outputs[2]);
-        let frame3 = DshotCommandFrame::from_throttle_bidirectional(outputs[3]);
-        self.send_packets([frame0.raw(), frame1.raw(), frame2.raw(), frame3.raw()]).await;
+        let commands_frames = [
+            DshotCommandFrame::from_throttle_unidirectional(outputs[0]),
+            DshotCommandFrame::from_throttle_unidirectional(outputs[1]),
+            DshotCommandFrame::from_throttle_unidirectional(outputs[2]),
+            DshotCommandFrame::from_throttle_unidirectional(outputs[3]),
+        ];
+        self.send_command_frames(commands_frames).await;
     }
 
     pub async fn write_commands_to_motors(&mut self, commands: DshotCommands) {
-        let frame0 = DshotCommandFrame::from_command(commands[0]);
-        let frame1 = DshotCommandFrame::from_command(commands[1]);
-        let frame2 = DshotCommandFrame::from_command(commands[2]);
-        let frame3 = DshotCommandFrame::from_command(commands[3]);
-        self.send_packets([frame0.raw(), frame1.raw(), frame2.raw(), frame3.raw()]).await;
+        let commands_frames = [
+            DshotCommandFrame::from_command(commands[0]),
+            DshotCommandFrame::from_command(commands[1]),
+            DshotCommandFrame::from_command(commands[2]),
+            DshotCommandFrame::from_command(commands[3]),
+        ];
+        self.send_command_frames(commands_frames).await;
     }
 
     pub async fn write_command_to_all_motors(&mut self, command: DshotCommand) {
-        let frame = DshotCommandFrame::from_command(command).raw();
+        let commands_frames = [
+            DshotCommandFrame::from_command(command),
+            DshotCommandFrame::from_command(command),
+            DshotCommandFrame::from_command(command),
+            DshotCommandFrame::from_command(command),
+        ];
         for _ in 0..command.repetitions_required() {
-            self.send_packets([frame, frame, frame, frame]).await;
+            self.send_command_frames(commands_frames).await;
+            EmbassyTimer::after_micros(u64::from(command.delay_required_us())).await;
         }
-    }
-
-    pub async fn reverse_all_motors(&mut self) {
-        self.write_command_to_all_motors(DshotCommand::SpinDirectionReversed).await;
     }
 
     #[allow(clippy::unnecessary_wraps)]

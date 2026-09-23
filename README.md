@@ -33,7 +33,9 @@ and increases braking authority by maintaining a minimum RPM floor.
 
 > **⚠️ Note:** This crate is currently under active development.
 >
-> PWM and `Dshot` implementations are provisional, and `Dshot` is not yet supported on STM32 and ESP32 targets.
+> `PWM` and `Dshot` implementations are provisional.
+> Only unidirectional `Dshot` is available on STM32.
+> `Dshot` is not yet available on ESP32.
 
 ## Mixes available
 

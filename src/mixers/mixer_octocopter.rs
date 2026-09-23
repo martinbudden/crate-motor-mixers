@@ -565,8 +565,6 @@ mod octocopter_tests {
             .with_small_prop_idle_throttle(0.1)
             .with_small_prop_throttle_scale(0.5);
 
-        let outputs = mixer.mix(commands);
-
         // Calculate a reference baseline of the small maneuvering props BEFORE saturation changes occur
         let initial_small_base = (commands.throttle * mixer.small_prop_throttle_scale) + mixer.small_prop_idle_throttle;
 
@@ -601,13 +599,13 @@ mod octocopter_tests {
         let mut mixer = MixerOctocopter::new();
 
         // Test Method 1 (Yaw Reduction)
-        let outputs = mixer.mix(commands);
+        let _outputs = mixer.mix(commands);
         assert_eq!(mixer.throttle, THROTTLE, "Method 1 altered throttle floor unexpectedly.");
 
         // Test Method 2 (Dynamic Throttle Shift)
         let mut mixer = MixerOctocopter::new().with_saturation_compensation(SaturationCompensation::ThrottleAdjustment);
 
-        let outputs = mixer.mix(commands);
+        let _outputs = mixer.mix(commands);
 
         // Method 2 must raise the small maneuvering floor upward to preserve rotational velocity authority
         assert!(

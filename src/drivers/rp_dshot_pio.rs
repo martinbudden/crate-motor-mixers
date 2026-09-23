@@ -58,7 +58,7 @@ impl<PIO: Instance> MotorDriverQuadDshotPio<'_, PIO> {
         pin2: Peri<'static, impl PioPin + 'static>,
         pin3: Peri<'static, impl PioPin + 'static>,
         dshot_speed: DshotSpeed,
-        motor_pole_count: u16,
+        motor_pole_count: u8,
     ) -> Self {
         use embassy_rp::pio::Pio;
 

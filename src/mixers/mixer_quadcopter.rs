@@ -298,7 +298,6 @@ mod tests {
 
         let mut mixer = MixerQuadcopter::new().with_saturation_compensation(SaturationCompensation::YawReduction);
 
-        let outputs = mixer.mix(commands);
         commands.throttle = 0.4;
         commands.yaw = 0.3;
         let outputs = mixer.mix(commands);

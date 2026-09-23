@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 mod mixer_airplane;
 mod mixer_bicopter;
 mod mixer_commands;

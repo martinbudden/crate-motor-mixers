@@ -51,7 +51,7 @@ impl<T> MotorDriverPwmGeneral<T>
 where
     T: GeneralInstance4Channel,
 {
-    pub fn new(pwm1: SimplePwm<'static, T>, _frequency_hz: u16) -> Self {
+    pub fn new(pwm1: SimplePwm<'static, T>, _frequency_hz: f32) -> Self {
         let channels = pwm1.split();
 
         Self { ch0: channels.ch1, ch1: channels.ch2, ch2: channels.ch3, ch3: channels.ch4 }
