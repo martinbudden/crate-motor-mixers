@@ -1,7 +1,5 @@
 #![allow(unused)]
 
-use embassy_time::Timer;
-
 use dshot_codec::{DshotCommand, DshotCommandFrame, DshotMotorMasks, DshotTiming, DshotWaveform};
 
 use super::{DshotCommands, MotorFrequencies, MotorOutputs};
@@ -70,7 +68,7 @@ impl MotorDriverDshot<'_> {
         ];
         for _ in 0..command.repetitions_required() {
             self.send_command_frames(commands_frames).await;
-            Timer::after_micros(u64::from(command.delay_required_us())).await;
+            embassy_time::Timer::after_micros(u64::from(command.delay_required_us())).await;
         }
     }
 

@@ -1,7 +1,6 @@
 [package]
 name = "motor-mixers-examples"
 edition = "2024"
-rust-version = "1.89"
 authors = ["Martin Budden"]
 license = "MIT OR Apache-2.0"
 

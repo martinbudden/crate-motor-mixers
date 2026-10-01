@@ -15,7 +15,7 @@ rustflags = [
 runner = "probe-rs run --chip RP2350"
 rustflags = [
     "-C", "target-cpu=cortex-m33",
-    "-C", "link-arg=-Tlink.x", 
+    "-C", "link-arg=-Tlink.x",
 ]
 
 # Configuration for ESP32 S3
