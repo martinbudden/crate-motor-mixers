@@ -77,14 +77,19 @@ impl RpmNotchFilterFrequencies {
 
     /// Constructor.
     #[must_use]
-    pub const fn with_fade_range_hz(fade_range_hz: f32) -> Self {
-        Self { motor_frequencies_hz: MotorFrequencies::new(), min_hz: 100.0, max_hz: 0.0, fade_range_hz }
+    pub const fn new() -> Self {
+        Self {
+            motor_frequencies_hz: MotorFrequencies::new(),
+            min_hz: 100.0,
+            max_hz: 0.0,
+            fade_range_hz: Self::DEFAULT_FADE_RANGE,
+        }
     }
 
-    /// Constructor.
     #[must_use]
-    pub const fn new() -> Self {
-        Self::with_fade_range_hz(Self::DEFAULT_FADE_RANGE)
+    pub const fn with_fade_range_hz(mut self, fade_range_hz: f32) -> Self {
+        self.fade_range_hz = fade_range_hz;
+        self
     }
 }
 

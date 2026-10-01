@@ -21,9 +21,9 @@ and increases braking authority by maintaining a minimum RPM floor.
 
 ## Motor Saturation, Yaw Jumps and Yaw Washouts
 
-* Yaw Jump this is when, at high throttle, an aggressive yaw manoeuver can cause a multirotor to unexpectedly balloon upwards (or jump).
+* **Yaw Jump** is when, at high throttle, an aggressive **yaw** manoeuver can cause a multirotor to unexpectedly balloon upwards (or jump).
 
-* Yaw washout is when, at high throttle, an aggressive roll or pitch manoeuver can result in an uncommanded spin.
+* **Yaw Washout** is when, at high throttle, an aggressive **roll** or **pitch** manoeuver can result in an uncommanded spin.
 
 `motor-mixers` has settings to deal with both these occurrences.
 

@@ -105,7 +105,7 @@ dshot-codec = { git = "https://github.com/martinbudden/crate-dshot-codec" }
 vqm = { version = "0.1.17", default-features = false }
 #vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix", default-features = false }
 #vqm = { path = "../vqm", default-features = false  }
-signal-filters = { version = "0.1.13" }
+signal-filters = { version = "0.1.14" }
 #signal-filters = { git = "https://github.com/martinbudden/crate-signal-filters" }
 #signal-filters = { path = "../signal-filters" }
 #pidsk-controller = { "0.1.9", default-features = false }

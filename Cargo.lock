@@ -1621,7 +1621,7 @@ checksum = "5be167a7af36ee22fe3115051bc51f6e6c7054c9348e28deb4f49bd6f705a315"
 [[package]]
 name = "pidsk-controller"
 version = "0.1.9"
-source = "git+https://github.com/martinbudden/crate-pid-controller#ca1b27040df3bda194a391a3f0dc81d6886cd018"
+source = "git+https://github.com/martinbudden/crate-pid-controller#cea7b4e4ccbd7578ad287c0c1cfcfe6c11f8f4d1"
 dependencies = [
  "num-traits",
  "postcard",
@@ -1971,9 +1971,9 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "sequential-storage"
-version = "8.0.1"
+version = "8.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e750f14f4f6e5a81277c66311713a56106c8df0196df62a634d1fc806556832b"
+checksum = "1550e4d0c7a6a54e2d7884309dc6bfe206d2d8884cb5498177fd936cb233616d"
 dependencies = [
  "embedded-storage-async",
  "postcard",
@@ -2056,9 +2056,9 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 
 [[package]]
 name = "signal-filters"
-version = "0.1.13"
+version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b074afddaebffb22f6459a23f58958ad9052f343bc77f3e59c280eec0c0884e"
+checksum = "16d5624443f123588dc452e0605f9a31edd2552b7f11a7db0275ccd48ff82713"
 dependencies = [
  "libm",
  "num-traits",
