@@ -9,7 +9,7 @@ that is each release may contain incompatible API changes.
 
 Once the API has stabilized this project will adopt semantic versioning, the first release to do so will be `0.2.0`.
 
-## [0.1.7] - 2026-09-xx
+## [0.1.7] - 2026-10-01
 
 ### Added
 
@@ -20,6 +20,9 @@ Once the API has stabilized this project will adopt semantic versioning, the fir
 
 - split `serde` feature into `serde` and `storage`.
 - updated to Rust version 1.89.
+- Updated to `vqm` `0.1.17`.
+- Updated to `signal-filters` `0.1.14`.
+- Updated to `pidsk-controller` `0.1.10`.
 
 ## [0.1.6] - 2026-09-05
 
