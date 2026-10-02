@@ -99,8 +99,8 @@ defmt = { version = "1.0.1", optional = true }
 fixed = "=1.29" # last version that has MSRV 1.89
 #paste = "1.0.15"
 
-#dshot-codec = { version = "0.1.0" }
-dshot-codec = { git = "https://github.com/martinbudden/crate-dshot-codec" }
+dshot-codec = { version = "0.1.2" }
+#dshot-codec = { git = "https://github.com/martinbudden/crate-dshot-codec" }
 #dshot-codec = { path = "../dshot-codec"  }
 vqm = { version = "0.1.17", default-features = false }
 #vqm = { git = "https://github.com/martinbudden/crate-vector-quaternion-matrix", default-features = false }

@@ -23,6 +23,7 @@ Once the API has stabilized this project will adopt semantic versioning, the fir
 - Updated to `vqm` `0.1.17`.
 - Updated to `signal-filters` `0.1.14`.
 - Updated to `pidsk-controller` `0.1.10`.
+- Updated to `dshot-codec` `0.1.2`.
 
 ## [0.1.6] - 2026-09-05
 

@@ -1,6 +1,6 @@
-# `motor-mixers` Rust Crate<br>![License: MIT](https://img.shields.io/badge/license-MIT-green) [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) ![open source](https://badgen.net/badge/open/source/blue?icon=github)
+# `motor-mixers` Rust Crate<br>[![Crates.io](https://img.shields.io/crates/v/motor-mixers.svg)](https://crates.io/crates/motor-mixers) [![Documentation](https://docs.rs/motor-mixers/badge.svg)](https://docs.rs/motor-mixers) [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT) ![open source](https://badgen.net/badge/open/source/blue?icon=github)
 
-`motor-mixers` is a Rust crate that implements motor mixing and actuator driving for robotics and arial vehicles.
+`motor-mixers` is a Rust crate that implements motor mixing and actuator driving for robotics and aerial vehicles.
 
 **Motor mixing** is the process used to translate movement commands (ie throttle, roll, pitch, and yaw)
 into individual motor speeds and/or servo angles.

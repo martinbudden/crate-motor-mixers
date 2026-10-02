@@ -539,18 +539,17 @@ dependencies = [
 
 [[package]]
 name = "dshot-codec"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
- "num-traits",
  "rustc_version 0.4.1",
 ]
 
 [[package]]
 name = "dshot-codec"
-version = "0.1.0"
-source = "git+https://github.com/martinbudden/crate-dshot-codec#76c31f17b7ebfaa2279228d3478932b67952d5cd"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "90377f51b9aee71922ec7c24ea8e53be2921c27f1e5bb1398a94424fc23acee9"
 dependencies = [
- "num-traits",
  "rustc_version 0.4.1",
 ]
 
@@ -1437,7 +1436,7 @@ version = "0.1.6"
 dependencies = [
  "approx",
  "defmt",
- "dshot-codec 0.1.0 (git+https://github.com/martinbudden/crate-dshot-codec)",
+ "dshot-codec 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "embassy-executor",
  "embassy-futures",
  "embassy-rp",
@@ -1466,7 +1465,7 @@ dependencies = [
  "defmt",
  "defmt-rtt",
  "defmt-test",
- "dshot-codec 0.1.0",
+ "dshot-codec 0.1.2",
  "embassy-executor",
  "embassy-rp",
  "embassy-stm32",
