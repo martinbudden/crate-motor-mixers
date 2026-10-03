@@ -32,7 +32,7 @@ rustc_version = "0.4.1"
 #default = ["rp235xa"]
 #default = ["rp235xa", "eight_motors"]
 #default = ["stm32", "pwm_t4_t3", "dshot_t8"]
-#default = ["esp32"]
+#default = ["esp32s3"]
 
 pwm_t1 = []
 pwm_t3 = []
@@ -73,7 +73,13 @@ stm32 = [
     "embassy-executor/executor-thread",
 ]
 stm32f405 = ["stm32", "embassy-stm32/stm32f405rg"]
-esp32 = ["dep:esp-hal", "esp-hal/esp32s3", "xtensa-lx"]
+esp32s3 = [
+    "dep:esp-hal",
+    "esp-hal/esp32s3",
+    "esp-hal/unstable",
+    "dep:embedded-hal",
+    "xtensa-lx",
+]
 
 [dependencies]
 
@@ -88,6 +94,7 @@ embassy-rp = { version = "0.10.0", default-features = false, optional = true }
 embassy-stm32 = { version = "0.6.0", default-features = false, optional = true }
 esp-hal = { version = "1.2.2", default-features = false, optional = true }
 xtensa-lx = { version = "0.13.0", default-features = false, optional = true }
+embedded-hal = { version = "1.0.0", default-features = false, optional = true }
 
 # Storage
 serde = { version = "1.0.229", default-features = false, features = ["derive"], optional = true }

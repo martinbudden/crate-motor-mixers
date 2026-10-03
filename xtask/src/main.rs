@@ -1,20 +1,40 @@
-use std::env;
 use std::process::{Command, ExitStatus};
 
 fn main() {
-    // Collect the arguments passed to xtask (e.g., "ci" or "check-msrv")
-    let args: Vec<String> = env::args().collect();
-    let command = args.get(1).map(|s| s.as_str()).unwrap_or("ci");
+    let command = std::env::args().nth(1).unwrap_or_else(|| "no-command".to_string());
 
-    match command {
+    match command.as_str() {
         "ci" => run_ci_pipeline(),
         "check-msrv" => run_msrv_check(),
+        "check-esp32s3" => run_check_esp32s3(),
         _ => {
             eprintln!("❌ Unknown xtask command: '{}'", command);
-            eprintln!("Available commands: ci, check-msrv");
+            eprintln!("Available commands: ci, check-msrv, check-esp32s3");
             std::process::exit(1);
         }
     }
+}
+
+fn run_check_esp32s3() {
+    println!("🚀 Running: cargo +esp check --release --target xtensa-esp32s3-none-elf");
+
+    let status = Command::new("cargo")
+        .args([
+            "+esp",
+            "check",
+            "--release",
+            "--target",
+            "xtensa-esp32s3-none-elf",
+            "--no-default-features",
+            "--features",
+            "esp32s3",
+            "-Z",
+            "build-std=core",
+        ])
+        .status();
+
+    check_status(status, "check-esp32s3");
+    println!("✅ ESP32S3 check passed!");
 }
 
 fn run_ci_pipeline() {

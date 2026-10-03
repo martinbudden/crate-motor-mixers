@@ -1,4 +1,4 @@
-#![cfg(not(any(feature = "esp32", rp, feature = "stm32")))]
+#![cfg(not(any(feature = "esp32s3", rp, feature = "stm32")))]
 use dshot_codec::{DshotCommand, DshotCommandFrame};
 
 use super::{DshotCommands, MotorFrequencies, MotorOutputs};

@@ -101,7 +101,6 @@ impl DynamicIdleController {
     }
 
     pub fn set_config(&mut self, config: DynamicIdleControllerConfig) {
-
         // Convert max increase multiplier from thousandths to fractional float bounds
         self.max_increase = f32::from(config.dyn_idle_max_increase) * 0.001;
 
@@ -203,7 +202,6 @@ mod tests {
 
         let mut dynamic_idle_controller = DynamicIdleController::new(TASK_INTERVAL_MICROSECONDS);
         dynamic_idle_controller.set_config(config);
-
 
         assert_eq!(0.0, dynamic_idle_controller.calculate_speed_increase(0.0, DELTA_T));
         assert_eq!(960.0, SLOWEST_MOTOR_HZ.to_rpm());

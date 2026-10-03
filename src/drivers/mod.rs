@@ -11,7 +11,7 @@ mod dshot_commands;
 mod motor_frequencies;
 mod motor_outputs;
 
-#[cfg(feature = "esp32")]
+#[cfg(feature = "esp32s3")]
 pub use {esp32_dshot::MotorDriverDshot, esp32_pwm::MotorDriverPwm};
 
 #[cfg(rp)]
@@ -20,7 +20,7 @@ pub use {rp_dshot::MotorDriverDshot, rp_pwm::MotorDriverPwm};
 #[cfg(feature = "stm32")]
 pub use {stm32_dshot_unidirectional::MotorDriverDshot, stm32_pwm::MotorDriverPwm};
 
-#[cfg(not(any(feature = "esp32", rp, feature = "stm32")))]
+#[cfg(not(any(feature = "esp32s3", rp, feature = "stm32")))]
 pub use host::{MotorDriverDshot, MotorDriverPwm};
 
 pub use dshot_commands::DshotCommands;

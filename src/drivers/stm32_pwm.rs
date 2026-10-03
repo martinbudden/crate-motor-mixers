@@ -120,12 +120,15 @@ where
 #[allow(clippy::cast_sign_loss, clippy::cast_possible_truncation, unused)]
 #[inline]
 fn output_to_duty(output: f32, max_duty: f32) -> u32 {
+    const PWM_CENTER_US: f32 = 1_500.0;
+    const PWM_RANGE_US: f32 = 500.0;
+
     let output = output.clamp(-1.0, 1.0);
 
     // -1.0 → 1000 µs
     //  0.0 → 1500 µs
     // +1.0 → 2000 µs
-    let pulse_width_us = 1500.0 + output * 500.0;
+    let pulse_width_us = PWM_CENTER_US + output * PWM_RANGE_US;
 
     // 50 Hz → 20,000 µs period.
     (pulse_width_us / 20_000.0 * max_duty) as u32

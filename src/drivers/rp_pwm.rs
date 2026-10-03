@@ -30,32 +30,6 @@ impl MotorDriverPwm {
     }
 
     #[inline]
-    fn output_to_duty(output: f32, top: u16, frequency_hz: f32) -> u16 {
-        // Standard 50Hz PWM.
-        const PWM_CENTER_US: f32 = 1_500.0;
-        const PWM_RANGE_US: f32 = 500.0;
-
-        let output = output.clamp(-1.0, 1.0);
-        // -1.0 → 1000 µs
-        //  0.0 → 1500 µs
-        // +1.0 → 2000 µs
-        let pulse_width_us = PWM_CENTER_US + output * PWM_RANGE_US;
-
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        {
-            (pulse_width_us * frequency_hz / 1_000_000.0 * f32::from(top)) as u16
-        }
-    }
-
-    #[inline]
-    fn set_motor_output(pwm: &mut PwmOutput<'static>, output: f32, top: u16, frequency_hz: f32) {
-        let duty = Self::output_to_duty(output, top, frequency_hz);
-
-        #[allow(clippy::expect_used)]
-        pwm.set_duty_cycle(duty).expect("motor PWM duty cycle is within configured range");
-    }
-
-    #[inline]
     pub async fn write_to_motors(&mut self, outputs: MotorOutputs) {
         core::future::ready(()).await;
 
@@ -65,6 +39,33 @@ impl MotorDriverPwm {
         Self::set_motor_output(&mut self.pwm0_b, outputs[1], top, self.frequency_hz);
         Self::set_motor_output(&mut self.pwm1_a, outputs[2], top, self.frequency_hz);
         Self::set_motor_output(&mut self.pwm1_b, outputs[3], top, self.frequency_hz);
+    }
+
+    #[inline]
+    fn set_motor_output(pwm: &mut PwmOutput<'static>, output: f32, top: u16, frequency_hz: f32) {
+        let duty = output_to_duty(output, top, frequency_hz);
+
+        #[allow(clippy::expect_used)]
+        pwm.set_duty_cycle(duty).expect("motor PWM duty cycle is within configured range");
+    }
+}
+
+#[inline]
+fn output_to_duty(output: f32, top: u16, frequency_hz: f32) -> u16 {
+    // Standard 50Hz PWM.
+    const PWM_CENTER_US: f32 = 1_500.0;
+    const PWM_RANGE_US: f32 = 500.0;
+
+    let output = output.clamp(-1.0, 1.0);
+
+    // -1.0 → 1000 µs
+    //  0.0 → 1500 µs
+    // +1.0 → 2000 µs
+    let pulse_width_us = PWM_CENTER_US + output * PWM_RANGE_US;
+
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    {
+        (pulse_width_us * frequency_hz / 1_000_000.0 * f32::from(top)) as u16
     }
 }
 

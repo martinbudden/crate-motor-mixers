@@ -83,13 +83,7 @@ check-stm32-t8 = [
     "stm32,stm32f405,pwm_t8,dshot_t8"
 ]
 
-check-esp32 = [
-    "check",
-    "--target", "xtensa-esp32s3-none-elf",
-    "--no-default-features",
-    "--features",
-    "esp32"
-]
+check-esp32s3 = "run --manifest-path xtask/Cargo.toml -- check-esp32s3"
 
 # Continuous Integration
 # ci = "run --package xtask --bin xtask"

@@ -4,8 +4,10 @@ use dshot_codec::{DshotCommand, DshotCommandFrame, DshotMotorMasks, DshotTiming,
 
 use super::{DshotCommands, MotorFrequencies, MotorOutputs};
 
+pub type MotorDriverDshot = MotorDriverDshotEsp32<'static>;
+
 #[allow(missing_debug_implementations, missing_copy_implementations)]
-pub struct MotorDriverDshot<'d> {
+pub struct MotorDriverDshotEsp32<'d> {
     masks: DshotMotorMasks,
     timing: DshotTiming,
     waveform: &'d mut DshotWaveform,
@@ -13,7 +15,7 @@ pub struct MotorDriverDshot<'d> {
     erpm_to_hz: f32,
 }
 
-impl<'d> MotorDriverDshot<'d> {
+impl<'d> MotorDriverDshotEsp32<'d> {
     const MOTOR_COUNT: usize = 4;
 
     #[must_use]
@@ -31,14 +33,14 @@ impl<'d> MotorDriverDshot<'d> {
     }
 
     #[inline]
-    pub async fn send_command_frames(&mut self, frames: [DshotCommandFrame; MotorDriverDshot::MOTOR_COUNT]) {
+    pub async fn send_command_frames(&mut self, frames: [DshotCommandFrame; MotorDriverDshotEsp32::MOTOR_COUNT]) {
         _ = self;
         _ = frames;
         core::future::ready(()).await;
     }
 }
 
-impl MotorDriverDshot<'_> {
+impl MotorDriverDshotEsp32<'_> {
     pub async fn write_to_motors(&mut self, outputs: MotorOutputs) {
         let commands_frames = [
             DshotCommandFrame::from_throttle_unidirectional(outputs[0]),
@@ -88,6 +90,6 @@ mod test_traits {
 
     #[test]
     fn normal_types() {
-        is_normal::<MotorDriverDshot>();
+        is_normal::<MotorDriverDshotEsp32>();
     }
 }
