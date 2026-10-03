@@ -79,7 +79,6 @@ pub struct DynamicIdleController {
     max_increase: f32,
     pid: PidControllerf32, // PID to ensure slowest motor does not go below min RPS
     dterm_filter: Pt1Filterf32,
-    config: DynamicIdleControllerConfig,
 }
 
 impl Default for DynamicIdleController {
@@ -98,24 +97,16 @@ impl DynamicIdleController {
             max_increase: 0.0,
             pid: PidControllerf32::default(), // PID for dynamic idle, ie to ensure slowest motor does not go below min RPS
             dterm_filter: Pt1Filterf32::new(),
-            config: DynamicIdleControllerConfig::new(),
         }
     }
 
-    #[inline]
-    #[must_use]
-    pub fn config(&self) -> DynamicIdleControllerConfig {
-        self.config
-    }
-
     pub fn set_config(&mut self, config: DynamicIdleControllerConfig) {
-        self.config = config;
 
         // Convert max increase multiplier from thousandths to fractional float bounds
-        self.max_increase = f32::from(self.config.dyn_idle_max_increase) * 0.001;
+        self.max_increase = f32::from(config.dyn_idle_max_increase) * 0.001;
 
         // Convert RPM to Hz (RPS): RPM / 60
-        self.minimum_allowed_motor_hz = f32::from(self.config.dyn_idle_min_rpm_d100) * 100.0 / 60.0;
+        self.minimum_allowed_motor_hz = f32::from(config.dyn_idle_min_rpm_d100) * 100.0 / 60.0;
         self.pid.set_setpoint(self.minimum_allowed_motor_hz);
 
         #[allow(clippy::cast_precision_loss)]
@@ -123,11 +114,9 @@ impl DynamicIdleController {
 
         // Use Betaflight multipliers for compatibility with Betaflight Configurator
         let pid_gains = PidGainsf32 {
-            kp: f32::from(self.config.dyn_idle_p_gain_x100) * 0.00015,
-            ki: f32::from(self.config.dyn_idle_i_gain_x100) * 0.01 * delta_t,
-            kd: f32::from(self.config.dyn_idle_d_gain_x100) * 0.000_000_3 / delta_t,
-            ks: 0.0,
-            kk: 0.0,
+            kp: f32::from(config.dyn_idle_p_gain_x100) * 0.000_15,
+            ki: f32::from(config.dyn_idle_i_gain_x100) * 0.01 * delta_t,
+            kd: f32::from(config.dyn_idle_d_gain_x100) * 0.000_000_3 / delta_t,
         };
         self.pid.set_gains(pid_gains);
         // Limit Iterm to range [0, _max_increase] to prevent integral windup.
@@ -209,11 +198,12 @@ mod tests {
         #[allow(clippy::cast_precision_loss)]
         const DELTA_T: f32 = TASK_INTERVAL_MICROSECONDS as f32 * 0.000_001;
 
-        let dynamic_idle_controller_config = DynamicIdleControllerConfig::default();
-        let mut dynamic_idle_controller = DynamicIdleController::new(TASK_INTERVAL_MICROSECONDS);
-        dynamic_idle_controller.set_config(dynamic_idle_controller_config);
+        let config = DynamicIdleControllerConfig::default();
+        assert_eq!(0, config.dyn_idle_min_rpm_d100);
 
-        assert_eq!(0, dynamic_idle_controller.config().dyn_idle_min_rpm_d100);
+        let mut dynamic_idle_controller = DynamicIdleController::new(TASK_INTERVAL_MICROSECONDS);
+        dynamic_idle_controller.set_config(config);
+
 
         assert_eq!(0.0, dynamic_idle_controller.calculate_speed_increase(0.0, DELTA_T));
         assert_eq!(960.0, SLOWEST_MOTOR_HZ.to_rpm());
@@ -236,7 +226,6 @@ mod tests {
         #[allow(clippy::cast_precision_loss)]
         let delta_t = TASK_INTERVAL_MICROSECONDS as f32 * 0.000_001;
 
-        assert_eq!(12, dynamic_idle_controller.config().dyn_idle_min_rpm_d100);
         assert_eq!(20.0, 1200.0.to_hz());
         assert_eq!(1200.0.to_hz(), dynamic_idle_controller.minimum_allowed_motor_hz());
 

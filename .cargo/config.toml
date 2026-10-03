@@ -80,7 +80,7 @@ check-stm32-t8 = [
     "--target", "thumbv8m.main-none-eabihf",
     "--no-default-features",
     "--features",
-    "stm32,stm32f405,pwm_t8"
+    "stm32,stm32f405,pwm_t8,dshot_t8"
 ]
 
 check-esp32 = [
