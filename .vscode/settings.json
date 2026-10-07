@@ -4,7 +4,7 @@
     
     // Set the fallback architecture for embedded files
     // "rust-analyzer.cargo.target": "thumbv6m-none-eabi",
-    "rust-analyzer.cargo.target": "thumbv8m.main-none-eabihf",
+    // "rust-analyzer.cargo.target": "thumbv8m.main-none-eabihf",
     "cSpell.words": [
         "AHRS",
         "arrayvec",

@@ -86,8 +86,8 @@ check-stm32-t8 = [
 check-esp32s3 = "run --manifest-path xtask/Cargo.toml -- check-esp32s3"
 
 # Continuous Integration
-# ci = "run --package xtask --bin xtask"
-ci = "run --manifest-path xtask/Cargo.toml"
+ci = "run --package xtask --bin xtask"
+#ci = "run --manifest-path xtask/Cargo.toml"
 
 # MSRV
 #check-msrv = "run --package xtask --bin xtask -- check-msrv"

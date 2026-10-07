@@ -1,9 +1,12 @@
+use std::env;
 use std::process::{Command, ExitStatus};
 
 fn main() {
-    let command = std::env::args().nth(1).unwrap_or_else(|| "no-command".to_string());
+    // Collect the arguments passed to xtask (e.g., "ci" or "check-msrv")
+    let args: Vec<String> = env::args().collect();
+    let command = args.get(1).map(|s| s.as_str()).unwrap_or("ci");
 
-    match command.as_str() {
+    match command {
         "ci" => run_ci_pipeline(),
         "check-msrv" => run_msrv_check(),
         "check-esp32s3" => run_check_esp32s3(),
@@ -41,7 +44,10 @@ fn run_ci_pipeline() {
     let tasks: &[(&str, &[&str])] = &[
         ("fmt", &["--check"]),
         ("clippy", &["--all-targets", "--", "-D", "warnings"]),
+        ("check", &[]),
+        ("check", &["--no-default-features", "--features", "serde, storage, eight_motors"]),
         ("test", &[]),
+        ("test", &["--no-default-features", "--features", "serde, storage, eight_motors"]),
         ("doc", &["--no-deps"]),
         ("publish", &["--dry-run"]),
     ];
@@ -55,10 +61,16 @@ fn run_ci_pipeline() {
 }
 
 fn run_msrv_check() {
-    println!("🚀 Running: cargo +1.89.0 check --lib --features msrv");
+    println!("🚀 Running: cargo +1.89.0 check --lib --features serde, storage, eight_motors");
 
     // We invoke cargo, passing the toolchain string as the very first argument
-    let status = Command::new("cargo").arg("+1.89.0").arg("check").arg("--lib").arg("--features").arg("serde").status();
+    let status = Command::new("cargo")
+        .arg("+1.89.0")
+        .arg("check")
+        .arg("--lib")
+        .arg("--features")
+        .arg("serde, storage, eight_motors")
+        .status();
 
     check_status(status, "check-msrv");
     println!("✅ MSRV 1.89 check passed!");
