@@ -9,21 +9,32 @@ that is each release may contain incompatible API changes.
 
 Once the API has stabilized this project will adopt semantic versioning, the first release to do so will be `0.2.0`.
 
-## [0.1.7] - 2026-10-01
+## [0.1.7] - 2026-10-07
 
 ### Added
 
-- support for continuous integration.
-- example code.
+- Support for continuous integration.
+- Example code.
+- `Dshot` for `stm32`.
 
 ### Changed
 
-- split `serde` feature into `serde` and `storage`.
-- updated to Rust version 1.89.
+- Split `serde` feature into `serde` and `storage`.
+- Updated to Rust version 1.89.
 - Updated to `vqm` `0.1.17`.
 - Updated to `signal-filters` `0.1.14`.
-- Updated to `pidsk-controller` `0.1.10`.
+- Updated to `pidsk-controller` `0.1.11`.
 - Updated to `dshot-codec` `0.1.2`.
+- Improved `Dshot` protocol implementations.
+- Use features `rp235xa` and `rp235xb` rather that `rp2350`.
+- Use type-safe frames eg `DshotCommandFrame` rather than Dshot encoder/decoder.
+- Moved hardware independent parts of `Dshot` frames into the crate `dshot-codec`.
+- Improved support for eight motors for `rp`.
+- Rearranged PIO state machines for `rp`
+- Changed to use `struct`s and `enum`s for mixer (rather than plain functions).
+- Renamed `MotorMixerCommon` to `MotorMixer`.
+- Moved hardware-specific code into `drivers` directory.
+- Improved `esp32` PWM driver.
 
 ## [0.1.6] - 2026-09-05
 

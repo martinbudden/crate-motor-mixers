@@ -170,6 +170,7 @@
         "typenum",
         "typestate",
         "UART",
+        "ufmt",
         "ulps",
         "uncommanded",
         "uninit",
