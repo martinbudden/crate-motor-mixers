@@ -72,9 +72,9 @@ esp32s3 = [
 
 [dependencies]
 motor-mixers = { path = "..", default-features = false}
-#dshot-codec = { version = "0.1.1" }
+dshot-codec = { version = "0.1.2" }
 #dshot-codec = { git = "https://github.com/martinbudden/crate-dshot-codec" }
-dshot-codec = { path = "../../dshot-codec"  }
+#dshot-codec = { path = "../../dshot-codec"  }
 
 # Core Embassy executor and concurrency primitives
 embassy-executor = { version = "0.10.0", default-features = false, features = ["executor-thread"] }
@@ -91,10 +91,6 @@ defmt = { version = "1.0.1" }
 defmt-rtt = "1.3.0"
 defmt-test = "0.5.0"
 panic-probe = { version = "1.0.0", features = ["print-defmt"] }
-
-[[bin]]
-name = "bidirectional_pio"
-path = "src/bidirectional_pio.rs"
 
 [[bin]]
 name = "motor_driver_rp_quad_dshot"

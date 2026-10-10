@@ -13,7 +13,7 @@ use embassy_rp::{bind_interrupts, clocks::clk_sys_freq, peripherals::PIO1, pio::
 use embassy_time::{Duration, Timer};
 use {defmt_rtt as _, panic_probe as _};
 
-use dshot_codec::{DshotCommand, DshotCommandFrame, DshotSpeed};
+use dshot_codec::{DshotCommand, DshotSpeed};
 use motor_mixers::MotorDriverDshot;
 
 bind_interrupts!(struct Irqs {
@@ -29,23 +29,23 @@ async fn main(_spawner: Spawner) {
     info!("System clock: {} Hz", sys_freq);
     info!("Starting motor-mixers Basic test");
 
-    // Initialize MotorDriverQuadDshot on pins 11-14
-    let mut driver = MotorDriverQuadDshot::new(
+    // Initialize MotorDriverDshot on pins 11-14
+    let mut driver = MotorDriverDshot::new(
         p.PIO1,
         Irqs,
         p.PIN_11,
         p.PIN_12,
         p.PIN_14,
         p.PIN_15,
-        DshotProtocol::Dshot300,
-        MotorDriverQuadDshot::DEFAULT_MOTOR_POLE_COUNT,
+        DshotSpeed::Dshot300,
+        MotorDriverDshot::DEFAULT_MOTOR_POLE_COUNT,
     );
 
     // Arm ESC with MotorStop (value 0) for 2 seconds
     info!("Sending MotorStop for 2 seconds");
-    let frame = DshotBidirectionalFrame::from_command(DshotCommand::MotorStop);
+    //let frame = DshotCommandFrame::from_command(DshotCommand::MotorStop);
     for _ in 0..2000 {
-        driver.send_frame(frame, 0).await;
+        driver.write_command_to_all_motors(DshotCommand::MotorStop).await;
         Timer::after(Duration::from_millis(1)).await;
     }
 
@@ -53,7 +53,7 @@ async fn main(_spawner: Spawner) {
     info!("Sending MotorStop for indefinitely");
     let mut count: u32 = 0;
     loop {
-        driver.send_frame(frame, 0).await;
+        driver.write_command_to_all_motors(DshotCommand::MotorStop).await;
         Timer::after(Duration::from_millis(1)).await;
         count = count.wrapping_add(1);
         if count.is_multiple_of(1000) {
