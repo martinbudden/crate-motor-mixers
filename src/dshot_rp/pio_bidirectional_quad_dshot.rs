@@ -1,10 +1,8 @@
 use fixed::{FixedU32, types::extra::U8};
 
-use dshot_codec::DshotSpeed;
-
 #[cfg(rp)]
 use {
-    dshot_codec::{DshotCommandFrame, DshotError, GcrFrame},
+    dshot_codec::{DshotCommandFrame, DshotError, DshotSpeed, GcrFrame},
     embassy_rp::{
         Peri, clocks,
         gpio::Pull,
@@ -220,7 +218,7 @@ impl<PIO: Instance, const SM: usize> BidirectionalDshotSm<'_, PIO, SM> {
 }
 
 #[allow(unused)]
-fn pio_clock_divider(dshot_speed: DshotSpeed, sys_clock_frequency: u32) -> FixedU32<U8> {
+fn pio_clock_divider(dshot_speed: dshot_codec::DshotSpeed, sys_clock_frequency: u32) -> FixedU32<U8> {
     // pio clock divider = system_clock / (40 × dshot_speed_baud_rate) encoded as FixedU32<U8>
 
     let sys_clock = u64::from(sys_clock_frequency);
@@ -232,6 +230,7 @@ fn pio_clock_divider(dshot_speed: DshotSpeed, sys_clock_frequency: u32) -> Fixed
 #[cfg(test)]
 mod tests {
     use super::*;
+    use dshot_codec::DshotSpeed;
 
     #[test]
     fn test_pio_clock_divider() {

@@ -27,7 +27,7 @@ pub struct MotorDriverDshot {
 
 #[allow(unused)]
 impl MotorDriverDshot {
-    pub const DEFAULT_MOTOR_POLE_COUNT: u16 = 14;
+    pub const DEFAULT_MOTOR_POLE_COUNT: u8 = 14;
     const SECONDS_PER_MINUTE: f32 = 60.0;
 
     #[cfg(all(rp, not(feature = "eight_motors")))]

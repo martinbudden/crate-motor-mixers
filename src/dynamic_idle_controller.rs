@@ -248,12 +248,15 @@ mod tests {
         let config = DynamicIdleControllerConfig { dyn_idle_d_gain_x100: 119, ..Default::default() };
         let mut buf = [0u8; 64]; // Size based on your config size
         #[allow(clippy::unwrap_used)]
-        let data = to_slice(&config, &mut buf).unwrap();
-        assert_eq!(5, data.len());
+        let result = to_slice(&config, &mut buf);
+        assert!(result.is_ok());
+        if let Ok(data) = result {
+            assert_eq!(5, data.len());
 
-        // Deserialize using postcard
-        let config_read: DynamicIdleControllerConfig =
-            from_bytes(data).unwrap_or_else(|_| DynamicIdleControllerConfig::default());
-        assert_eq!(119, config_read.dyn_idle_d_gain_x100);
+            // Deserialize using postcard
+            let config_read: DynamicIdleControllerConfig =
+                from_bytes(data).unwrap_or_else(|_| DynamicIdleControllerConfig::default());
+            assert_eq!(119, config_read.dyn_idle_d_gain_x100);
+        }
     }
 }
