@@ -8,11 +8,11 @@
 #![no_main]
 
 use defmt::info;
-use dshot_codec::DshotSpeed;
 use embassy_executor::Spawner;
 use embassy_time::{Duration, Timer};
 use {defmt_rtt as _, panic_probe as _};
 
+use dshot_codec::DshotSpeed;
 use motor_mixers::{MixerConfig, MotorConfig, MotorDriver, MotorDriverDshot, MotorMixer, MotorMixerMessage};
 
 #[cfg(feature = "rp")]

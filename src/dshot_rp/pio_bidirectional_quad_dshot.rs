@@ -217,7 +217,7 @@ impl<PIO: Instance, const SM: usize> BidirectionalDshotSm<'_, PIO, SM> {
     }
 }
 
-#[allow(unused)]
+#[allow(unused, unused_qualifications)]
 fn pio_clock_divider(dshot_speed: dshot_codec::DshotSpeed, sys_clock_frequency: u32) -> FixedU32<U8> {
     // pio clock divider = system_clock / (40 × dshot_speed_baud_rate) encoded as FixedU32<U8>
 
