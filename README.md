@@ -10,7 +10,7 @@ into individual motor speeds and/or servo angles.
 
 `motor-mixers` supports **PWM** (Pulse-Width Modulation), for DC motors and servos, and **bidirectional Dshot** for ESCs.
 
-This crate is `no_std`, `no alloc`, and the Minimum Supported Rust Version (MSRV) is `Rust 1.89`.
+This crate is `no_std`, `no alloc`, `no panic`, `no unwrap`, `no expect`, and the Minimum Supported Rust Version (MSRV) is `Rust 1.89`.
 
 ## Dynamic Idle Control
 

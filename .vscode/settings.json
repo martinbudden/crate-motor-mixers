@@ -57,6 +57,7 @@
         "eabihf",
         "eeem",
         "eeemmmmmmmmmcccc",
+        "EINVAL"
         "embuild",
         "enumset",
         "erpm",
@@ -86,6 +87,7 @@
         "indexmap",
         "indoc",
         "Irqs",
+        "isatty",
         "iterm",
         "itertools",
         "itoa",
@@ -123,6 +125,7 @@
         "OCTO",
         "octocopter",
         "ONESHOT",
+        "openocd",
         "osre",
         "OUTX",
         "OUTY",
