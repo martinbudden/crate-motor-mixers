@@ -9,9 +9,13 @@ that is each release may contain incompatible API changes.
 
 Once the API has stabilized this project will adopt semantic versioning, the first release to do so will be `0.2.0`.
 
-## [0.1.9] - 2026-10-xx
+## [0.1.9] - 2026-10-28
 
 ### Changed
+
+- Updated to `vqm` `0.1.19`.
+- Updated to `signal-filters` `0.1.16`.
+- Updated to `pidsk-controller` `0.1.13`.
 
 ## [0.1.8] - 2026-10-23
 
