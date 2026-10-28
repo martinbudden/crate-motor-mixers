@@ -2,15 +2,23 @@
 
 `motor-mixers` is a Rust crate that implements motor mixing and actuator driving for robotics and aerial vehicles.
 
+This crate is `no_std`, `no alloc`, `no panic`, `no unwrap`, `no expect`, and the Minimum Supported Rust Version (MSRV) is `Rust 1.89`.
+
 **Motor mixing** is the process used to translate movement commands (ie throttle, roll, pitch, and yaw)
-into individual motor speeds and/or servo angles.
+into individual motor speeds and/or servo angles. It is also known as **control allocation**.
 
 **Actuator driving** is the subsequent step where the outputs from the mixer are serialized into specific electronic signals
 (like digital packets or timed pulses) and sent to a motor driver or an Electronic Speed Controller (ESC).
 
 `motor-mixers` supports **PWM** (Pulse-Width Modulation), for DC motors and servos, and **bidirectional Dshot** for ESCs.
 
-This crate is `no_std`, `no alloc`, `no panic`, `no unwrap`, `no expect`, and the Minimum Supported Rust Version (MSRV) is `Rust 1.89`.
+## Motor Mixing
+
+Motor mixing abstract away the specificities of the airframe (ie its geometry and motor and servo configuration),
+so the same control inputs can be used for many types of platform, ie fixed wing, tricopter, quadcopter etc.
+
+The traditional way of doing this is to assume a linear system and use a static mixer-matrix which converts the desired
+torques on x,y,z and thrust on z, into actuator commands.
 
 ## Dynamic Idle Control
 
