@@ -61,7 +61,7 @@ simd = ["vqm/simd"]
 
 # Target platforms
 host = []
-std = ["embassy-time/std", "embassy-executor/platform-std", "vqm/std", "signal-filters/std"]
+std = ["embassy-time/std", "vqm/std", "signal-filters/std"]
 rp2040 = ["embassy-rp/rp2040"]
 rp235xa = ["embassy-rp/rp235xa"]
 rp235xb = ["embassy-rp/rp235xb"]
@@ -69,8 +69,6 @@ stm32 = [
     "dep:embassy-stm32",
     "embassy-stm32/time-driver-tim2",
     "embassy-stm32/unstable-pac", # required for port.gpio_bsrr()
-    "embassy-executor/platform-cortex-m",   # <-- Explicitly satisfies the executor's platform check
-    "embassy-executor/executor-thread",
 ]
 stm32f405 = ["stm32", "embassy-stm32/stm32f405rg"]
 esp32s3 = [
@@ -84,9 +82,7 @@ esp32s3 = [
 [dependencies]
 
 # Core Embassy executor and concurrency primitives
-embassy-executor = { version = "0.10.0", default-features = false, features = ["executor-thread"] }
 embassy-futures = { version = "0.1.2", default-features = false }
-embassy-sync = { version = "0.8.0", default-features = false }
 embassy-time = { version = "0.5.1", default-features = false }
 
 # Hardware-specific Embassy HAL

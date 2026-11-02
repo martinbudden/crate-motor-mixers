@@ -9,6 +9,12 @@ that is each release may contain incompatible API changes.
 
 Once the API has stabilized this project will adopt semantic versioning, the first release to do so will be `0.2.0`.
 
+## [0.1.10] - 2026-11-xx
+
+### Removed
+
+- Removed dependency on `embassy-executor`.
+
 ## [0.1.9] - 2026-10-28
 
 ### Changed
